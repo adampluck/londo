@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from datetime import date, datetime, timezone
@@ -68,7 +69,6 @@ class NewspeakScraper(BaseScraper):
         blocks: dict[str, dict],
         cover_cache: dict[str, str | None],
     ) -> Event:
-        uid = str(component.get("UID", ""))
         title = str(component.get("SUMMARY", "")).strip()
         start_dt = component.get("DTSTART").dt
         end = component.get("DTEND")
@@ -80,6 +80,18 @@ class NewspeakScraper(BaseScraper):
         # A Luma slug is occurrence-specific: only trust it when the homepage
         # block's date matches this occurrence (recurring events share titles).
         luma_slug = block.get("luma_slug") if exact_date_match else None
+
+        # The feed regenerates random UIDs on every fetch, so derive a stable
+        # identity: the Luma slug when present, else title + date.
+        if luma_slug:
+            source_id = f"luma-{luma_slug}"
+        else:
+            day = start_dt.astimezone(LONDON).date().isoformat()
+            digest = hashlib.sha1(
+                f"{_norm_title(title)}|{day}".encode()
+            ).hexdigest()[:16]
+            source_id = f"td-{digest}"
+
         image_url = None
         if luma_slug:
             if luma_slug not in cover_cache:
@@ -101,7 +113,7 @@ class NewspeakScraper(BaseScraper):
 
         return Event(
             source="newspeak",
-            source_id=uid,
+            source_id=source_id,
             source_url=source_url,
             external_ref=f"luma:{luma_slug}" if luma_slug else None,
             title=title,
