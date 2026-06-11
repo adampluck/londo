@@ -61,6 +61,7 @@
       `${SUPABASE_URL}/rest/v1/events?${params}` +
       `&start_at=gte.${today.toISOString()}` +
       `&duplicate_of=is.null` +
+      `&is_online=eq.false` + // in-person only
       `&last_seen_at=gte.${staleCutoff}`;
 
     const res = await fetch(url, {
