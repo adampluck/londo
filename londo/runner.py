@@ -9,7 +9,7 @@ from londo.dedupe import dedupe
 from londo.models import Event
 from londo.output import write_events
 from londo.scrapers.dandelion import DandelionScraper
-from londo.scrapers.eventbrite import NuminityScraper
+from londo.scrapers.eventbrite import EventbriteListingsScraper, NuminityScraper
 from londo.scrapers.luma import LumaScraper
 from londo.scrapers.newspeak import NewspeakScraper
 from londo.scrapers.seeds import SeedsScraper
@@ -20,6 +20,7 @@ SCRAPERS = {
     "luma": LumaScraper,
     "newspeak": NewspeakScraper,
     "numinity": NuminityScraper,
+    "eventbrite": EventbriteListingsScraper,
     "seeds": SeedsScraper,  # chat-ingested URLs; needs Supabase credentials
 }
 

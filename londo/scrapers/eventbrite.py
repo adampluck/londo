@@ -35,14 +35,27 @@ class EventbriteOrganizerScraper(BaseScraper):
     series parents) with images and descriptions; the destination API
     expands each series into its next concrete occurrences.
 
-    Subclass with org_id / org_name / source_name set to add an organizer.
+    Configure via subclass attributes (see NuminityScraper) or constructor
+    arguments (see EventbriteListingsScraper).
     """
 
     org_id: str
     org_name: str
 
-    def __init__(self, rate_limit: float = 1.0):
+    def __init__(
+        self,
+        rate_limit: float = 1.0,
+        org_id: str | None = None,
+        org_name: str | None = None,
+        source_name: str | None = None,
+    ):
         super().__init__(rate_limit=rate_limit)
+        if org_id:
+            self.org_id = org_id
+        if org_name:
+            self.org_name = org_name
+        if source_name:
+            self.source_name = source_name
         self.session.headers.update({"User-Agent": BROWSER_UA})
 
     def scrape(self) -> list[Event]:
@@ -98,6 +111,43 @@ class NuminityScraper(EventbriteOrganizerScraper):
     source_name = "numinity"
     org_id = "33797188771"
     org_name = "Numinity"
+
+
+# Followed Eventbrite organizers, aggregated under the generic
+# 'eventbrite' source (Numinity stays its own source above).
+EVENTBRITE_ORGANIZERS = {
+    "29457876735": "Robyn Wilford",
+    "70451924323": "The London School of Tantra",
+    "70754628523": "London Night Cafe",
+    "62049657303": "The School of Sufi Teaching",
+    "8588572090": "Ecstatic Dance London & URUBU Wellbeing Events",
+}
+
+
+class EventbriteListingsScraper(BaseScraper):
+    """Scrapes every organizer in EVENTBRITE_ORGANIZERS as source 'eventbrite'."""
+
+    source_name = "eventbrite"
+
+    def scrape(self) -> list[Event]:
+        events: list[Event] = []
+        for org_id, org_name in EVENTBRITE_ORGANIZERS.items():
+            scraper = EventbriteOrganizerScraper(
+                rate_limit=self.rate_limit,
+                org_id=org_id,
+                org_name=org_name,
+                source_name=self.source_name,
+            )
+            try:
+                events.extend(scraper.scrape())
+            except Exception:
+                logger.exception("Organizer %s (%s) failed", org_name, org_id)
+        logger.info(
+            "Scraped %d events across %d Eventbrite organizers",
+            len(events),
+            len(EVENTBRITE_ORGANIZERS),
+        )
+        return events
 
 
 def build_events(
