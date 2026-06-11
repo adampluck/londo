@@ -193,6 +193,9 @@
 
     const frag = document.createDocumentFragment();
     for (const [day, dayEvents] of byDay) {
+      const section = document.createElement("section");
+      section.className = "day-group";
+
       const h2 = document.createElement("h2");
       h2.className = "day-heading";
 
@@ -213,12 +216,13 @@
         dayEvents.length === 1 ? "one gathering" : `${dayEvents.length} gatherings`;
       h2.appendChild(count);
 
-      frag.appendChild(h2);
+      section.appendChild(h2);
 
       const grid = document.createElement("div");
       grid.className = "grid";
       dayEvents.forEach((e, i) => grid.appendChild(card(e, i)));
-      frag.appendChild(grid);
+      section.appendChild(grid);
+      frag.appendChild(section);
     }
     container.replaceChildren(frag);
   }

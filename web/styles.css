@@ -505,6 +505,32 @@ footer a:hover { color: var(--gold); }
   .tag.size-1 { font-size: 0.8rem; }
   .tag.size-2 { font-size: 0.9rem; }
   .tag.size-3 { font-size: 1rem; }
+
+  /* day headings float at the top while scrolling that day's events */
+  .day-group { margin-top: 1.4rem; }
+
+  .day-heading {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    margin: 0 -1.5rem 0.9rem;
+    padding: 0.65rem 1.5rem 0.55rem;
+    background: rgba(20, 16, 31, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* desktop: tags stay on one line, fading out instead of wrapping */
+@media (min-width: 641px) {
+  .tag-row {
+    flex-wrap: nowrap;
+    overflow: hidden;
+    mask-image: linear-gradient(to right, black calc(100% - 56px), transparent);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 56px), transparent);
+  }
+
+  .tag { flex: none; }
 }
 
 /* ---------- quiet for those who prefer it ---------- */
