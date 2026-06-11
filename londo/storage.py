@@ -48,7 +48,18 @@ class SupabaseStore:
         )
 
     def upsert_events(self, events: list[Event]) -> int:
-        rows = [_event_to_row(e) for e in events]
+        # Postgres rejects a batch that touches the same row twice
+        # ("ON CONFLICT DO UPDATE cannot affect row a second time"), and the
+        # same event can be reached via different URLs. First copy wins —
+        # the dedupe pass puts the canonical (unmarked) copy first.
+        unique: dict[tuple[str, str], dict] = {}
+        for event in events:
+            unique.setdefault((event.source, event.source_id), _event_to_row(event))
+        rows = list(unique.values())
+        if len(rows) < len(events):
+            logger.info(
+                "Collapsed %d same-row events in batch", len(events) - len(rows)
+            )
         endpoint = f"{self.url}/rest/v1/events?on_conflict=source,source_id"
 
         written = 0

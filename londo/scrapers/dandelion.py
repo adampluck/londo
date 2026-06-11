@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
@@ -54,8 +55,18 @@ class DandelionScraper(BaseScraper):
         return events
 
     def _scrape_event(self, uid: str) -> Event:
-        url = EVENT_PAGE_URL.format(uid=uid)
+        return self.scrape_event_url(EVENT_PAGE_URL.format(uid=uid), uid=uid)
+
+    def scrape_event_url(self, url: str, uid: str | None = None) -> Event:
+        """Scrape any Dandelion event page, including /e/<slug> short links
+        (which serve the event page directly under the short URL)."""
         response = self.get(url)
+
+        if uid is None:
+            m = re.search(r"/events/([a-f0-9]{16,})", response.text)
+            uid = m.group(1) if m else url.rstrip("/").rsplit("/", 1)[-1]
+            url = EVENT_PAGE_URL.format(uid=uid) if m else url
+
         soup = BeautifulSoup(response.text, "html.parser")
 
         json_ld = self._extract_json_ld(soup)

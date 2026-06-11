@@ -147,12 +147,24 @@ def ingest_whatsapp(
     candidates = [u for u in urls if classify_url(u) is not None]
     click.echo(f"Found {len(urls)} links, {len(candidates)} possible event links")
 
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=1)
     fetcher = LinkFetcher(rate_limit=rate_limit)
     all_events: list[Event] = []
     seeds: list[dict] = []
+    seen_keys: set[tuple[str, str]] = set()
     for url in candidates:
-        kind, _ = classify_url(url)
+        kind, key = classify_url(url)
+        if (kind, key) in seen_keys:
+            continue
+        seen_keys.add((kind, key))
         events = fetcher.fetch(url)
+        events = [
+            e
+            for e in events
+            if e.start_datetime is None or e.start_datetime >= cutoff
+        ]
         if not events:
             continue
         all_events.extend(events)

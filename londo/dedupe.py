@@ -32,9 +32,16 @@ def dedupe(events: list[Event]) -> list[Event]:
         group.sort(key=_priority)
         canonical, rest = group[0], group[1:]
         for dup in rest:
-            dup.duplicate_of = f"{canonical.source}:{canonical.source_id}"
+            # same DB row reached twice (e.g. lu.ma/x and luma.com/x):
+            # merge fields but never mark a row a duplicate of itself
+            same_row = (dup.source, dup.source_id) == (
+                canonical.source,
+                canonical.source_id,
+            )
+            if not same_row:
+                dup.duplicate_of = f"{canonical.source}:{canonical.source_id}"
+                n_dupes += 1
             _merge_missing(canonical, dup)
-            n_dupes += 1
 
     if n_dupes:
         logger.info("Marked %d cross-source duplicates", n_dupes)

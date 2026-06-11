@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
+import requests
 from bs4 import BeautifulSoup
 
 from londo.models import Event, Location, Organizer, PriceTier
@@ -95,8 +96,11 @@ class LinkFetcher(BaseScraper):
             if kind == "eventbrite":
                 return self._fetch_eventbrite(key)
             if kind == "dandelion":
-                return [self._dandelion._scrape_event(key)]
+                return [self._dandelion.scrape_event_url(url)]
             return self._fetch_generic(url)
+        except requests.RequestException as exc:
+            logger.warning("Could not fetch %s link %s: %s", kind, url, exc)
+            return []
         except Exception:
             logger.exception("Failed to fetch %s link: %s", kind, url)
             return []
