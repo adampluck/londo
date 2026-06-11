@@ -28,6 +28,11 @@ body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;
   overflow-x: hidden;
+  /* breathe around the notch/home bar when installed fullscreen */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* ---------- sky: drifting light behind everything ---------- */
@@ -111,7 +116,7 @@ body {
 
 .controls {
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top, 0);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -512,7 +517,7 @@ footer a:hover { color: var(--gold); }
 
   .day-heading {
     position: sticky;
-    top: 0;
+    top: env(safe-area-inset-top, 0);
     z-index: 5;
     margin: 0 -1.5rem 0.9rem;
     padding: 0.65rem 1.5rem 0.55rem;

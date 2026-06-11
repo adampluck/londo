@@ -394,6 +394,9 @@
   }
 
   async function init() {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
     bindControls();
     if (SUPABASE_URL.startsWith("YOUR_")) {
       document.getElementById("events").innerHTML =
