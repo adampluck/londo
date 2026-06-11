@@ -443,14 +443,7 @@ main {
 }
 
 .blurb {
-  margin: 0.45rem 0 0;
-  font-size: 0.8rem;
-  line-height: 1.45;
-  color: var(--ink-dim);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: none; /* hidden for a cleaner card; description still searchable */
 }
 
 .free-tag { color: var(--peach); font-weight: 600; }
