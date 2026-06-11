@@ -70,6 +70,25 @@ class SupabaseStore:
         logger.info("Upserted %d events to Supabase", written)
         return written
 
+    def upsert_seeds(self, seeds: list[dict]) -> None:
+        if not seeds:
+            return
+        response = self.session.post(
+            f"{self.url}/rest/v1/seeds?on_conflict=url",
+            json=seeds,
+            headers={"Prefer": "resolution=merge-duplicates,return=minimal"},
+            timeout=30,
+        )
+        response.raise_for_status()
+        logger.info("Upserted %d seeds", len(seeds))
+
+    def fetch_active_seeds(self) -> list[dict]:
+        response = self.session.get(
+            f"{self.url}/rest/v1/seeds?active=is.true&select=*", timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+
 
 def _event_to_row(event: Event) -> dict:
     loc = event.location

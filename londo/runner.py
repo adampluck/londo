@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 import click
 
@@ -11,6 +12,7 @@ from londo.scrapers.dandelion import DandelionScraper
 from londo.scrapers.eventbrite import NuminityScraper
 from londo.scrapers.luma import LumaScraper
 from londo.scrapers.newspeak import NewspeakScraper
+from londo.scrapers.seeds import SeedsScraper
 from londo.storage import SupabaseStore, load_dotenv
 
 SCRAPERS = {
@@ -18,6 +20,7 @@ SCRAPERS = {
     "luma": LumaScraper,
     "newspeak": NewspeakScraper,
     "numinity": NuminityScraper,
+    "seeds": SeedsScraper,  # chat-ingested URLs; needs Supabase credentials
 }
 
 
@@ -71,6 +74,9 @@ def scrape(
 
     all_events: list[Event] = []
     for src in sources:
+        if src == "seeds" and not os.environ.get("SUPABASE_URL"):
+            click.echo("Skipping seeds (no Supabase credentials)")
+            continue
         scraper = SCRAPERS[src](rate_limit=rate_limit)
         click.echo(f"Scraping {src}...")
         try:
@@ -99,3 +105,83 @@ def scrape(
         supabase = SupabaseStore()
         written = supabase.upsert_events(all_events)
         click.echo(f"Upserted {written} events to Supabase")
+
+
+@cli.command("ingest-whatsapp")
+@click.argument("export_file", type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    "--store",
+    type=click.Choice(["json", "supabase", "both"]),
+    default="supabase",
+    help="Where to write the results.",
+)
+@click.option("--output-dir", "-o", default="data")
+@click.option("--rate-limit", "-r", default=1.0, type=float)
+@click.option("--verbose", "-v", is_flag=True)
+def ingest_whatsapp(
+    export_file: str,
+    store: str,
+    output_dir: str,
+    rate_limit: float,
+    verbose: bool,
+) -> None:
+    """Extract event links from a WhatsApp chat export (.txt) and ingest them.
+
+    Luma/Eventbrite/Dandelion links are fetched from their platforms;
+    anything else is tried via schema.org metadata and stored as 'other'
+    when the page has full details (date, time, location).
+    """
+    from pathlib import Path
+
+    from londo.links import LinkFetcher, classify_url
+    from londo.whatsapp import extract_urls
+
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.INFO,
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    )
+    load_dotenv()
+
+    text = Path(export_file).read_text(encoding="utf-8", errors="replace")
+    urls = extract_urls(text)
+    candidates = [u for u in urls if classify_url(u) is not None]
+    click.echo(f"Found {len(urls)} links, {len(candidates)} possible event links")
+
+    fetcher = LinkFetcher(rate_limit=rate_limit)
+    all_events: list[Event] = []
+    seeds: list[dict] = []
+    for url in candidates:
+        kind, _ = classify_url(url)
+        events = fetcher.fetch(url)
+        if not events:
+            continue
+        all_events.extend(events)
+        starts = [e.start_datetime for e in events if e.start_datetime]
+        seeds.append(
+            {
+                "url": url,
+                "kind": kind,
+                "added_by": "whatsapp",
+                "event_start_at": max(starts).isoformat() if starts else None,
+            }
+        )
+        click.echo(f"  [{kind}] {events[0].title} ({len(events)} event(s))")
+
+    if not all_events:
+        click.echo("No usable events found in this export.")
+        return
+
+    dedupe(all_events)
+    click.echo(f"Total: {len(all_events)} events from {len(seeds)} links")
+
+    if store in ("json", "both"):
+        filepath = write_events(all_events, "whatsapp", output_dir)
+        click.echo(f"Wrote JSON -> {filepath}")
+
+    if store in ("supabase", "both"):
+        supabase = SupabaseStore()
+        supabase.upsert_events(all_events)
+        supabase.upsert_seeds(seeds)
+        click.echo(
+            f"Upserted {len(all_events)} events and {len(seeds)} seeds to Supabase"
+        )

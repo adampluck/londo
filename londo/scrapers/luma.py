@@ -86,20 +86,7 @@ class LumaScraper(BaseScraper):
         start_at = _parse_iso(ev.get("start_at"))
         end_at = _parse_iso(ev.get("end_at"))
 
-        location = None
-        if geo:
-            localized = (geo.get("localized") or {}).get("en-GB") or {}
-            location = Location(
-                venue_name=geo.get("address"),
-                address=localized.get("full_address")
-                or geo.get("full_address")
-                or geo.get("city_state")
-                or "London, UK",
-                city=geo.get("city") or "London",
-                country=geo.get("country"),
-                latitude=coord.get("latitude"),
-                longitude=coord.get("longitude"),
-            )
+        location = build_location(geo, coord)
 
         is_free = bool(ticket.get("is_free"))
         price_tiers: list[PriceTier] = []
@@ -135,6 +122,41 @@ class LumaScraper(BaseScraper):
             organizer=organizer,
             scraped_at=datetime.now(timezone.utc),
         )
+
+
+def build_location(geo: dict, coord: dict) -> Location | None:
+    if not geo:
+        return None
+    localized = (geo.get("localized") or {}).get("en-GB") or {}
+    return Location(
+        venue_name=geo.get("address"),
+        address=localized.get("full_address")
+        or geo.get("full_address")
+        or geo.get("city_state")
+        or "London, UK",
+        city=geo.get("city") or "London",
+        country=geo.get("country"),
+        latitude=coord.get("latitude"),
+        longitude=coord.get("longitude"),
+    )
+
+
+def flatten_description_mirror(node) -> str:
+    """Flatten Luma's ProseMirror description document to plain text."""
+    out: list[str] = []
+
+    def walk(n) -> None:
+        if not isinstance(n, dict):
+            return
+        if n.get("type") == "text":
+            out.append(n.get("text", ""))
+        for child in n.get("content") or []:
+            walk(child)
+        if n.get("type") in ("paragraph", "heading", "bullet_list_item"):
+            out.append("\n")
+
+    walk(node)
+    return "".join(out).strip()
 
 
 def _parse_iso(value: str | None) -> datetime | None:

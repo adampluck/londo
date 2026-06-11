@@ -11,6 +11,10 @@ Supabase database, with a static frontend to browse them all in one place.
 | [Luma](https://luma.com/london) | Discover API (images, geo, tickets) merged with the iCal feed (descriptions) |
 | [Newspeak House](https://newspeak.house/#events) | iCal feed + homepage enrichment (descriptions, rooms, hosts, Luma cover images) |
 | [Numinity](https://www.eventbrite.co.uk/o/numinity-33797188771) | Eventbrite organizer listing + destination API (series expanded into occurrences) |
+| WhatsApp groups | `londo ingest-whatsapp export.txt` — extracts event links from a chat export; Luma/Eventbrite/Dandelion links fetch from their platforms, other links via schema.org JSON-LD (source `other`, only when date, time and location are present) |
+
+Chat-ingested URLs are remembered in a `seeds` table and re-fetched by the
+daily scrape until their events pass, so they stay as fresh as everything else.
 
 Events are deduplicated across sources: a shared Luma registration link, or
 matching normalised title + date, marks the lower-priority copy as

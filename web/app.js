@@ -16,6 +16,8 @@
     luma: "Luma",
     newspeak: "Newspeak House",
     numinity: "Numinity",
+    eventbrite: "Eventbrite",
+    other: "elsewhere",
   };
 
   // Deterministic placeholder gradient for events without an image.

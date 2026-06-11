@@ -345,6 +345,8 @@ main {
 .badge-luma { background: rgba(186, 64, 90, 0.75); }
 .badge-newspeak { background: rgba(38, 128, 96, 0.75); }
 .badge-numinity { background: rgba(118, 78, 196, 0.75); }
+.badge-eventbrite { background: rgba(196, 92, 35, 0.75); }
+.badge-other { background: rgba(96, 108, 138, 0.75); }
 
 .card-body { padding: 0.9rem 1.05rem 1.05rem; }
 

@@ -48,3 +48,19 @@ alter table public.events enable row level security;
 drop policy if exists "public read" on public.events;
 create policy "public read" on public.events
   for select to anon, authenticated using (true);
+
+-- Seed URLs ingested from chats (WhatsApp etc.). The daily scrape
+-- re-fetches active seeds so their events stay fresh, and deactivates
+-- them once the event has passed.
+create table if not exists public.seeds (
+  url             text primary key,
+  kind            text,
+  added_by        text not null default 'whatsapp',
+  added_at        timestamptz not null default now(),
+  last_fetched_at timestamptz,
+  event_start_at  timestamptz,
+  active          boolean not null default true
+);
+
+-- service-role access only: RLS on, no anon policies
+alter table public.seeds enable row level security;

@@ -57,8 +57,20 @@ class EventbriteOrganizerScraper(BaseScraper):
             url = DEST_API.format(ids=",".join(ids[i : i + BATCH]))
             data = self.get(url).json()
             for ev in data.get("events", []):
+                listing = listings.get(ev["id"], {})
                 try:
-                    events.extend(self._build_events(ev, listings.get(ev["id"], {})))
+                    events.extend(
+                        build_events(
+                            ev,
+                            source_name=self.source_name,
+                            image_url=listing.get("image_url"),
+                            description=listing.get("description"),
+                            organizer=Organizer(
+                                name=self.org_name,
+                                url=f"https://www.eventbrite.co.uk/o/{self.org_id}",
+                            ),
+                        )
+                    )
                 except Exception:
                     logger.exception("Failed to parse event %s", ev.get("id"))
 
@@ -82,101 +94,125 @@ class EventbriteOrganizerScraper(BaseScraper):
                 return listings
             page += 1
 
-    def _build_events(self, ev: dict, listing: dict) -> list[Event]:
-        if ev.get("is_cancelled"):
-            return []
-
-        base = self._build_base(ev, listing)
-        next_dates = (ev.get("series") or {}).get("next_dates") or []
-
-        if not next_dates:
-            start, end = _parse_local_times(ev)
-            if start is None:
-                logger.warning("Event %s has no usable start time", ev.get("id"))
-                return []
-            return [
-                base.model_copy(
-                    update={"start_datetime": start, "end_datetime": end}
-                )
-            ]
-
-        # A series parent: one event per upcoming occurrence.
-        occurrences = []
-        for nd in next_dates:
-            occurrences.append(
-                base.model_copy(
-                    update={
-                        "source_id": str(nd["id"]),
-                        "external_ref": f"eventbrite:{nd['id']}",
-                        "start_datetime": _parse_utc(nd["start"]),
-                        "end_datetime": _parse_utc(nd.get("end")),
-                    }
-                )
-            )
-        return occurrences
-
-    def _build_base(self, ev: dict, listing: dict) -> Event:
-        venue = ev.get("primary_venue") or {}
-        addr = venue.get("address") or {}
-        location = None
-        if venue:
-            location = Location(
-                venue_name=venue.get("name"),
-                address=addr.get("localized_address_display")
-                or addr.get("localized_area_display")
-                or "London, UK",
-                city=addr.get("city") or "London",
-                country=addr.get("country"),
-                latitude=_to_float(addr.get("latitude")),
-                longitude=_to_float(addr.get("longitude")),
-            )
-
-        ta = ev.get("ticket_availability") or {}
-        is_free = bool(ta.get("is_free"))
-        price_tiers = []
-        for key, name in (("minimum_ticket_price", "From"), ("maximum_ticket_price", "To")):
-            p = ta.get(key) or {}
-            if p.get("major_value") is not None:
-                price_tiers.append(
-                    PriceTier(
-                        name=name,
-                        amount=Decimal(p["major_value"]),
-                        currency=p.get("currency", "GBP"),
-                    )
-                )
-
-        tags = [
-            t["display_name"]
-            for t in ev.get("tags") or []
-            if isinstance(t, dict) and t.get("display_name")
-        ]
-
-        return Event(
-            source=self.source_name,
-            source_id=str(ev["id"]),
-            source_url=ev.get("url") or (ev.get("series") or {}).get("url", ""),
-            external_ref=f"eventbrite:{ev['id']}",
-            title=ev.get("name", ""),
-            description=listing.get("description") or ev.get("summary"),
-            short_description=ev.get("summary"),
-            location=location,
-            is_online=bool(ev.get("is_online_event")),
-            image_url=listing.get("image_url"),
-            tags=tags,
-            price_tiers=price_tiers,
-            is_free=is_free,
-            organizer=Organizer(
-                name=self.org_name,
-                url=f"https://www.eventbrite.co.uk/o/{self.org_id}",
-            ),
-            scraped_at=datetime.now(timezone.utc),
-        )
-
-
 class NuminityScraper(EventbriteOrganizerScraper):
     source_name = "numinity"
     org_id = "33797188771"
     org_name = "Numinity"
+
+
+def build_events(
+    ev: dict,
+    *,
+    source_name: str,
+    image_url: str | None = None,
+    description: str | None = None,
+    organizer: Organizer | None = None,
+) -> list[Event]:
+    """Build Events from a destination-API event dict.
+
+    Series parents yield one Event per upcoming occurrence; plain events
+    yield a single Event with their local start/end times.
+    """
+    if ev.get("is_cancelled"):
+        return []
+
+    if organizer is None:
+        org = ev.get("primary_organizer") or {}
+        if org.get("name"):
+            organizer = Organizer(name=org["name"], url=org.get("url"))
+
+    if image_url is None:
+        image_url = (ev.get("image") or {}).get("url")
+
+    base = _build_base(
+        ev,
+        source_name=source_name,
+        image_url=image_url,
+        description=description,
+        organizer=organizer,
+    )
+    next_dates = (ev.get("series") or {}).get("next_dates") or []
+
+    if not next_dates:
+        start, end = _parse_local_times(ev)
+        if start is None:
+            logger.warning("Event %s has no usable start time", ev.get("id"))
+            return []
+        return [base.model_copy(update={"start_datetime": start, "end_datetime": end})]
+
+    return [
+        base.model_copy(
+            update={
+                "source_id": str(nd["id"]),
+                "external_ref": f"eventbrite:{nd['id']}",
+                "start_datetime": _parse_utc(nd["start"]),
+                "end_datetime": _parse_utc(nd.get("end")),
+            }
+        )
+        for nd in next_dates
+    ]
+
+
+def _build_base(
+    ev: dict,
+    *,
+    source_name: str,
+    image_url: str | None,
+    description: str | None,
+    organizer: Organizer | None,
+) -> Event:
+    venue = ev.get("primary_venue") or {}
+    addr = venue.get("address") or {}
+    location = None
+    if venue:
+        location = Location(
+            venue_name=venue.get("name"),
+            address=addr.get("localized_address_display")
+            or addr.get("localized_area_display")
+            or "London, UK",
+            city=addr.get("city") or "London",
+            country=addr.get("country"),
+            latitude=_to_float(addr.get("latitude")),
+            longitude=_to_float(addr.get("longitude")),
+        )
+
+    ta = ev.get("ticket_availability") or {}
+    is_free = bool(ta.get("is_free"))
+    price_tiers = []
+    for key, name in (("minimum_ticket_price", "From"), ("maximum_ticket_price", "To")):
+        p = ta.get(key) or {}
+        if p.get("major_value") is not None:
+            price_tiers.append(
+                PriceTier(
+                    name=name,
+                    amount=Decimal(p["major_value"]),
+                    currency=p.get("currency", "GBP"),
+                )
+            )
+
+    tags = [
+        t["display_name"]
+        for t in ev.get("tags") or []
+        if isinstance(t, dict) and t.get("display_name")
+    ]
+
+    return Event(
+        source=source_name,
+        source_id=str(ev["id"]),
+        source_url=ev.get("url") or (ev.get("series") or {}).get("url", ""),
+        external_ref=f"eventbrite:{ev['id']}",
+        title=ev.get("name", ""),
+        description=description or ev.get("summary"),
+        short_description=ev.get("summary"),
+        location=location,
+        is_online=bool(ev.get("is_online_event")),
+        image_url=image_url,
+        tags=tags,
+        price_tiers=price_tiers,
+        is_free=is_free,
+        organizer=organizer,
+        scraped_at=datetime.now(timezone.utc),
+    )
 
 
 def _parse_utc(value: str | None) -> datetime | None:
