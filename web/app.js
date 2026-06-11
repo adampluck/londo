@@ -34,6 +34,10 @@
   ];
   const TAG_CLOUD_SIZE = 14;
   const TAG_MIN_COUNT = 3;
+  // Always-shown tags with a fixed position: {tag, before}. The tag is
+  // included regardless of its count and placed before the named tag
+  // (or appended if that tag isn't currently in the cloud).
+  const PINNED_TAGS = [{ tag: "psychedelics", before: "dance" }];
 
   // Deterministic placeholder gradient for events without an image.
   const GRADIENTS = [
@@ -110,7 +114,9 @@
     if (q.length <= 3) {
       return new RegExp(`(^|[^a-z0-9])${escapeRe(q)}([^a-z0-9]|$)`, "i").test(text);
     }
-    return text.includes(q);
+    if (text.includes(q)) return true;
+    // plural-insensitive: "psychedelics" should match "psychedelic"
+    return q.endsWith("s") && text.includes(q.slice(0, -1));
   }
 
   function escapeRe(s) {
@@ -119,16 +125,23 @@
 
   function renderTagCloud() {
     const row = document.getElementById("tag-cloud");
-    const counts = TAG_VOCAB.map((tag) => [
-      tag,
-      state.events.filter((e) => matchesQuery(e, tag)).length,
-    ])
+    const countFor = (tag) =>
+      state.events.filter((e) => matchesQuery(e, tag)).length;
+
+    const pinned = PINNED_TAGS.map((p) => p.tag);
+    const counts = TAG_VOCAB.filter((t) => !pinned.includes(t))
+      .map((tag) => [tag, countFor(tag)])
       .filter(([, n]) => n >= TAG_MIN_COUNT)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, TAG_CLOUD_SIZE);
+      .slice(0, TAG_CLOUD_SIZE - PINNED_TAGS.length);
+
+    for (const { tag, before } of PINNED_TAGS) {
+      const at = counts.findIndex(([t]) => t === before);
+      counts.splice(at === -1 ? counts.length : at, 0, [tag, countFor(tag)]);
+    }
 
     if (!counts.length) return;
-    const max = counts[0][1];
+    const max = Math.max(...counts.map(([, n]) => n), 1);
 
     for (const [tag, n] of counts) {
       const btn = document.createElement("button");
