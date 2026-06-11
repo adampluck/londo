@@ -8,6 +8,7 @@ from londo.dedupe import dedupe
 from londo.models import Event
 from londo.output import write_events
 from londo.scrapers.dandelion import DandelionScraper
+from londo.scrapers.eventbrite import NuminityScraper
 from londo.scrapers.luma import LumaScraper
 from londo.scrapers.newspeak import NewspeakScraper
 from londo.storage import SupabaseStore, load_dotenv
@@ -16,6 +17,7 @@ SCRAPERS = {
     "dandelion": DandelionScraper,
     "luma": LumaScraper,
     "newspeak": NewspeakScraper,
+    "numinity": NuminityScraper,
 }
 
 

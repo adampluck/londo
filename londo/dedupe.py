@@ -12,7 +12,7 @@ LONDON = ZoneInfo("Europe/London")
 
 # When the same event appears in several sources, the canonical copy comes
 # from the earliest source in this list; the rest are marked duplicate_of it.
-SOURCE_PRIORITY = ["newspeak", "dandelion", "luma"]
+SOURCE_PRIORITY = ["newspeak", "dandelion", "numinity", "luma"]
 
 
 def dedupe(events: list[Event]) -> list[Event]:

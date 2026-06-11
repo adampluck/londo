@@ -15,6 +15,7 @@
     dandelion: "Dandelion",
     luma: "Luma",
     newspeak: "Newspeak House",
+    numinity: "Numinity",
   };
 
   // Deterministic placeholder gradient for events without an image.

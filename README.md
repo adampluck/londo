@@ -10,6 +10,7 @@ Supabase database, with a static frontend to browse them all in one place.
 | [Dandelion](https://dandelion.events) | iCal feed (London, in-person) + per-event JSON-LD pages |
 | [Luma](https://luma.com/london) | Discover API (images, geo, tickets) merged with the iCal feed (descriptions) |
 | [Newspeak House](https://newspeak.house/#events) | iCal feed + homepage enrichment (descriptions, rooms, hosts, Luma cover images) |
+| [Numinity](https://www.eventbrite.co.uk/o/numinity-33797188771) | Eventbrite organizer listing + destination API (series expanded into occurrences) |
 
 Events are deduplicated across sources: a shared Luma registration link, or
 matching normalised title + date, marks the lower-priority copy as
