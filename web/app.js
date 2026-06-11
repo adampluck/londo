@@ -20,6 +20,21 @@
     other: "elsewhere",
   };
 
+  // Candidate vocabulary for the "popular" tag cloud, curated from what
+  // actually recurs in the data. Tags are search shortcuts, not labels:
+  // only those matching enough currently-loaded events are shown.
+  const TAG_VOCAB = [
+    "community", "connection", "ai", "art", "healing", "meditation",
+    "breathwork", "nature", "ritual", "dance", "ecstatic dance", "ceremony",
+    "tech", "movement", "cacao", "embodiment", "music", "sound healing",
+    "sound bath", "founders", "spiritual", "retreat", "wellbeing", "somatic",
+    "networking", "running", "kundalini", "yoga", "tantra", "politics",
+    "intimacy", "men's", "women's", "authentic relating", "hackathon",
+    "book club", "singing", "comedy", "poetry", "climate",
+  ];
+  const TAG_CLOUD_SIZE = 14;
+  const TAG_MIN_COUNT = 3;
+
   // Deterministic placeholder gradient for events without an image.
   const GRADIENTS = [
     ["#4f46e5", "#9333ea"], ["#0891b2", "#2563eb"], ["#059669", "#0d9488"],
@@ -71,15 +86,74 @@
       if (state.source !== "all" && e.source !== state.source) return false;
       if (state.freeOnly && !e.is_free) return false;
       if (until && new Date(e.start_at) > until) return false;
-      if (q) {
-        const haystack = [e.title, e.description, e.venue_name, e.organizer_name]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
+      if (q && !matchesQuery(e, q)) return false;
       return true;
     });
+  }
+
+  function haystack(e) {
+    return [
+      e.title,
+      e.description,
+      e.venue_name,
+      e.organizer_name,
+      (e.tags || []).join(" "),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
+
+  function matchesQuery(e, q) {
+    const text = haystack(e);
+    // short queries match whole words only ("ai" shouldn't match "air")
+    if (q.length <= 3) {
+      return new RegExp(`(^|[^a-z0-9])${escapeRe(q)}([^a-z0-9]|$)`, "i").test(text);
+    }
+    return text.includes(q);
+  }
+
+  function escapeRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function renderTagCloud() {
+    const row = document.getElementById("tag-cloud");
+    const counts = TAG_VOCAB.map((tag) => [
+      tag,
+      state.events.filter((e) => matchesQuery(e, tag)).length,
+    ])
+      .filter(([, n]) => n >= TAG_MIN_COUNT)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, TAG_CLOUD_SIZE);
+
+    if (!counts.length) return;
+    const max = counts[0][1];
+
+    for (const [tag, n] of counts) {
+      const btn = document.createElement("button");
+      const size = n > max * 0.6 ? 3 : n > max * 0.25 ? 2 : 1;
+      btn.className = `tag size-${size}`;
+      btn.textContent = tag;
+      btn.title = `${n} events`;
+      btn.addEventListener("click", () => {
+        const search = document.getElementById("search");
+        const active = state.query.trim().toLowerCase() === tag;
+        search.value = active ? "" : tag;
+        state.query = search.value;
+        syncTagHighlight();
+        render();
+      });
+      row.appendChild(btn);
+    }
+    row.hidden = false;
+  }
+
+  function syncTagHighlight() {
+    const q = state.query.trim().toLowerCase();
+    document
+      .querySelectorAll("#tag-cloud .tag")
+      .forEach((t) => t.classList.toggle("active", t.textContent === q));
   }
 
   function render() {
@@ -275,6 +349,7 @@
   function bindControls() {
     document.getElementById("search").addEventListener("input", (ev) => {
       state.query = ev.target.value;
+      syncTagHighlight();
       render();
     });
 
@@ -309,6 +384,7 @@
     }
     try {
       state.events = await fetchEvents();
+      renderTagCloud();
       render();
     } catch (err) {
       document.getElementById("events").innerHTML =

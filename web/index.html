@@ -22,17 +22,8 @@
   </header>
 
   <div class="controls">
-    <input id="search" type="search" placeholder="search for something…" autocomplete="off">
-    <div class="pills" id="source-pills">
-      <button class="pill active" data-source="all">everywhere</button>
-      <button class="pill" data-source="dandelion">dandelion</button>
-      <button class="pill" data-source="luma">luma</button>
-      <button class="pill" data-source="newspeak">newspeak house</button>
-      <button class="pill" data-source="numinity">numinity</button>
-      <button class="pill" data-source="eventbrite">eventbrite</button>
-      <button class="pill" data-source="other">elsewhere</button>
-    </div>
-    <div class="pills">
+    <div class="controls-row">
+      <input id="search" type="search" placeholder="search for something…" autocomplete="off">
       <button class="pill" id="free-toggle">free only</button>
       <label class="select-wrap" for="range">
         <select id="range">
@@ -45,6 +36,19 @@
           <path d="M1 1.5 L6 6.5 L11 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </label>
+    </div>
+    <div class="controls-row pills scroll-row" id="source-pills">
+      <button class="pill active" data-source="all">everywhere</button>
+      <button class="pill" data-source="dandelion">dandelion</button>
+      <button class="pill" data-source="luma">luma</button>
+      <button class="pill" data-source="newspeak">newspeak house</button>
+      <button class="pill" data-source="numinity">numinity</button>
+      <button class="pill" data-source="eventbrite">eventbrite</button>
+      <button class="pill" data-source="other">elsewhere</button>
+    </div>
+    <div class="controls-row tag-row scroll-row" id="tag-cloud" hidden>
+      <span class="tag-label">popular:</span>
+      <!-- tags rendered from live data -->
     </div>
   </div>
 
