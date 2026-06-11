@@ -7,7 +7,7 @@
     events: [],
     source: "all",
     freeOnly: false,
-    range: "all",
+    range: "week", // default window: next 7 days
     query: "",
   };
 
@@ -85,7 +85,8 @@
     const events = applyFilters();
 
     if (!events.length) {
-      container.innerHTML = '<p class="status">No events match.</p>';
+      container.innerHTML =
+        '<p class="status">nothing here — the city is resting. try a wider window.</p>';
       return;
     }
 
@@ -105,23 +106,51 @@
     for (const [day, dayEvents] of byDay) {
       const h2 = document.createElement("h2");
       h2.className = "day-heading";
-      h2.textContent = day;
+
+      const relative = relativeLabel(dayEvents[0].start_at);
+      if (relative) {
+        const when = document.createElement("span");
+        when.className = "when";
+        when.textContent = relative;
+        h2.appendChild(when);
+      }
+      const name = document.createElement("span");
+      name.textContent = day;
+      h2.appendChild(name);
+
+      const count = document.createElement("span");
+      count.className = "count";
+      count.textContent =
+        dayEvents.length === 1 ? "one gathering" : `${dayEvents.length} gatherings`;
+      h2.appendChild(count);
+
       frag.appendChild(h2);
 
       const grid = document.createElement("div");
       grid.className = "grid";
-      for (const e of dayEvents) grid.appendChild(card(e));
+      dayEvents.forEach((e, i) => grid.appendChild(card(e, i)));
       frag.appendChild(grid);
     }
     container.replaceChildren(frag);
   }
 
-  function card(e) {
+  function relativeLabel(startAt) {
+    const fmt = (d) =>
+      d.toLocaleDateString("en-GB", { timeZone: "Europe/London" });
+    const eventDay = fmt(new Date(startAt));
+    const now = new Date();
+    if (eventDay === fmt(now)) return "today —";
+    if (eventDay === fmt(new Date(now.getTime() + 864e5))) return "tomorrow —";
+    return "";
+  }
+
+  function card(e, index) {
     const a = document.createElement("a");
     a.className = "card";
     a.href = e.source_url;
     a.target = "_blank";
     a.rel = "noopener";
+    a.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
 
     const banner = document.createElement("div");
     banner.className = "banner";
@@ -149,7 +178,10 @@
 
     const time = document.createElement("p");
     time.className = "time";
-    time.textContent = formatTime(e);
+    const dot = document.createElement("span");
+    dot.className = `dot ${timeOfDayClass(e)}`;
+    time.appendChild(dot);
+    time.appendChild(document.createTextNode(formatTime(e)));
     body.appendChild(time);
 
     const title = document.createElement("h3");
@@ -165,21 +197,49 @@
 
     const meta = document.createElement("p");
     meta.className = "meta";
-    const bits = [];
-    if (e.is_free) bits.push("Free");
-    else if (e.price_min != null) {
-      bits.push(
-        e.price_min === e.price_max || e.price_max == null
-          ? `£${e.price_min}`
-          : `£${e.price_min}–£${e.price_max}`
+    if (e.is_free) {
+      const free = document.createElement("span");
+      free.className = "free-tag";
+      free.textContent = "free";
+      meta.appendChild(free);
+    } else if (e.price_min != null) {
+      meta.appendChild(
+        document.createTextNode(
+          e.price_min === e.price_max || e.price_max == null
+            ? `£${e.price_min}`
+            : `£${e.price_min}–£${e.price_max}`
+        )
       );
     }
-    if (e.organizer_name) bits.push(e.organizer_name);
-    meta.textContent = bits.join(" · ");
-    if (bits.length) body.appendChild(meta);
+    if (e.organizer_name) {
+      if (meta.childNodes.length)
+        meta.appendChild(document.createTextNode(" · "));
+      meta.appendChild(document.createTextNode(e.organizer_name));
+    }
+    if (meta.childNodes.length) body.appendChild(meta);
+
+    if (e.description) {
+      const blurb = document.createElement("p");
+      blurb.className = "blurb";
+      blurb.textContent = e.description.replace(/\s+/g, " ").slice(0, 220);
+      body.appendChild(blurb);
+    }
 
     a.append(banner, body);
     return a;
+  }
+
+  function timeOfDayClass(e) {
+    const hour = Number(
+      new Date(e.start_at).toLocaleTimeString("en-GB", {
+        hour: "numeric",
+        hour12: false,
+        timeZone: "Europe/London",
+      })
+    );
+    if (hour < 12) return "dot-morning";
+    if (hour < 17) return "dot-afternoon";
+    return "dot-evening";
   }
 
   function paintPlaceholder(banner, title) {
@@ -242,7 +302,7 @@
     bindControls();
     if (SUPABASE_URL.startsWith("YOUR_")) {
       document.getElementById("events").innerHTML =
-        '<p class="status">Set SUPABASE_URL and SUPABASE_ANON_KEY in web/config.js</p>';
+        '<p class="status">set SUPABASE_URL and SUPABASE_ANON_KEY in web/config.js</p>';
       return;
     }
     try {
@@ -250,7 +310,7 @@
       render();
     } catch (err) {
       document.getElementById("events").innerHTML =
-        `<p class="status">Failed to load events: ${err.message}</p>`;
+        `<p class="status">the window is fogged up — events wouldn't load (${err.message})</p>`;
     }
   }
 

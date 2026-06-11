@@ -3,42 +3,57 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Londo — London events in one place</title>
+  <title>londo — what's on, in between</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="sky" aria-hidden="true">
+    <div class="blob blob-a"></div>
+    <div class="blob blob-b"></div>
+    <div class="grain"></div>
+  </div>
+
   <header class="topbar">
-    <h1>Londo</h1>
-    <p class="tagline">Non-mainstream London events, all in one place</p>
+    <h1>londo</h1>
+    <p class="tagline">a calm little window onto London&rsquo;s gatherings</p>
   </header>
 
   <div class="controls">
-    <input id="search" type="search" placeholder="Search events…" autocomplete="off">
+    <input id="search" type="search" placeholder="search for something…" autocomplete="off">
     <div class="pills" id="source-pills">
-      <button class="pill active" data-source="all">All sources</button>
-      <button class="pill" data-source="dandelion">Dandelion</button>
-      <button class="pill" data-source="luma">Luma</button>
-      <button class="pill" data-source="newspeak">Newspeak House</button>
-      <button class="pill" data-source="numinity">Numinity</button>
+      <button class="pill active" data-source="all">everywhere</button>
+      <button class="pill" data-source="dandelion">dandelion</button>
+      <button class="pill" data-source="luma">luma</button>
+      <button class="pill" data-source="newspeak">newspeak house</button>
+      <button class="pill" data-source="numinity">numinity</button>
     </div>
     <div class="pills">
-      <button class="pill" id="free-toggle">Free only</button>
-      <select id="range" class="pill select">
-        <option value="all">All upcoming</option>
-        <option value="today">Today</option>
-        <option value="week">Next 7 days</option>
-        <option value="month">Next 30 days</option>
-      </select>
+      <button class="pill" id="free-toggle">free only</button>
+      <label class="select-wrap" for="range">
+        <select id="range">
+          <option value="today">today</option>
+          <option value="week" selected>next 7 days</option>
+          <option value="month">next 30 days</option>
+          <option value="all">everything upcoming</option>
+        </select>
+        <svg class="chevron" viewBox="0 0 12 8" width="12" height="8" aria-hidden="true">
+          <path d="M1 1.5 L6 6.5 L11 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </label>
     </div>
   </div>
 
-  <main id="events"><p class="status">Loading events…</p></main>
+  <main id="events"><p class="status">gathering events…</p></main>
 
   <footer>
-    <p>Sources: <a href="https://dandelion.events">Dandelion</a> ·
-       <a href="https://luma.com/london">Luma</a> ·
-       <a href="https://newspeak.house/#events">Newspeak House</a>.
-       Updated daily.</p>
+    <p>stitched nightly from
+       <a href="https://dandelion.events">dandelion</a> ·
+       <a href="https://luma.com/london">luma</a> ·
+       <a href="https://newspeak.house/#events">newspeak house</a> ·
+       <a href="https://www.eventbrite.co.uk/o/numinity-33797188771">numinity</a></p>
   </footer>
 
   <script src="config.js"></script>
