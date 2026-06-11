@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Londo — London events in one place</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Londo</h1>
+    <p class="tagline">Non-mainstream London events, all in one place</p>
+  </header>
+
+  <div class="controls">
+    <input id="search" type="search" placeholder="Search events…" autocomplete="off">
+    <div class="pills" id="source-pills">
+      <button class="pill active" data-source="all">All sources</button>
+      <button class="pill" data-source="dandelion">Dandelion</button>
+      <button class="pill" data-source="luma">Luma</button>
+      <button class="pill" data-source="newspeak">Newspeak House</button>
+    </div>
+    <div class="pills">
+      <button class="pill" id="free-toggle">Free only</button>
+      <select id="range" class="pill select">
+        <option value="all">All upcoming</option>
+        <option value="today">Today</option>
+        <option value="week">Next 7 days</option>
+        <option value="month">Next 30 days</option>
+      </select>
+    </div>
+  </div>
+
+  <main id="events"><p class="status">Loading events…</p></main>
+
+  <footer>
+    <p>Sources: <a href="https://dandelion.events">Dandelion</a> ·
+       <a href="https://luma.com/london">Luma</a> ·
+       <a href="https://newspeak.house/#events">Newspeak House</a>.
+       Updated daily.</p>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

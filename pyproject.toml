@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "londo"
+version = "0.1.0"
+description = "Aggregator for non-mainstream events in London"
+requires-python = ">=3.11"
+dependencies = [
+    "icalendar>=6.0",
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+    "pydantic>=2.0",
+    "click>=8.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["londo*"]
+
+[project.scripts]
+londo = "londo.runner:cli"
