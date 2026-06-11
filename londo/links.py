@@ -15,7 +15,7 @@ from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
 from londo.scrapers.dandelion import DandelionScraper
 from londo.scrapers.eventbrite import BROWSER_UA, build_events
-from londo.scrapers.luma import build_location, flatten_description_mirror
+from londo.scrapers.luma import build_event_from_event_api
 
 logger = logging.getLogger(__name__)
 
@@ -107,46 +107,8 @@ class LinkFetcher(BaseScraper):
 
     def _fetch_luma(self, slug: str) -> list[Event]:
         data = self.get(LUMA_EVENT_API.format(slug=slug)).json().get("data") or {}
-        ev = data.get("event") or {}
-        if not ev.get("start_at"):
-            return []
-
-        description = flatten_description_mirror(data.get("description_mirror"))
-        hosts = data.get("hosts") or []
-        calendar = data.get("calendar") or {}
-        org_name = calendar.get("name") or (hosts[0].get("name") if hosts else None)
-
-        sold_out = bool(data.get("sold_out"))
-        ticket_types = data.get("ticket_types") or []
-        price_tiers = []
-        for t in ticket_types:
-            cents = (t.get("cents") if isinstance(t, dict) else None) or 0
-            price_tiers.append(
-                PriceTier(name=t.get("name") or "Ticket", amount=Decimal(cents) / 100)
-            )
-        is_free = bool(ticket_types) and all(t.amount == 0 for t in price_tiers)
-
-        return [
-            Event(
-                source="luma",
-                source_id=ev["api_id"],
-                source_url=f"https://luma.com/{ev.get('url', slug)}",
-                external_ref=f"luma:{ev.get('url', slug)}",
-                title=ev.get("name", ""),
-                description=description or None,
-                start_datetime=_parse_iso(ev.get("start_at")),
-                end_datetime=_parse_iso(ev.get("end_at")),
-                location=build_location(
-                    ev.get("geo_address_info") or {}, ev.get("coordinate") or {}
-                ),
-                is_online=ev.get("location_type") != "offline",
-                image_url=ev.get("cover_url") or ev.get("social_image_url"),
-                price_tiers=price_tiers,
-                is_free=is_free,
-                organizer=Organizer(name=org_name) if org_name else None,
-                scraped_at=datetime.now(timezone.utc),
-            )
-        ]
+        event = build_event_from_event_api(data, slug)
+        return [event] if event is not None else []
 
     def _fetch_eventbrite(self, event_id: str) -> list[Event]:
         data = self.get(EVENTBRITE_DEST_API.format(ids=event_id)).json()
@@ -317,8 +279,3 @@ def _to_float(value) -> float | None:
     except (TypeError, ValueError):
         return None
 
-
-def _parse_iso(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))

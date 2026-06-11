@@ -2,7 +2,8 @@ name: Daily scrape
 
 on:
   schedule:
-    - cron: "17 5 * * *" # 05:17 UTC daily (off the busy top-of-hour slots)
+    # every 6 hours — Luma's feed gains events throughout the day
+    - cron: "17 5,11,17,23 * * *"
   workflow_dispatch:
 
 env:
