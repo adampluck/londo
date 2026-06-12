@@ -11,7 +11,6 @@
     day: "all", // "all" or a London YYYY-MM-DD
     freeOnly: false,
     query: "",
-    geo: null, // {lat, lng} once granted
     surprise: null, // event shown by "surprise me"
     map: null,
     mapLoaded: false,
@@ -141,13 +140,10 @@
   }
 
   function mapEvents() {
-    const horizon = Date.now() + 30 * 864e5;
-    return state.events.filter(
-      (e) =>
-        baseFilter(e) &&
-        e.latitude != null &&
-        e.longitude != null &&
-        new Date(e.start_at).getTime() <= horizon
+    // same filter set as browse (category, area, day, free, search) —
+    // the map is just another way of looking at the current selection
+    return browseEvents().filter(
+      (e) => e.latitude != null && e.longitude != null
     );
   }
 
@@ -304,11 +300,9 @@
   // ---------- rendering ----------
 
   function render() {
-    const controls = document.getElementById("controls");
     const main = document.getElementById("events");
     const mapView = document.getElementById("map-view");
 
-    controls.hidden = state.view === "map";
     mapView.hidden = state.view !== "map";
     main.hidden = state.view === "map";
 
@@ -380,7 +374,6 @@
   }
 
   function renderTonight(container) {
-    requestGeo();
     const events = tonightEvents();
 
     const frag = document.createDocumentFragment();
@@ -540,34 +533,6 @@
     );
   }
 
-  // ---------- geolocation ----------
-
-  function requestGeo() {
-    if (state.geo !== null || !("geolocation" in navigator)) return;
-    state.geo = false; // only ask once
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        state.geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        if (state.view === "tonight") render();
-      },
-      () => {},
-      { maximumAge: 600000, timeout: 8000 }
-    );
-  }
-
-  function distanceKm(e) {
-    if (!state.geo || e.latitude == null || e.longitude == null) return null;
-    const R = 6371;
-    const dLat = ((e.latitude - state.geo.lat) * Math.PI) / 180;
-    const dLng = ((e.longitude - state.geo.lng) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((state.geo.lat * Math.PI) / 180) *
-        Math.cos((e.latitude * Math.PI) / 180) *
-        Math.sin(dLng / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-
   // ---------- cards ----------
 
   function card(e, index) {
@@ -639,11 +604,7 @@
     if (e.venue_name || e.address) {
       const venue = document.createElement("p");
       venue.className = "venue";
-      let where = e.venue_name || e.address;
-      const km = distanceKm(e);
-      if (km != null)
-        where += ` · ${km < 10 ? km.toFixed(1) : Math.round(km)} km away`;
-      venue.textContent = where;
+      venue.textContent = e.venue_name || e.address;
       body.appendChild(venue);
     }
 
