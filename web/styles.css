@@ -823,6 +823,11 @@ body.theme-night .blob { opacity: 0.35; }
   /* view keys move to a thumb-reach bottom bar */
   .topbar .views { display: none; }
 
+  /* compact header */
+  .topbar { padding: 1.2rem 1.2rem 0; }
+  .topbar h1 { font-size: 2rem; }
+  .tagline { font-size: 0.8rem; margin-top: 0.1rem; }
+
   .bottom-tabs {
     display: flex;
     justify-content: center;
@@ -842,27 +847,52 @@ body.theme-night .blob { opacity: 0.35; }
   .submit { margin-bottom: 1rem; }
   footer { padding-bottom: 6rem; }
 
-  /* controls scroll away with the page instead of eating viewport height */
+  /* controls scroll away with the page instead of eating viewport height,
+     and compress so the first events show without scrolling */
   .controls {
     position: static;
     background: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    padding-top: 0.9rem;
+    padding: 0.7rem 1.2rem 0.4rem;
+    gap: 0.55rem;
   }
+
+  /* search + free switch + reset stay on one line */
+  .controls > .controls-row:first-child { flex-wrap: nowrap; }
 
   #search {
-    flex: 1 1 100%;
+    flex: 1 1 120px;
+    min-width: 0;
     font-size: 1rem; /* >=16px stops iOS zooming on focus */
-    height: 2.7rem;
+    height: 2.25rem;
+    padding: 0 0.8rem;
   }
 
-  .bench { gap: 1rem 1.2rem; }
+  .unit { gap: 0.3rem; }
+  .bench { gap: 0.6rem 0.8rem; align-items: center; }
   .unit-grow { flex-basis: 100%; }
 
-  .key { font-size: 0.85rem; padding: 0.42rem 0.8rem; }
+  .key {
+    font-size: 0.78rem;
+    padding: 0.34rem 0.6rem;
+    box-shadow: 0 3px 0 var(--key-side), 0 5px 10px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+  .key:active { transform: translateY(2px); }
+  .controls-row.keys { gap: 0.3rem; }
+  .cat-key { padding: 0.34rem 0.55rem; }
+  .reset-key { padding: 0.4rem 0.6rem; font-size: 0.64rem; }
 
-  .topbar { padding-top: 1.8rem; }
+  .drum { width: 7.3rem; }
+  .drum-row { font-size: 0.68rem; }
+  .compass { width: 6.6rem; }
+  .tick { padding: 0.36rem 0.55rem 0.32rem; font-size: 0.66rem; }
+  .token { font-size: 0.64rem; padding: 0.28rem 0.45rem; }
+  .switch { width: 2.9rem; height: 1.5rem; }
+  .switch .slider::before { width: 1.05rem; height: 1.05rem; }
+  .switch input:checked + .slider::before { transform: translateX(1.35rem); }
+
+  main { padding-top: 0.2rem; }
 
   .tonight-title { font-size: 1.8rem; }
   #map { height: 65vh; }

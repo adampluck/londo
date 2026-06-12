@@ -2,7 +2,7 @@
    events API network-first with cached fallback (offline shows the
    last events you saw). */
 
-const CACHE = "londo-v7";
+const CACHE = "londo-v8";
 const SHELL = [
   "./",
   "index.html",

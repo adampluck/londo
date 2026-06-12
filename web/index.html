@@ -38,19 +38,19 @@
 
   <div class="controls" id="controls">
     <div class="controls-row">
-      <input id="search" type="search" placeholder="search for something…" autocomplete="off">
+      <input id="search" type="search" placeholder="search…" autocomplete="off">
       <div class="unit unit-inline">
         <label class="switch" title="free events only">
           <input type="checkbox" id="free-toggle">
           <span class="slider"></span>
         </label>
-        <span class="legend">free only</span>
+        <span class="legend">free</span>
       </div>
       <button class="key reset-key" id="reset-filters" title="clear every filter">reset</button>
     </div>
 
     <div class="controls-row keys" id="category-pills" hidden>
-      <button class="key cat-key lit" data-category="all">everything</button>
+      <button class="key cat-key lit" data-category="all">all</button>
       <button class="key cat-key key-move" data-category="move">move</button>
       <button class="key cat-key key-connect" data-category="connect">connect</button>
       <button class="key cat-key key-expand" data-category="expand">expand</button>
@@ -70,7 +70,6 @@
           </div>
           <div class="drum-knurl"></div>
         </div>
-        <span class="legend">lens</span>
       </div>
 
       <div class="unit" id="compass-unit" hidden>
@@ -102,7 +101,6 @@
             <button class="tick" data-day="30">30<small>days</small></button>
           </div>
         </div>
-        <span class="legend">days</span>
       </div>
     </div>
 
@@ -110,7 +108,6 @@
       <div class="tape" id="topic-chips">
         <!-- topic tokens rendered from live data -->
       </div>
-      <span class="legend">about — pick a few</span>
     </div>
   </div>
 
