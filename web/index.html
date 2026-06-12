@@ -63,8 +63,8 @@
         <div class="drum" id="lens-drum" role="button" aria-label="tech lens" title="tap to flick">
           <div class="drum-tape" id="lens-tape">
             <div class="drum-row">&nbsp;</div>
-            <div class="drum-row center">tech &amp; beyond</div>
             <div class="drum-row">tech only</div>
+            <div class="drum-row center">tech &amp; beyond</div>
             <div class="drum-row">beyond tech</div>
             <div class="drum-row">&nbsp;</div>
           </div>
@@ -75,18 +75,32 @@
 
       <div class="unit" id="compass-unit" hidden>
         <div class="compass" id="compass" role="group" aria-label="london area">
-          <button class="cbtn n" data-area="north" title="north">▲</button>
-          <button class="cbtn s" data-area="south" title="south">▼</button>
-          <button class="cbtn w" data-area="west" title="west">◀</button>
-          <button class="cbtn e" data-area="east" title="east">▶</button>
-          <button class="cbtn c" data-area="central" title="central">●</button>
+          <!-- a simplified london: five zones and the thames -->
+          <svg viewBox="0 0 120 100" aria-hidden="true">
+            <path class="zone" data-area="north" d="M 49.4 39.4 A 15 15 0 0 1 70.6 39.4 L 98.2 20.3 A 54 42 0 0 0 21.8 20.3 Z"><title>north</title></path>
+            <path class="zone" data-area="east" d="M 70.6 39.4 A 15 15 0 0 1 70.6 60.6 L 98.2 79.7 A 54 42 0 0 0 98.2 20.3 Z"><title>east</title></path>
+            <path class="zone" data-area="south" d="M 70.6 60.6 A 15 15 0 0 1 49.4 60.6 L 21.8 79.7 A 54 42 0 0 0 98.2 79.7 Z"><title>south</title></path>
+            <path class="zone" data-area="west" d="M 49.4 60.6 A 15 15 0 0 1 49.4 39.4 L 21.8 20.3 A 54 42 0 0 0 21.8 79.7 Z"><title>west</title></path>
+            <circle class="zone" data-area="central" cx="60" cy="50" r="13"><title>central</title></circle>
+            <path class="thames" d="M 10 55 C 22 50 28 60 38 57 C 46 54 47 46 56 49 C 62 51 60 57 66 57 C 72 57 72 50 78 50 C 84 50 82 60 88 60 C 94 60 96 52 106 54"/>
+            <text class="map-label" x="60" y="16" text-anchor="middle">N</text>
+            <text class="map-label" x="92" y="53" text-anchor="middle">E</text>
+            <text class="map-label" x="60" y="90" text-anchor="middle">S</text>
+            <text class="map-label" x="28" y="53" text-anchor="middle">W</text>
+          </svg>
         </div>
         <span class="legend">around · <b id="compass-readout">anywhere</b></span>
       </div>
 
       <div class="unit unit-grow">
-        <div class="ticker" id="week-strip">
-          <!-- day cells rendered from live data -->
+        <div class="ticker-shell">
+          <div class="ticker" id="week-strip">
+            <!-- day cells rendered from live data -->
+          </div>
+          <div class="ticker-fixed" id="range-ticks">
+            <button class="tick" data-day="7">7<small>days</small></button>
+            <button class="tick" data-day="30">30<small>days</small></button>
+          </div>
         </div>
         <span class="legend">days</span>
       </div>

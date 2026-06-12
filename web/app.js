@@ -47,7 +47,9 @@
   ];
   // the tech / non-tech lens: one flick to see (or hide) the tech scene
   const TECH_TOPICS = ["tech & ai", "startups & work"];
-  const LENS_ORDER = ["all", "tech", "beyond"]; // drum rows, top to bottom
+  // drum rows, top to bottom; default "all" sits centred so both
+  // neighbours peek into view
+  const LENS_ORDER = ["tech", "all", "beyond"];
   const DRUM_ROW_REM = 1.55;
 
   // Deterministic placeholder gradient for events without an image.
@@ -130,8 +132,13 @@
   }
 
   function browseEvents() {
+    const until =
+      state.day === "7" || state.day === "30"
+        ? Date.now() + Number(state.day) * 864e5
+        : null;
     return state.events.filter((e) => {
       if (!baseFilter(e)) return false;
+      if (until) return new Date(e.start_at).getTime() <= until;
       if (state.day !== "all" && londonDate(e.start_at) !== state.day)
         return false;
       return true;
@@ -222,13 +229,17 @@
       btn.addEventListener("click", () => {
         state.day = key;
         state.surprise = null;
-        strip
-          .querySelectorAll(".tick")
-          .forEach((c) => c.classList.toggle("cursor", c === btn));
+        syncDayTicks();
         render();
       });
       return btn;
     }
+  }
+
+  function syncDayTicks() {
+    document
+      .querySelectorAll(".tick")
+      .forEach((t) => t.classList.toggle("cursor", t.dataset.day === state.day));
   }
 
   function maybeShowEnrichedControls() {
@@ -245,6 +256,7 @@
       renderTopicTokens();
       document.getElementById("topic-unit").hidden = false;
       document.getElementById("lens-unit").hidden = false;
+      startTapeDrift();
     }
   }
 
@@ -302,10 +314,36 @@
 
   function syncCompass() {
     document
-      .querySelectorAll("#compass .cbtn")
-      .forEach((b) => b.classList.toggle("lit", b.dataset.area === state.area));
+      .querySelectorAll("#compass .zone")
+      .forEach((z) => z.classList.toggle("lit", z.dataset.area === state.area));
     document.getElementById("compass-readout").textContent =
       state.area === "all" ? "anywhere" : state.area;
+  }
+
+  // drift the topic tape gently until first touch — a quiet hint that
+  // there's more to the right
+  function startTapeDrift() {
+    const tape = document.getElementById("topic-chips");
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // track position as a float: scrollLeft truncates on read, so a
+    // sub-pixel increment would otherwise never accumulate
+    let pos = tape.scrollLeft;
+    let dir = 1;
+    let raf;
+    const step = () => {
+      const max = tape.scrollWidth - tape.clientWidth;
+      if (max > 4) {
+        pos += 0.3 * dir;
+        if (pos >= max - 1) dir = -1;
+        else if (pos <= 0) dir = 1;
+        tape.scrollLeft = pos;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    const stop = () => cancelAnimationFrame(raf);
+    for (const ev of ["pointerdown", "wheel", "touchstart"])
+      tape.addEventListener(ev, stop, { once: true, passive: true });
+    raf = requestAnimationFrame(step);
   }
 
   function resetFilters() {
@@ -321,9 +359,7 @@
     document
       .querySelectorAll("#category-pills .key")
       .forEach((k) => k.classList.toggle("lit", k.dataset.category === "all"));
-    document
-      .querySelectorAll("#week-strip .tick")
-      .forEach((t) => t.classList.toggle("cursor", t.dataset.day === "all"));
+    syncDayTicks();
     setLens("all");
     syncCompass();
     syncTopicTokens();
@@ -866,13 +902,23 @@
       render();
     });
 
-    // compass: press a direction; press it again to go back to anywhere
+    // map: press a zone; press it again to go back to anywhere
     document.getElementById("compass").addEventListener("click", (ev) => {
-      const btn = ev.target.closest(".cbtn");
-      if (!btn) return;
-      state.area = state.area === btn.dataset.area ? "all" : btn.dataset.area;
+      const zone = ev.target.closest("[data-area]");
+      if (!zone) return;
+      state.area = state.area === zone.dataset.area ? "all" : zone.dataset.area;
       state.surprise = null;
       syncCompass();
+      render();
+    });
+
+    // pinned 7/30 day ranges next to the date ticker
+    document.getElementById("range-ticks").addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".tick");
+      if (!btn) return;
+      state.day = state.day === btn.dataset.day ? "all" : btn.dataset.day;
+      state.surprise = null;
+      syncDayTicks();
       render();
     });
 
@@ -896,6 +942,7 @@
     bindControls();
     bindSubmitBox();
     renderWeekStrip();
+    setLens("all"); // centre the drum so both neighbours peek
     if (SUPABASE_URL.startsWith("YOUR_")) {
       document.getElementById("events").innerHTML =
         '<p class="status">set SUPABASE_URL and SUPABASE_ANON_KEY in web/config.js</p>';

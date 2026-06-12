@@ -26,16 +26,16 @@
 
 [hidden] { display: none !important; }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: clip; }
 
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: clip;
   background: linear-gradient(175deg, var(--dusk-0) 0%, var(--dusk-1) 38%, var(--dusk-2) 72%, #3d2a45 100%);
   color: var(--ink);
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;
-  overflow-x: hidden;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
@@ -114,9 +114,15 @@ body {
 
 .legend b { color: var(--gold); font-weight: 600; }
 
-.unit { display: flex; flex-direction: column; gap: 0.4rem; }
+.unit { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 0.4rem; min-width: 0; }
 .unit-inline { flex-direction: row; align-items: center; gap: 0.5rem; }
 .unit-grow { flex: 1 1 240px; min-width: 0; }
+
+/* a wrapped column flex sizes its line to content — that made the topic
+   tape push the whole page wide. Keep combined rows single-column and
+   cap children at the row's width. */
+.controls-row.unit { flex-wrap: nowrap; }
+.controls-row.unit > * { max-width: 100%; }
 
 /* --- keycaps --- */
 
@@ -303,58 +309,52 @@ body {
   border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* --- compass d-pad --- */
+/* --- the london map: five zones, one river --- */
 
 .compass {
-  width: 6.6rem;
-  height: 6.6rem;
-  border-radius: 50%;
-  position: relative;
+  width: 9.5rem;
   flex: none;
-  background: radial-gradient(circle at 50% 38%, var(--key-lit), var(--key-face) 60%, #1a1228);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
 }
 
-.cbtn {
-  position: absolute;
-  width: 1.85rem; height: 1.85rem;
-  border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+.compass svg { display: block; width: 100%; height: auto; }
+
+.zone {
+  fill: rgba(255, 255, 255, 0.05);
+  stroke: rgba(255, 255, 255, 0.13);
+  stroke-width: 1;
   cursor: pointer;
-  background: linear-gradient(180deg, var(--key-lit), var(--key-face));
-  color: var(--ink-dim);
-  font-size: 0.62rem;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 0 var(--key-side);
-  transition: color 0.12s, box-shadow 0.12s, border-color 0.12s;
+  transition: fill 0.15s ease, stroke 0.15s ease;
 }
 
-.cbtn:active { box-shadow: 0 0 0 var(--key-side); }
+.zone:hover { fill: rgba(232, 169, 140, 0.14); }
 
-.cbtn.lit {
-  color: var(--gold);
-  border-color: rgba(227, 192, 141, 0.5);
-  box-shadow: 0 2px 0 var(--key-side), 0 0 12px -2px rgba(227, 192, 141, 0.6);
+.zone.lit {
+  fill: rgba(227, 192, 141, 0.3);
+  stroke: rgba(227, 192, 141, 0.75);
 }
 
-.cbtn.n { top: 0.4rem; left: 50%; transform: translateX(-50%); }
-.cbtn.s { bottom: 0.4rem; left: 50%; transform: translateX(-50%); }
-.cbtn.w { left: 0.4rem; top: 50%; transform: translateY(-50%); }
-.cbtn.e { right: 0.4rem; top: 50%; transform: translateY(-50%); }
-.cbtn.c {
-  left: 50%; top: 50%; transform: translate(-50%, -50%);
-  border-radius: 50%; width: 1.95rem; height: 1.95rem;
+.thames {
+  fill: none;
+  stroke: rgba(232, 169, 140, 0.45);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  pointer-events: none;
 }
 
-/* --- day ticker tape --- */
+.map-label {
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  fill: var(--ink-dim);
+  pointer-events: none;
+}
 
-.ticker {
+/* --- day ticker tape (scrolling dates + pinned 7/30) --- */
+
+.ticker-shell {
   display: flex;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
+  min-width: 0;
   border: 1px solid var(--card-edge);
   border-radius: 10px;
   background:
@@ -363,7 +363,25 @@ body {
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
+.ticker {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
+}
+
 .ticker::-webkit-scrollbar { display: none; }
+
+.ticker-fixed {
+  display: flex;
+  flex: none;
+  border-left: 1px solid rgba(232, 169, 140, 0.3);
+}
 
 .tick {
   flex: none;
@@ -394,11 +412,11 @@ body {
 
 .tape {
   display: flex;
+  width: 100%;
   gap: 0.35rem;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
   padding: 2px 4px;
   mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 34px), transparent);
   -webkit-mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 34px), transparent);
@@ -408,7 +426,6 @@ body {
 
 .token {
   flex: none;
-  scroll-snap-align: start;
   font-family: var(--mono);
   font-size: 0.7rem;
   color: var(--ink-dim);
