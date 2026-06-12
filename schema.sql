@@ -88,6 +88,11 @@ create table if not exists public.submissions (
   reviewed_at timestamptz
 );
 
+-- one row per URL: duplicate submissions 409 instead of piling up;
+-- resolved rows are purged after 30 days, freeing the URL again
+create unique index if not exists submissions_url_key
+  on public.submissions (url);
+
 alter table public.submissions enable row level security;
 
 drop policy if exists "anon submit" on public.submissions;

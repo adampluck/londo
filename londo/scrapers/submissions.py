@@ -3,12 +3,35 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
+import re
+
+from londo.geo import POSTCODE_RE
 from londo.links import LinkFetcher, classify_url
 from londo.models import Event
 from londo.scrapers.base import BaseScraper
 from londo.storage import SupabaseStore
 
 logger = logging.getLogger(__name__)
+
+LONDON_RE = re.compile(r"\blondon\b", re.I)
+# generous Greater London bounding box
+LONDON_BBOX = (51.25, 51.75, -0.6, 0.35)
+
+
+def _in_london(event: Event) -> bool:
+    """Anyone can submit a link, so unlike curated sources the result must
+    prove it's actually in London before it gets published."""
+    loc = event.location
+    if loc is None:
+        return False
+    if loc.latitude is not None and loc.longitude is not None:
+        s, n, w, e = LONDON_BBOX
+        if s <= loc.latitude <= n and w <= loc.longitude <= e:
+            return True
+    text = " ".join(
+        p for p in (loc.venue_name, loc.address, loc.city) if p
+    )
+    return bool(LONDON_RE.search(text) or POSTCODE_RE.search(text))
 
 
 class SubmissionsScraper(BaseScraper):
@@ -24,6 +47,7 @@ class SubmissionsScraper(BaseScraper):
 
     def scrape(self) -> list[Event]:
         store = SupabaseStore()
+        store.purge_old_submissions(days=30)
         pending = store.fetch_pending_submissions()
         if not pending:
             return []
@@ -48,12 +72,14 @@ class SubmissionsScraper(BaseScraper):
             fetched = [
                 e for e in fetcher.fetch(url)
                 if not e.is_online
+                and _in_london(e)
                 and (e.start_datetime is None or e.start_datetime >= cutoff)
             ]
             if not fetched:
                 store.resolve_submission(
                     sub["id"], "rejected",
-                    "no upcoming in-person event with full details at this link",
+                    "no upcoming in-person London event with full details "
+                    "at this link",
                 )
                 continue
 

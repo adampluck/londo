@@ -36,6 +36,17 @@ def read_config() -> tuple[str, str]:
     return url, key
 
 
+def goatcounter_snippet() -> str:
+    text = (ROOT / "web" / "config.js").read_text()
+    m = re.search(r'GOATCOUNTER:\s*"([^"]+)"', text)
+    if not m:
+        return ""
+    return (
+        f'<script data-goatcounter="{esc(m.group(1))}" async '
+        'src="https://gc.zgo.at/count.js"></script>'
+    )
+
+
 def fetch_events() -> list[dict]:
     supabase_url, anon_key = read_config()
     now = datetime.now(timezone.utc)
@@ -77,8 +88,12 @@ def fmt_when(event: dict) -> str:
 
 def page(title: str, description: str, canonical: str, og_image: str | None,
          body: str, json_ld: dict | None = None, css_prefix: str = "..") -> str:
+    # "</" must not appear inside a <script> block: a scraped description
+    # containing "</script>" would otherwise break out and execute (XSS)
     ld = (
-        f'<script type="application/ld+json">{json.dumps(json_ld)}</script>'
+        '<script type="application/ld+json">'
+        + json.dumps(json_ld).replace("</", "<\\/")
+        + "</script>"
         if json_ld
         else ""
     )
@@ -107,6 +122,7 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{css_prefix}/styles.css">
   {ld}
+  {goatcounter_snippet()}
 </head>
 <body class="static-page">
   <div class="sky" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div><div class="grain"></div></div>

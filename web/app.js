@@ -749,6 +749,11 @@
           },
           body: JSON.stringify({ url }),
         });
+        if (res.status === 409) {
+          input.value = "";
+          note.textContent = "someone already sent that one — it's in the queue.";
+          return;
+        }
         if (!res.ok) throw new Error(String(res.status));
         input.value = "";
         note.textContent =
@@ -757,6 +762,29 @@
         note.textContent = "that didn't go through — try again in a bit.";
       }
     });
+  }
+
+  // ---------- analytics (GoatCounter: open source, cookieless) ----------
+
+  function initAnalytics() {
+    const endpoint = window.LONDO_CONFIG.GOATCOUNTER;
+    if (!endpoint) return;
+    const s = document.createElement("script");
+    s.async = true;
+    s.src = "https://gc.zgo.at/count.js";
+    s.dataset.goatcounter = endpoint;
+    document.head.appendChild(s);
+  }
+
+  // count tab switches as virtual pageviews (/tonight, /map)
+  function countView(view) {
+    if (window.goatcounter && window.goatcounter.count) {
+      window.goatcounter.count({
+        path: "/" + view,
+        title: "londo — " + view,
+        event: false,
+      });
+    }
   }
 
   // ---------- theming ----------
@@ -792,6 +820,7 @@
       document
         .querySelectorAll("#view-tabs .view-tab")
         .forEach((t) => t.classList.toggle("active", t === btn));
+      countView(state.view);
       render();
     });
 
@@ -829,6 +858,7 @@
       navigator.serviceWorker.register("sw.js").catch(() => {});
     }
     applyTimeTheme();
+    initAnalytics();
     bindControls();
     bindSubmitBox();
     renderWeekStrip();

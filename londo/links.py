@@ -51,9 +51,26 @@ SKIP_DOMAINS = (
 )
 
 
+def _is_private_host(url: str) -> bool:
+    """True for localhost/private/link-local hosts — submitted URLs must
+    not be able to point the fetcher at internal addresses (SSRF)."""
+    import ipaddress
+    from urllib.parse import urlparse
+
+    host = (urlparse(url).hostname or "").strip("[]").lower()
+    if not host or host == "localhost" or host.endswith(".local"):
+        return True
+    try:
+        return not ipaddress.ip_address(host).is_global
+    except ValueError:
+        return False  # a domain name, not an IP literal
+
+
 def classify_url(url: str) -> tuple[str, str] | None:
     """Return (kind, key) for a URL, or None if it can't be an event link."""
     if any(d in url.lower() for d in SKIP_DOMAINS):
+        return None
+    if _is_private_host(url):
         return None
     m = LUMA_RE.match(url)
     if m and m.group(1).lower() not in LUMA_NON_EVENT_PATHS:
@@ -121,6 +138,9 @@ class LinkFetcher(BaseScraper):
         """Last resort: fetch the page and look for schema.org Event JSON-LD.
         Only emits an event when date+time and a physical location are present."""
         response = self.get(url)
+        if len(response.content) > 3_000_000:
+            logger.info("Page too large to be an event page: %s", url)
+            return []
         soup = BeautifulSoup(response.text, "html.parser")
 
         events = []

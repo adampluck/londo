@@ -2,7 +2,7 @@
    events API network-first with cached fallback (offline shows the
    last events you saw). */
 
-const CACHE = "londo-v2";
+const CACHE = "londo-v3";
 const SHELL = [
   "./",
   "index.html",
@@ -37,6 +37,9 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const { request } = e;
   if (request.method !== "GET") return;
+
+  // analytics must hit the network every time, never the cache
+  if (/goatcounter\.com|gc\.zgo\.at/.test(request.url)) return;
 
   // events API: fresh when online, cached events when not
   if (request.url.includes("/rest/v1/")) {

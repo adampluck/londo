@@ -129,6 +129,21 @@ class SupabaseStore:
         response.raise_for_status()
         return response.json()
 
+    def purge_old_submissions(self, days: int = 30) -> None:
+        """Delete resolved submissions after a while: keeps the table small
+        under flooding, and frees their URLs for honest resubmission."""
+        from datetime import timedelta
+
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        response = self.session.delete(
+            f"{self.url}/rest/v1/submissions"
+            f"?status=neq.pending&reviewed_at=lt.{cutoff}",
+            headers={"Prefer": "return=minimal"},
+            timeout=30,
+        )
+        if response.status_code not in (400, 404):  # table may not exist yet
+            response.raise_for_status()
+
     def resolve_submission(self, submission_id: str, status: str, reason: str) -> None:
         response = self.session.patch(
             f"{self.url}/rest/v1/submissions?id=eq.{submission_id}",
