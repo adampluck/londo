@@ -135,7 +135,7 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
   <link rel="icon" type="image/png" href="{css_prefix}/icons/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{css_prefix}/styles.css">
   {ld}
   {goatcounter_snippet()}
@@ -146,7 +146,7 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
   <main style="max-width:720px;margin:0 auto;padding:1rem 1.5rem 4rem">
   {body}
   </main>
-  <footer><p><a href="{BASE_URL}/">londo</a> — in-person london gatherings that connect and inspire</p></footer>
+  <footer><p><a href="{BASE_URL}/">londo</a> — the other london, in person</p></footer>
 </body>
 </html>
 """
@@ -211,7 +211,7 @@ def event_page(event: dict) -> str:
         }
 
     hook = (
-        f'<p style="font-family:Fraunces,Georgia,serif;font-style:italic;'
+        f'<p style="font-family:Bricolage Grotesque,sans-serif;'
         f'font-size:1.15rem;color:var(--gold)">{esc(event.get("hook"))}</p>'
         if event.get("hook")
         else ""
@@ -233,7 +233,7 @@ def event_page(event: dict) -> str:
 
     body = f"""
   <article>
-    <h2 style="font-family:Fraunces,Georgia,serif;font-weight:480;font-size:1.9rem;margin:1.2rem 0 0.4rem">{esc(event["title"])}</h2>
+    <h2 style="font-family:Bricolage Grotesque,sans-serif;font-weight:480;font-size:1.9rem;margin:1.2rem 0 0.4rem">{esc(event["title"])}</h2>
     {hook}
     <p style="color:var(--ink-dim)">{esc(meta_bits)}</p>
     {img}
@@ -258,14 +258,14 @@ def listing_page(label: str, seo_title: str, canonical: str,
     items = "".join(
         f"""
     <li style="margin:1.1rem 0;list-style:none">
-      <a href="{BASE_URL}/e/{slug(e)}.html" style="color:var(--ink);text-decoration:none;font-family:Fraunces,Georgia,serif;font-size:1.15rem">{esc(e["title"])}</a>
+      <a href="{BASE_URL}/e/{slug(e)}.html" style="color:var(--ink);text-decoration:none;font-family:Bricolage Grotesque,sans-serif;font-size:1.15rem">{esc(e["title"])}</a>
       <p style="margin:0.15rem 0 0;color:var(--ink-dim);font-size:0.9rem">{esc(fmt_when(e))} · {esc(e.get("venue_name") or e.get("address") or "London")}</p>
       {f'<p style="margin:0.15rem 0 0;font-style:italic;color:var(--gold);font-size:0.92rem">{esc(e["hook"])}</p>' if e.get("hook") else ""}
     </li>"""
         for e in events[:60]
     )
     body = f"""
-  <h2 style="font-family:Fraunces,Georgia,serif;font-weight:480;font-size:1.8rem;margin:1.2rem 0 0.3rem">{esc(label)} — {esc(seo_title.lower())}</h2>
+  <h2 style="font-family:Bricolage Grotesque,sans-serif;font-weight:480;font-size:1.8rem;margin:1.2rem 0 0.3rem">{esc(label)} — {esc(seo_title.lower())}</h2>
   <p style="color:var(--ink-dim)">{len(events)} upcoming · updated several times a day</p>
   <ul style="padding:0">{items}</ul>
   <p style="margin-top:2rem"><a href="{BASE_URL}/" style="color:var(--mauve)">← all of londo</a></p>"""

@@ -1,7 +1,7 @@
 {
   "name": "londo — London events",
   "short_name": "londo",
-  "description": "A calm little window onto London's gatherings — events from Dandelion, Luma, Newspeak House, Eventbrite and beyond, in one place.",
+  "description": "The other london, in person — gatherings that connect and inspire, in one place.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

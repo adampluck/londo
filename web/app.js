@@ -7,7 +7,7 @@
     events: [],
     view: "browse", // browse | tonight | map
     category: "all",
-    topic: "all",
+    topics: new Set(), // multi-select; empty = anything
     lens: "all", // all | tech | beyond
     area: "all",
     day: "all", // "all" or a London YYYY-MM-DD
@@ -45,13 +45,10 @@
     "nature & outdoors", "healing & wellbeing", "spirituality & ritual",
     "society & politics", "science & ideas",
   ];
-  // the tech / non-tech lens: one tap to see (or hide) the tech scene
+  // the tech / non-tech lens: one flick to see (or hide) the tech scene
   const TECH_TOPICS = ["tech & ai", "startups & work"];
-  const LENS_LABELS = {
-    all: "tech & beyond",
-    tech: "tech only",
-    beyond: "beyond tech",
-  };
+  const LENS_ORDER = ["all", "tech", "beyond"]; // drum rows, top to bottom
+  const DRUM_ROW_REM = 1.55;
 
   // Deterministic placeholder gradient for events without an image.
   const GRADIENTS = [
@@ -118,7 +115,10 @@
 
   function baseFilter(e) {
     if (state.category !== "all" && e.category !== state.category) return false;
-    if (state.topic !== "all" && !(e.topics || []).includes(state.topic))
+    if (
+      state.topics.size &&
+      !(e.topics || []).some((t) => state.topics.has(t))
+    )
       return false;
     if (state.lens === "tech" && !isTech(e)) return false;
     if (state.lens === "beyond" && isTech(e)) return false;
@@ -192,37 +192,39 @@
 
   function renderWeekStrip() {
     const strip = document.getElementById("week-strip");
-    const chips = [chipEl("all days", "all")];
+    const cells = [tick("all", "days", "all")];
     const now = new Date();
+    const fmt = (d, opts) =>
+      d
+        .toLocaleDateString("en-GB", { ...opts, timeZone: "Europe/London" })
+        .toLowerCase();
     for (let i = 0; i < WEEK_STRIP_DAYS; i++) {
       const d = new Date(now.getTime() + i * 864e5);
       const key = londonDate(d);
-      let label;
-      if (i === 0) label = "today";
-      else if (i === 1) label = "tmrw";
+      if (i === 0) cells.push(tick("today", fmt(d, { weekday: "short" }), key));
+      else if (i === 1)
+        cells.push(tick("tmrw", fmt(d, { weekday: "short" }), key));
       else
-        label = d
-          .toLocaleDateString("en-GB", {
-            weekday: "short",
-            day: "numeric",
-            timeZone: "Europe/London",
-          })
-          .toLowerCase();
-      chips.push(chipEl(label, key));
+        cells.push(
+          tick(fmt(d, { weekday: "short" }), fmt(d, { day: "numeric" }), key)
+        );
     }
-    strip.replaceChildren(...chips);
+    strip.replaceChildren(...cells);
 
-    function chipEl(label, key) {
+    function tick(main, sub, key) {
       const btn = document.createElement("button");
-      btn.className = "chip day-chip" + (key === state.day ? " active" : "");
+      btn.className = "tick" + (key === state.day ? " cursor" : "");
       btn.dataset.day = key;
-      btn.textContent = label;
+      btn.appendChild(document.createTextNode(main));
+      const small = document.createElement("small");
+      small.textContent = sub;
+      btn.appendChild(small);
       btn.addEventListener("click", () => {
         state.day = key;
         state.surprise = null;
         strip
-          .querySelectorAll(".day-chip")
-          .forEach((c) => c.classList.toggle("active", c === btn));
+          .querySelectorAll(".tick")
+          .forEach((c) => c.classList.toggle("cursor", c === btn));
         render();
       });
       return btn;
@@ -230,52 +232,102 @@
   }
 
   function maybeShowEnrichedControls() {
-    // These rows only make sense once the pipeline has classified events.
+    // These instruments only make sense once events are classified.
     const withCategory = state.events.filter((e) => e.category).length;
     if (withCategory >= 5)
       document.getElementById("category-pills").hidden = false;
     const withArea = state.events.filter((e) => e.area).length;
-    if (withArea >= 5) document.getElementById("area-chips").hidden = false;
+    if (withArea >= 5) document.getElementById("compass-unit").hidden = false;
     const withTopics = state.events.filter(
       (e) => (e.topics || []).length
     ).length;
     if (withTopics >= 5) {
-      renderTopicChips();
-      document.getElementById("topic-chips").hidden = false;
-      document.getElementById("lens-toggle").hidden = false;
+      renderTopicTokens();
+      document.getElementById("topic-unit").hidden = false;
+      document.getElementById("lens-unit").hidden = false;
     }
   }
 
-  function renderTopicChips() {
-    const row = document.getElementById("topic-chips");
+  function renderTopicTokens() {
+    const tape = document.getElementById("topic-chips");
     const countFor = (topic) =>
       state.events.filter((e) => (e.topics || []).includes(topic)).length;
 
-    const chips = [chip("anything", "all")];
+    const tokens = [token("anything", "all")];
     for (const topic of TOPICS) {
       const n = countFor(topic);
       if (n < 2) continue; // don't offer near-empty doorways
-      const btn = chip(topic, topic);
+      const btn = token(topic, topic);
       btn.title = `${n} events`;
-      chips.push(btn);
+      tokens.push(btn);
     }
-    row.replaceChildren(row.firstElementChild, ...chips); // keep the label
+    tape.replaceChildren(...tokens);
 
-    function chip(label, key) {
+    function token(label, key) {
       const btn = document.createElement("button");
-      btn.className = "chip topic-chip" + (key === state.topic ? " active" : "");
+      btn.className = "token";
       btn.dataset.topic = key;
       btn.textContent = label;
       btn.addEventListener("click", () => {
-        state.topic = key;
+        if (key === "all") state.topics.clear();
+        else if (state.topics.has(key)) state.topics.delete(key);
+        else state.topics.add(key);
         state.surprise = null;
-        row
-          .querySelectorAll(".topic-chip")
-          .forEach((c) => c.classList.toggle("active", c === btn));
+        syncTopicTokens();
         render();
       });
       return btn;
     }
+  }
+
+  function syncTopicTokens() {
+    document.querySelectorAll("#topic-chips .token").forEach((t) => {
+      const k = t.dataset.topic;
+      t.classList.toggle(
+        "lit",
+        k === "all" ? state.topics.size === 0 : state.topics.has(k)
+      );
+    });
+  }
+
+  function setLens(lens) {
+    state.lens = lens;
+    const i = LENS_ORDER.indexOf(lens);
+    const tape = document.getElementById("lens-tape");
+    [...tape.children].forEach((row, idx) =>
+      row.classList.toggle("center", idx === i + 1)
+    );
+    tape.style.transform = `translateY(${-i * DRUM_ROW_REM}rem)`;
+  }
+
+  function syncCompass() {
+    document
+      .querySelectorAll("#compass .cbtn")
+      .forEach((b) => b.classList.toggle("lit", b.dataset.area === state.area));
+    document.getElementById("compass-readout").textContent =
+      state.area === "all" ? "anywhere" : state.area;
+  }
+
+  function resetFilters() {
+    state.category = "all";
+    state.topics.clear();
+    state.area = "all";
+    state.day = "all";
+    state.freeOnly = false;
+    state.query = "";
+    state.surprise = null;
+    document.getElementById("search").value = "";
+    document.getElementById("free-toggle").checked = false;
+    document
+      .querySelectorAll("#category-pills .key")
+      .forEach((k) => k.classList.toggle("lit", k.dataset.category === "all"));
+    document
+      .querySelectorAll("#week-strip .tick")
+      .forEach((t) => t.classList.toggle("cursor", t.dataset.day === "all"));
+    setLens("all");
+    syncCompass();
+    syncTopicTokens();
+    render();
   }
 
   function renderLastUpdated() {
@@ -393,7 +445,7 @@
       ? `${events.length} gathering${events.length === 1 ? "" : "s"} still to come in london`
       : "";
     const dice = document.createElement("button");
-    dice.className = "pill surprise";
+    dice.className = "key surprise";
     dice.textContent = "surprise me";
     dice.addEventListener("click", () => {
       const pool = events.length ? events : weekPool();
@@ -418,7 +470,7 @@
       grid.appendChild(card(state.surprise, 0));
       frag.appendChild(grid);
       const back = document.createElement("button");
-      back.className = "pill show-all";
+      back.className = "key show-all";
       back.textContent = "show everything tonight";
       back.addEventListener("click", () => {
         state.surprise = null;
@@ -777,27 +829,31 @@
       render();
     });
 
-    document.getElementById("lens-toggle").addEventListener("click", (ev) => {
-      const order = ["all", "tech", "beyond"];
-      state.lens = order[(order.indexOf(state.lens) + 1) % order.length];
+    // lens drum: tap to flick to the next stop
+    document.getElementById("lens-drum").addEventListener("click", () => {
+      const next =
+        LENS_ORDER[(LENS_ORDER.indexOf(state.lens) + 1) % LENS_ORDER.length];
       state.surprise = null;
-      ev.target.textContent = LENS_LABELS[state.lens];
-      ev.target.classList.toggle("active", state.lens !== "all");
-      ev.target.classList.toggle("lens-beyond", state.lens === "beyond");
+      setLens(next);
       render();
     });
 
-    document.getElementById("view-tabs").addEventListener("click", (ev) => {
-      const btn = ev.target.closest("button[data-view]");
-      if (!btn) return;
-      state.view = btn.dataset.view;
-      state.surprise = null;
-      document
-        .querySelectorAll("#view-tabs .view-tab")
-        .forEach((t) => t.classList.toggle("active", t === btn));
-      countView(state.view);
-      render();
-    });
+    // view keys live in the header (desktop) and bottom bar (mobile)
+    for (const navId of ["view-tabs", "bottom-tabs"]) {
+      document.getElementById(navId).addEventListener("click", (ev) => {
+        const btn = ev.target.closest("button[data-view]");
+        if (!btn) return;
+        state.view = btn.dataset.view;
+        state.surprise = null;
+        document
+          .querySelectorAll(".view-key")
+          .forEach((k) =>
+            k.classList.toggle("lit", k.dataset.view === state.view)
+          );
+        countView(state.view);
+        render();
+      });
+    }
 
     document.getElementById("category-pills").addEventListener("click", (ev) => {
       const btn = ev.target.closest("button[data-category]");
@@ -805,27 +861,30 @@
       state.category = btn.dataset.category;
       state.surprise = null;
       document
-        .querySelectorAll("#category-pills .pill")
-        .forEach((p) => p.classList.toggle("active", p === btn));
+        .querySelectorAll("#category-pills .key")
+        .forEach((p) => p.classList.toggle("lit", p === btn));
       render();
     });
 
-    document.getElementById("area-chips").addEventListener("click", (ev) => {
-      const btn = ev.target.closest("button[data-area]");
+    // compass: press a direction; press it again to go back to anywhere
+    document.getElementById("compass").addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".cbtn");
       if (!btn) return;
-      state.area = btn.dataset.area;
+      state.area = state.area === btn.dataset.area ? "all" : btn.dataset.area;
       state.surprise = null;
-      document
-        .querySelectorAll("#area-chips .chip")
-        .forEach((c) => c.classList.toggle("active", c === btn));
+      syncCompass();
       render();
     });
 
-    document.getElementById("free-toggle").addEventListener("click", (ev) => {
-      state.freeOnly = !state.freeOnly;
-      ev.target.classList.toggle("active", state.freeOnly);
+    document.getElementById("free-toggle").addEventListener("change", (ev) => {
+      state.freeOnly = ev.target.checked;
+      state.surprise = null;
       render();
     });
+
+    document
+      .getElementById("reset-filters")
+      .addEventListener("click", resetFilters);
   }
 
   async function init() {
