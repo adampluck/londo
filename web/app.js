@@ -323,13 +323,21 @@
     });
   }
 
+  const AREA_LABELS = {
+    all: "anywhere in london",
+    north: "north london",
+    east: "east london",
+    south: "south london",
+    west: "west london",
+    central: "central london",
+  };
+
   function syncCompass() {
     document
       .querySelectorAll("#compass .zone")
       .forEach((z) => z.classList.toggle("lit", z.dataset.area === state.area));
-    document
-      .querySelectorAll("#area-labels .area-label")
-      .forEach((l) => l.classList.toggle("lit", l.dataset.area === state.area));
+    document.getElementById("area-readout").textContent =
+      AREA_LABELS[state.area] || AREA_LABELS.all;
   }
 
   // drift the topic tape gently until first touch — a quiet hint that
@@ -936,16 +944,21 @@
       render();
     });
 
-    // area dial + labels: press a zone or its name; "anywhere" resets
+    // area dial: press a zone to select; press the lit zone (or tap the
+    // readout) to go back to anywhere
     document.getElementById("compass-unit").addEventListener("click", (ev) => {
       if (ev.target.closest("#open-map")) {
         setView("map");
         return;
       }
-      const el = ev.target.closest("[data-area]");
-      if (!el) return;
-      const area = el.dataset.area;
-      state.area = area === "all" || state.area === area ? "all" : area;
+      if (ev.target.closest("#area-readout")) {
+        if (state.area === "all") return;
+        state.area = "all";
+      } else {
+        const zone = ev.target.closest(".zone");
+        if (!zone) return;
+        state.area = state.area === zone.dataset.area ? "all" : zone.dataset.area;
+      }
       state.surprise = null;
       syncCompass();
       render();

@@ -345,34 +345,34 @@ body {
 .area-labels {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0.3rem;
+  align-items: flex-start;
 }
 
-.area-label {
+.area-readout {
+  font-family: var(--display);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--gold);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.map-link {
   font-family: var(--mono);
   font-size: 0.62rem;
   letter-spacing: 0.06em;
-  color: var(--ink-dim);
+  color: var(--mauve);
   background: none;
   border: none;
-  border-radius: 6px;
-  text-align: left;
-  padding: 0.13rem 0.35rem;
+  padding: 0;
   cursor: pointer;
-  transition: color 0.12s, background 0.12s;
+  transition: color 0.12s;
 }
-
-.area-label.lit {
-  color: var(--gold);
-  background: rgba(227, 192, 141, 0.12);
-}
-
-.map-link { color: var(--mauve); margin-top: 0.15rem; }
 
 /* hover highlights only where hover exists — on touch they stick */
 @media (hover: hover) {
   .zone:hover { fill: rgba(232, 169, 140, 0.14); }
-  .area-label:hover { color: var(--ink); }
   .map-link:hover { color: var(--peach); }
 }
 
@@ -745,6 +745,9 @@ main {
   border-radius: var(--radius);
   border: 1px solid var(--card-edge);
   background: var(--dusk-2);
+  /* contain Leaflet's internal pane z-indexes (400–700) so they don't
+     paint over the fixed bottom nav */
+  isolation: isolate;
 }
 
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
