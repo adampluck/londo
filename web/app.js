@@ -163,6 +163,30 @@
     row.hidden = false;
   }
 
+  function renderLastUpdated() {
+    const latest = state.events.reduce(
+      (max, e) => (e.last_seen_at > max ? e.last_seen_at : max),
+      ""
+    );
+    if (!latest) return;
+    const el = document.getElementById("last-updated");
+    el.textContent = `events last updated ${relativeTime(new Date(latest))}`;
+    el.title = new Date(latest).toLocaleString("en-GB", {
+      timeZone: "Europe/London",
+    });
+    el.hidden = false;
+  }
+
+  function relativeTime(date) {
+    const mins = Math.round((Date.now() - date.getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+    const days = Math.round(hours / 24);
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  }
+
   function syncTagHighlight() {
     const q = state.query.trim().toLowerCase();
     document
@@ -406,6 +430,7 @@
     try {
       state.events = await fetchEvents();
       renderTagCloud();
+      renderLastUpdated();
       render();
     } catch (err) {
       document.getElementById("events").innerHTML =

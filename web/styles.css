@@ -469,6 +469,13 @@ footer a {
   border-bottom: 1px dotted rgba(232, 169, 140, 0.5);
 }
 
+#last-updated {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  color: var(--mauve);
+  margin-bottom: 0.2rem;
+}
+
 footer a:hover { color: var(--gold); }
 
 /* ---------- small screens ---------- */
