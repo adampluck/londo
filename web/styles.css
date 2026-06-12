@@ -916,6 +916,9 @@ body.theme-night .blob { opacity: 0.35; }
   .lens-stop { font-size: 0.68rem; }
   .compass { width: 5.4rem; }
   .areas { gap: 0.6rem; }
+  /* wrap "anywhere in london" so the dial and label share a line
+     with the lens toggle instead of pushing onto their own row */
+  .area-readout { max-width: 5.8rem; font-size: 0.85rem; }
   .tick { padding: 0.36rem 0.55rem 0.32rem; font-size: 0.66rem; }
   .token { font-size: 0.64rem; padding: 0.28rem 0.45rem; }
   .switch { width: 2.9rem; height: 1.5rem; }
