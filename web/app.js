@@ -10,7 +10,7 @@
     topics: new Set(), // multi-select; empty = anything
     lens: "all", // all | tech | beyond
     area: "all",
-    day: "7", // "all", "7", "30", or a London YYYY-MM-DD
+    day: "7", // "7", "30", or a London YYYY-MM-DD
     freeOnly: false,
     query: "",
     surprise: null, // event shown by "surprise me"
@@ -46,7 +46,9 @@
   ];
 
   const PICK_THRESHOLD = 75; // quality_score at or above ⇒ "✦ pick"
-  const WEEK_STRIP_DAYS = 14;
+  // everything works within a 30-day window: the fetch, the date strip,
+  // and the widest day-range tick
+  const HORIZON_DAYS = 30;
 
   // ---------- data ----------
 
@@ -62,9 +64,11 @@
       order: "start_at.asc",
       limit: "1000",
     });
+    const horizon = new Date(today.getTime() + HORIZON_DAYS * 864e5);
     const url =
       `${SUPABASE_URL}/rest/v1/events?${params}` +
       `&start_at=gte.${today.toISOString()}` +
+      `&start_at=lte.${horizon.toISOString()}` +
       `&duplicate_of=is.null` +
       `&is_online=eq.false` + // in-person only
       `&last_seen_at=gte.${staleCutoff}`;
@@ -126,9 +130,7 @@
     return state.events.filter((e) => {
       if (!baseFilter(e)) return false;
       if (until) return new Date(e.start_at).getTime() <= until;
-      if (state.day !== "all" && londonDate(e.start_at) !== state.day)
-        return false;
-      return true;
+      return londonDate(e.start_at) === state.day;
     });
   }
 
@@ -186,17 +188,13 @@
 
   function renderWeekStrip() {
     const strip = document.getElementById("week-strip");
-    // "all days" stays pinned left of the scrolling dates
-    document
-      .getElementById("all-tick")
-      .replaceChildren(tick("all", "days", "all"));
     const cells = [];
     const now = new Date();
     const fmt = (d, opts) =>
       d
         .toLocaleDateString("en-GB", { ...opts, timeZone: "Europe/London" })
         .toLowerCase();
-    for (let i = 0; i < WEEK_STRIP_DAYS; i++) {
+    for (let i = 0; i < HORIZON_DAYS; i++) {
       const d = new Date(now.getTime() + i * 864e5);
       const key = londonDate(d);
       if (i === 0) cells.push(tick("today", fmt(d, { weekday: "short" }), key));
@@ -975,7 +973,8 @@
     document.getElementById("range-ticks").addEventListener("click", (ev) => {
       const btn = ev.target.closest(".tick");
       if (!btn) return;
-      state.day = state.day === btn.dataset.day ? "all" : btn.dataset.day;
+      if (state.day === btn.dataset.day) return;
+      state.day = btn.dataset.day;
       state.surprise = null;
       syncDayTicks();
       render();
