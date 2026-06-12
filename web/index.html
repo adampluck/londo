@@ -60,15 +60,10 @@
 
     <div class="controls-row bench">
       <div class="unit" id="lens-unit" hidden>
-        <div class="drum" id="lens-drum" role="button" aria-label="tech lens" title="tap to flick">
-          <div class="drum-tape" id="lens-tape">
-            <div class="drum-row">&nbsp;</div>
-            <div class="drum-row">tech only</div>
-            <div class="drum-row center">tech &amp; beyond</div>
-            <div class="drum-row">beyond tech</div>
-            <div class="drum-row">&nbsp;</div>
-          </div>
-          <div class="drum-knurl"></div>
+        <div class="lens-toggle" id="lens-toggle" role="radiogroup" aria-label="tech lens">
+          <button class="lens-stop" data-lens="tech" role="radio" aria-checked="false">tech</button>
+          <button class="lens-stop lit" data-lens="all" role="radio" aria-checked="true">tech &amp; beyond</button>
+          <button class="lens-stop" data-lens="beyond" role="radio" aria-checked="false">beyond</button>
         </div>
       </div>
 
@@ -76,16 +71,22 @@
         <div class="areas" role="group" aria-label="london area">
           <div class="compass" id="compass">
             <svg viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="dial-face" cx="50" cy="50" r="49.5" />
               <path class="zone" data-area="north" d="M 40.1 40.1 A 14 14 0 0 1 59.9 40.1 L 81.8 18.2 A 45 45 0 0 0 18.2 18.2 Z"><title>north london</title></path>
               <path class="zone" data-area="east" d="M 59.9 40.1 A 14 14 0 0 1 59.9 59.9 L 81.8 81.8 A 45 45 0 0 0 81.8 18.2 Z"><title>east london</title></path>
               <path class="zone" data-area="south" d="M 59.9 59.9 A 14 14 0 0 1 40.1 59.9 L 18.2 81.8 A 45 45 0 0 0 81.8 81.8 Z"><title>south london</title></path>
               <path class="zone" data-area="west" d="M 40.1 59.9 A 14 14 0 0 1 40.1 40.1 L 18.2 18.2 A 45 45 0 0 0 18.2 81.8 Z"><title>west london</title></path>
               <circle class="zone" data-area="central" cx="50" cy="50" r="13"><title>central london</title></circle>
+              <g class="dial-pts">
+                <text x="50" y="21">n</text>
+                <text x="79" y="50">e</text>
+                <text x="50" y="79">s</text>
+                <text x="21" y="50">w</text>
+              </g>
             </svg>
           </div>
           <div class="area-labels">
             <span class="area-readout" id="area-readout">anywhere in london</span>
-            <button class="map-link" id="open-map">full map ↗</button>
           </div>
         </div>
       </div>
@@ -104,8 +105,13 @@
     </div>
 
     <div class="controls-row unit" id="topic-unit" hidden>
-      <div class="tape" id="topic-chips">
-        <!-- topic tokens rendered from live data -->
+      <div class="tape-shell">
+        <div class="tape-fixed" id="topic-anchor">
+          <!-- the "anything" token stays put -->
+        </div>
+        <div class="tape" id="topic-chips">
+          <!-- topic tokens rendered from live data -->
+        </div>
       </div>
     </div>
   </div>

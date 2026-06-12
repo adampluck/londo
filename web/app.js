@@ -10,21 +10,12 @@
     topics: new Set(), // multi-select; empty = anything
     lens: "all", // all | tech | beyond
     area: "all",
-    day: "all", // "all" or a London YYYY-MM-DD
+    day: "7", // "all", "7", "30", or a London YYYY-MM-DD
     freeOnly: false,
     query: "",
     surprise: null, // event shown by "surprise me"
     map: null,
     mapLoaded: false,
-  };
-
-  const SOURCE_LABELS = {
-    dandelion: "Dandelion",
-    luma: "Luma",
-    newspeak: "Newspeak House",
-    numinity: "Numinity",
-    eventbrite: "Eventbrite",
-    other: "elsewhere",
   };
 
   // Intent categories — the primary way in. Colors tint badges, pills
@@ -45,11 +36,8 @@
     "nature & outdoors", "healing & wellbeing", "spirituality & ritual",
     "society & politics", "science & ideas",
   ];
-  // the tech / non-tech lens: one flick to see (or hide) the tech scene
+  // the tech / non-tech lens: which side of the tech divide to see
   const TECH_TOPICS = ["tech & ai", "startups & work"];
-  // drum rows, top to bottom; default "all" sits centred so both
-  // neighbours peek into view
-  const LENS_ORDER = ["tech", "all", "beyond"];
 
   // Deterministic placeholder gradient for events without an image.
   const GRADIENTS = [
@@ -216,6 +204,7 @@
         );
     }
     strip.replaceChildren(...cells);
+    syncDayTicks(); // include the pinned 7/30 ticks on first paint
 
     function tick(main, sub, key) {
       const btn = document.createElement("button");
@@ -255,7 +244,7 @@
       renderTopicTokens();
       document.getElementById("topic-unit").hidden = false;
       document.getElementById("lens-unit").hidden = false;
-      setLens(state.lens); // drum was hidden until now; position the scroll
+      setLens(state.lens);
       startTapeDrift();
     }
   }
@@ -265,7 +254,11 @@
     const countFor = (topic) =>
       state.events.filter((e) => (e.topics || []).includes(topic)).length;
 
-    const tokens = [token("anything", "all")];
+    // "anything" sits still beside the tape so it's always in reach
+    document
+      .getElementById("topic-anchor")
+      .replaceChildren(token("anything", "all"));
+    const tokens = [];
     for (const topic of TOPICS) {
       const n = countFor(topic);
       if (n < 2) continue; // don't offer near-empty doorways
@@ -274,6 +267,7 @@
       tokens.push(btn);
     }
     tape.replaceChildren(...tokens);
+    syncTopicTokens();
 
     function token(label, key) {
       const btn = document.createElement("button");
@@ -293,7 +287,7 @@
   }
 
   function syncTopicTokens() {
-    document.querySelectorAll("#topic-chips .token").forEach((t) => {
+    document.querySelectorAll("#topic-unit .token").forEach((t) => {
       const k = t.dataset.topic;
       t.classList.toggle(
         "lit",
@@ -302,24 +296,12 @@
     });
   }
 
-  function drumRowH() {
-    const row = document.querySelector("#lens-tape .drum-row");
-    return row ? row.offsetHeight : 0;
-  }
-
-  function markLensRow(i) {
-    [...document.getElementById("lens-tape").children].forEach((row, idx) =>
-      row.classList.toggle("center", idx === i + 1)
-    );
-  }
-
-  function setLens(lens, smooth = false) {
+  function setLens(lens) {
     state.lens = lens;
-    const i = LENS_ORDER.indexOf(lens);
-    markLensRow(i);
-    document.getElementById("lens-drum").scrollTo({
-      top: i * drumRowH(),
-      behavior: smooth ? "smooth" : "auto",
+    document.querySelectorAll("#lens-toggle .lens-stop").forEach((b) => {
+      const on = b.dataset.lens === lens;
+      b.classList.toggle("lit", on);
+      b.setAttribute("aria-checked", String(on));
     });
   }
 
@@ -370,7 +352,7 @@
     state.category = "all";
     state.topics.clear();
     state.area = "all";
-    state.day = "all";
+    state.day = "7";
     state.freeOnly = false;
     state.query = "";
     state.surprise = null;
@@ -689,11 +671,6 @@
       banner.appendChild(cat);
     }
 
-    const badge = document.createElement("span");
-    badge.className = `badge badge-src badge-${e.source}`;
-    badge.textContent = SOURCE_LABELS[e.source] || e.source;
-    banner.appendChild(badge);
-
     if ((e.quality_score ?? 0) >= PICK_THRESHOLD) {
       const pick = document.createElement("span");
       pick.className = "pick-mark";
@@ -895,34 +872,14 @@
       render();
     });
 
-    // lens drum: tap flicks to the next stop, or scroll/swipe it directly
-    const drum = document.getElementById("lens-drum");
-    drum.addEventListener("click", () => {
-      const next =
-        LENS_ORDER[(LENS_ORDER.indexOf(state.lens) + 1) % LENS_ORDER.length];
+    // lens toggle: pick a stop directly
+    document.getElementById("lens-toggle").addEventListener("click", (ev) => {
+      const stop = ev.target.closest(".lens-stop");
+      if (!stop || stop.dataset.lens === state.lens) return;
       state.surprise = null;
-      setLens(next, true);
+      setLens(stop.dataset.lens);
       render();
     });
-    let drumTimer;
-    drum.addEventListener(
-      "scroll",
-      () => {
-        clearTimeout(drumTimer);
-        drumTimer = setTimeout(() => {
-          const h = drumRowH();
-          if (!h) return;
-          const i = Math.max(0, Math.min(2, Math.round(drum.scrollTop / h)));
-          if (LENS_ORDER[i] !== state.lens) {
-            state.lens = LENS_ORDER[i];
-            state.surprise = null;
-            markLensRow(i);
-            render();
-          }
-        }, 90);
-      },
-      { passive: true }
-    );
 
     // view keys live in the header (desktop) and bottom bar (mobile)
     for (const navId of ["view-tabs", "bottom-tabs"]) {
@@ -947,10 +904,6 @@
     // area dial: press a zone to select; press the lit zone (or tap the
     // readout) to go back to anywhere
     document.getElementById("compass-unit").addEventListener("click", (ev) => {
-      if (ev.target.closest("#open-map")) {
-        setView("map");
-        return;
-      }
       if (ev.target.closest("#area-readout")) {
         if (state.area === "all") return;
         state.area = "all";
@@ -994,7 +947,7 @@
     bindControls();
     bindSubmitBox();
     renderWeekStrip();
-    setLens("all"); // centre the drum so both neighbours peek
+    setLens("all");
     if (SUPABASE_URL.startsWith("YOUR_")) {
       document.getElementById("events").innerHTML =
         '<p class="status">set SUPABASE_URL and SUPABASE_ANON_KEY in web/config.js</p>';
