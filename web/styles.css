@@ -293,6 +293,10 @@ body {
 
 .lens-stop + .lens-stop { border-top: 1px solid rgba(255, 255, 255, 0.06); }
 
+/* the end stops follow the housing's curve so a lit ring isn't squared off */
+.lens-stop:first-child { border-radius: 9px 9px 0 0; }
+.lens-stop:last-child { border-radius: 0 0 9px 9px; }
+
 .lens-stop.lit {
   color: var(--gold);
   opacity: 1;
@@ -395,8 +399,11 @@ body {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
-  mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 22px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 22px), transparent);
 }
 
 .ticker::-webkit-scrollbar { display: none; }
@@ -405,6 +412,12 @@ body {
   display: flex;
   flex: none;
   border-left: 1px solid rgba(232, 169, 140, 0.3);
+}
+
+/* "all days" pinned on the left, mirroring the 7/30 ticks on the right */
+.ticker-fixed-left {
+  border-left: none;
+  border-right: 1px solid rgba(232, 169, 140, 0.3);
 }
 
 .tick {
@@ -455,6 +468,9 @@ body {
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
   padding: 2px 4px;
   mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 34px), transparent);
   -webkit-mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 34px), transparent);

@@ -186,7 +186,11 @@
 
   function renderWeekStrip() {
     const strip = document.getElementById("week-strip");
-    const cells = [tick("all", "days", "all")];
+    // "all days" stays pinned left of the scrolling dates
+    document
+      .getElementById("all-tick")
+      .replaceChildren(tick("all", "days", "all"));
+    const cells = [];
     const now = new Date();
     const fmt = (d, opts) =>
       d
@@ -320,6 +324,56 @@
       .forEach((z) => z.classList.toggle("lit", z.dataset.area === state.area));
     document.getElementById("area-readout").textContent =
       AREA_LABELS[state.area] || AREA_LABELS.all;
+  }
+
+  // let mouse users drag (and flick) the horizontal tapes — touch
+  // already scrolls natively
+  function enableDragScroll(el) {
+    let down = false, moved = false;
+    let startX = 0, startLeft = 0, lastX = 0, lastT = 0, vel = 0, raf;
+    el.addEventListener("pointerdown", (ev) => {
+      if (ev.pointerType !== "mouse") return;
+      down = true;
+      moved = false;
+      startX = lastX = ev.clientX;
+      startLeft = el.scrollLeft;
+      lastT = performance.now();
+      vel = 0;
+      cancelAnimationFrame(raf);
+    });
+    window.addEventListener("pointermove", (ev) => {
+      if (!down) return;
+      const dx = ev.clientX - startX;
+      if (Math.abs(dx) > 4) moved = true;
+      el.scrollLeft = startLeft - dx;
+      const t = performance.now();
+      vel = (ev.clientX - lastX) / Math.max(1, t - lastT);
+      lastX = ev.clientX;
+      lastT = t;
+    });
+    window.addEventListener("pointerup", () => {
+      if (!down) return;
+      down = false;
+      let speed = -vel * 14; // carry the release velocity into a glide
+      const glide = () => {
+        if (Math.abs(speed) < 0.4) return;
+        el.scrollLeft += speed;
+        speed *= 0.92;
+        raf = requestAnimationFrame(glide);
+      };
+      glide();
+    });
+    // a drag shouldn't also press whatever it started on
+    el.addEventListener(
+      "click",
+      (ev) => {
+        if (!moved) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        moved = false;
+      },
+      true
+    );
   }
 
   // drift the topic tape gently until first touch — a quiet hint that
@@ -926,6 +980,9 @@
       syncDayTicks();
       render();
     });
+
+    enableDragScroll(document.getElementById("week-strip"));
+    enableDragScroll(document.getElementById("topic-chips"));
 
     document.getElementById("free-toggle").addEventListener("change", (ev) => {
       state.freeOnly = ev.target.checked;
