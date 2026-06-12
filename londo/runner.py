@@ -14,6 +14,7 @@ from londo.scrapers.luma import LumaScraper
 from londo.scrapers.newspeak import NewspeakScraper
 from londo.scrapers.psycalendar import PsyCalendarScraper
 from londo.scrapers.seeds import SeedsScraper
+from londo.scrapers.submissions import SubmissionsScraper
 from londo.storage import SupabaseStore, load_dotenv
 
 SCRAPERS = {
@@ -24,7 +25,10 @@ SCRAPERS = {
     "eventbrite": EventbriteListingsScraper,
     "psycalendar": PsyCalendarScraper,  # aggregator; events land under 'other'
     "seeds": SeedsScraper,  # chat-ingested URLs; needs Supabase credentials
+    "submissions": SubmissionsScraper,  # community links; needs Supabase creds
 }
+
+SUPABASE_ONLY_SOURCES = ("seeds", "submissions")
 
 
 @click.group()
@@ -77,8 +81,8 @@ def scrape(
 
     all_events: list[Event] = []
     for src in sources:
-        if src == "seeds" and not os.environ.get("SUPABASE_URL"):
-            click.echo("Skipping seeds (no Supabase credentials)")
+        if src in SUPABASE_ONLY_SOURCES and not os.environ.get("SUPABASE_URL"):
+            click.echo(f"Skipping {src} (no Supabase credentials)")
             continue
         scraper = SCRAPERS[src](rate_limit=rate_limit)
         click.echo(f"Scraping {src}...")
@@ -99,6 +103,17 @@ def scrape(
     dedupe(all_events)
     n_dupes = sum(1 for e in all_events if e.duplicate_of)
     click.echo(f"Total: {len(all_events)} events ({n_dupes} cross-source duplicates)")
+
+    from londo.enrich import enrich_events
+
+    existing = {}
+    if os.environ.get("SUPABASE_URL"):
+        try:
+            existing = SupabaseStore().fetch_enrichment()
+        except Exception:
+            logging.getLogger(__name__).exception("Could not fetch enrichment")
+    calls = enrich_events(all_events, existing=existing)
+    click.echo(f"Enriched: {calls} new LLM classifications")
 
     if store in ("json", "both"):
         filepath = write_events(all_events, "all", output_dir)

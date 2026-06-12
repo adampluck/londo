@@ -3,7 +3,7 @@ name: Deploy frontend
 on:
   push:
     branches: [main]
-    paths: ["web/**"]
+    paths: ["web/**", "scripts/build_site.py"]
   workflow_dispatch:
 
 permissions:
@@ -26,9 +26,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # Static event/category pages are rebuilt from live data so a frontend
+      # push doesn't wipe them (stdlib only — no installs needed)
+      - name: Build site
+        run: python3 scripts/build_site.py build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: build
       - id: deployment
         uses: actions/deploy-pages@v4

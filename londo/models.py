@@ -59,4 +59,13 @@ class Event(BaseModel):
     organizer: Organizer | None = None
     age_restriction: str | None = None
 
+    # Enrichment: LLM classification (category/traits/hook/quality) and
+    # deterministic area pass — see londo/enrich.py.
+    category: str | None = None  # move | connect | expand | think | make
+    traits: list[str] = Field(default_factory=list)
+    hook: str | None = None
+    quality_score: int | None = None
+    area: str | None = None  # central | east | north | south | west
+    enriched_at: datetime | None = None
+
     scraped_at: datetime

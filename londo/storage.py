@@ -47,6 +47,12 @@ class SupabaseStore:
             }
         )
 
+    # Columns added by migrations/2026-06-12_enrichment_and_submissions.sql.
+    # If that migration hasn't been applied yet, upserts retry without them.
+    ENRICHMENT_COLUMNS = (
+        "category", "traits", "hook", "quality_score", "area", "enriched_at",
+    )
+
     def upsert_events(self, events: list[Event]) -> int:
         # Postgres rejects a batch that touches the same row twice
         # ("ON CONFLICT DO UPDATE cannot affect row a second time"), and the
@@ -62,15 +68,33 @@ class SupabaseStore:
             )
         endpoint = f"{self.url}/rest/v1/events?on_conflict=source,source_id"
 
+        strip_enrichment = False
         written = 0
         for i in range(0, len(rows), CHUNK_SIZE):
             chunk = rows[i : i + CHUNK_SIZE]
+            if strip_enrichment:
+                chunk = [_without_enrichment(r) for r in chunk]
             response = self.session.post(
                 endpoint,
                 json=chunk,
                 headers={"Prefer": "resolution=merge-duplicates,return=minimal"},
                 timeout=60,
             )
+            if response.status_code == 400 and not strip_enrichment and any(
+                c in response.text for c in self.ENRICHMENT_COLUMNS
+            ):
+                logger.warning(
+                    "Events table is missing enrichment columns - apply "
+                    "migrations/2026-06-12_enrichment_and_submissions.sql. "
+                    "Retrying without enrichment fields."
+                )
+                strip_enrichment = True
+                response = self.session.post(
+                    endpoint,
+                    json=[_without_enrichment(r) for r in chunk],
+                    headers={"Prefer": "resolution=merge-duplicates,return=minimal"},
+                    timeout=60,
+                )
             if response.status_code >= 400:
                 logger.error(
                     "Upsert failed (%d): %s", response.status_code, response.text
@@ -80,6 +104,43 @@ class SupabaseStore:
 
         logger.info("Upserted %d events to Supabase", written)
         return written
+
+    def fetch_enrichment(self) -> dict[tuple[str, str], dict]:
+        """Existing enrichment keyed by (source, source_id), so the scrape
+        only pays for LLM calls on events it hasn't classified before."""
+        cols = "source,source_id," + ",".join(self.ENRICHMENT_COLUMNS)
+        response = self.session.get(
+            f"{self.url}/rest/v1/events?select={cols}&enriched_at=not.is.null",
+            timeout=60,
+        )
+        if response.status_code == 400:  # migration not applied yet
+            return {}
+        response.raise_for_status()
+        return {(r["source"], r["source_id"]): r for r in response.json()}
+
+    def fetch_pending_submissions(self) -> list[dict]:
+        response = self.session.get(
+            f"{self.url}/rest/v1/submissions?status=eq.pending&select=*"
+            "&order=created_at.asc&limit=100",
+            timeout=30,
+        )
+        if response.status_code in (400, 404):  # table not created yet
+            return []
+        response.raise_for_status()
+        return response.json()
+
+    def resolve_submission(self, submission_id: str, status: str, reason: str) -> None:
+        response = self.session.patch(
+            f"{self.url}/rest/v1/submissions?id=eq.{submission_id}",
+            json={
+                "status": status,
+                "reason": reason,
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            },
+            headers={"Prefer": "return=minimal"},
+            timeout=30,
+        )
+        response.raise_for_status()
 
     def upsert_seeds(self, seeds: list[dict]) -> None:
         if not seeds:
@@ -139,5 +200,18 @@ def _event_to_row(event: Event) -> dict:
         "is_free": event.is_free or (bool(prices) and max(prices) == 0),
         "organizer_name": event.organizer.name if event.organizer else None,
         "organizer_url": event.organizer.url if event.organizer else None,
+        "category": event.category,
+        "traits": event.traits,
+        "hook": event.hook,
+        "quality_score": event.quality_score,
+        "area": event.area,
+        "enriched_at": event.enriched_at.isoformat() if event.enriched_at else None,
         "last_seen_at": event.scraped_at.isoformat(),
+    }
+
+
+def _without_enrichment(row: dict) -> dict:
+    return {
+        k: v for k, v in row.items()
+        if k not in SupabaseStore.ENRICHMENT_COLUMNS
     }

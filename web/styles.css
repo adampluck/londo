@@ -18,6 +18,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 html { scroll-behavior: smooth; }
 
 body {
@@ -544,6 +546,283 @@ footer a:hover { color: var(--gold); }
   }
 
   .tag { flex: none; }
+}
+
+/* ---------- view tabs ---------- */
+
+.views {
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  border: 1px solid var(--card-edge);
+  background: var(--card);
+}
+
+.view-tab {
+  border: none;
+  background: none;
+  color: var(--ink-dim);
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  padding: 0.3rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.25s ease;
+}
+
+.view-tab:hover { color: var(--ink); }
+
+.view-tab.active {
+  color: var(--ink);
+  background: linear-gradient(120deg, rgba(232, 169, 140, 0.25), rgba(142, 122, 168, 0.3));
+}
+
+/* ---------- category pills, tinted ---------- */
+
+.pill-move.active    { border-color: #e8836f; background: rgba(232, 131, 111, 0.2); }
+.pill-connect.active { border-color: #e3c08d; background: rgba(227, 192, 141, 0.2); }
+.pill-expand.active  { border-color: #9d7fd1; background: rgba(157, 127, 209, 0.22); }
+.pill-think.active   { border-color: #5fb5a2; background: rgba(95, 181, 162, 0.2); }
+.pill-make.active    { border-color: #d96a9e; background: rgba(217, 106, 158, 0.2); }
+
+/* ---------- chips: areas + week strip ---------- */
+
+.chip {
+  flex: none;
+  border: none;
+  height: 1.75rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-dim);
+  font-size: 0.78rem;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.chip:hover { color: var(--ink); }
+
+.chip.active {
+  color: var(--ink);
+  background: rgba(142, 122, 168, 0.22);
+}
+
+.week-strip {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  mask-image: linear-gradient(to right, black calc(100% - 40px), transparent);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent);
+  padding-bottom: 0.1rem;
+}
+
+.week-strip::-webkit-scrollbar { display: none; }
+
+.day-chip {
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.day-chip.active {
+  border-color: var(--peach);
+  background: rgba(232, 169, 140, 0.16);
+  color: var(--ink);
+}
+
+/* ---------- tonight ---------- */
+
+.tonight-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin: 1.6rem 0 1.2rem;
+}
+
+.tonight-title {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 420;
+  font-size: 2.2rem;
+  background: linear-gradient(100deg, var(--ink) 35%, var(--peach) 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tonight-sub {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.surprise {
+  border-style: dashed;
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.surprise:hover {
+  background: rgba(227, 192, 141, 0.14);
+  color: var(--gold);
+}
+
+.surprise-note { padding: 0.6rem 0 0.8rem; animation: none; }
+
+.grid-solo {
+  grid-template-columns: minmax(265px, 460px);
+  justify-content: center;
+}
+
+.show-all {
+  display: block;
+  margin: 1.4rem auto 0;
+}
+
+/* ---------- map ---------- */
+
+#map-view {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.6rem 1.5rem 3rem;
+}
+
+#map {
+  height: min(72vh, 640px);
+  border-radius: var(--radius);
+  border: 1px solid var(--card-edge);
+  background: var(--dusk-2);
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: var(--dusk-1);
+  color: var(--ink);
+}
+
+.leaflet-popup-content a { color: var(--peach); }
+
+/* ---------- card extras: hooks, badges, picks ---------- */
+
+.hook {
+  margin: 0.1rem 0 0.3rem;
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--gold);
+  opacity: 0.92;
+}
+
+.badge-src {
+  left: auto;
+  right: 0.65rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.badge-cat { text-transform: lowercase; letter-spacing: 0.05em; }
+.badge-cat-move    { background: rgba(232, 131, 111, 0.8); }
+.badge-cat-connect { background: rgba(196, 152, 84, 0.85); }
+.badge-cat-expand  { background: rgba(157, 127, 209, 0.8); }
+.badge-cat-think   { background: rgba(63, 148, 130, 0.85); }
+.badge-cat-make    { background: rgba(217, 106, 158, 0.8); }
+
+.pick-mark {
+  position: absolute;
+  bottom: 0.55rem;
+  right: 0.65rem;
+  z-index: 1;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  text-shadow: 0 1px 6px rgba(20, 16, 31, 0.9);
+}
+
+/* ---------- submit box ---------- */
+
+.submit {
+  max-width: 560px;
+  margin: 1.5rem auto 0;
+  padding: 0 1.5rem;
+  text-align: center;
+}
+
+.submit-prompt {
+  margin: 0 0 0.55rem;
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  color: var(--ink-dim);
+}
+
+#submit-form {
+  display: flex;
+  gap: 0.45rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#submit-url {
+  flex: 1 1 260px;
+  height: 2.35rem;
+  padding: 0 1.05rem;
+  border-radius: 999px;
+  border: 1px solid var(--card-edge);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+#submit-url::placeholder { color: var(--ink-dim); font-style: italic; }
+
+#submit-url:focus {
+  outline: none;
+  border-color: var(--peach);
+}
+
+.submit-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  color: var(--mauve);
+  font-style: italic;
+}
+
+/* ---------- time-of-day theming ----------
+   The site at 8am is not the site at 11pm. Same bones, shifted light. */
+
+body.theme-dawn {
+  background: linear-gradient(175deg, #1a1828 0%, #2b2342 40%, #4a3358 75%, #6e4257 100%);
+}
+
+body.theme-dawn .blob-a { background: radial-gradient(circle, rgba(232, 169, 140, 0.5), transparent 65%); }
+body.theme-dawn .blob-b { background: radial-gradient(circle, rgba(227, 192, 141, 0.42), transparent 65%); }
+
+body.theme-day {
+  background: linear-gradient(175deg, #181426 0%, #251d3c 45%, #34254b 78%, #45304d 100%);
+}
+
+body.theme-night {
+  background: linear-gradient(175deg, #0d0a16 0%, #131022 45%, #1c1531 80%, #261b36 100%);
+}
+
+body.theme-night .blob { opacity: 0.35; }
+
+/* ---------- small screens: new rows ---------- */
+
+@media (max-width: 640px) {
+  .views { margin-top: 0.45rem; }
+  .view-tab { font-size: 0.88rem; padding: 0.26rem 0.8rem; }
+  .tonight-title { font-size: 1.8rem; }
+  #map { height: 65vh; }
 }
 
 /* ---------- quiet for those who prefer it ---------- */

@@ -5,10 +5,16 @@
 
   const state = {
     events: [],
-    source: "all",
+    view: "browse", // browse | tonight | map
+    category: "all",
+    area: "all",
+    day: "all", // "all" or a London YYYY-MM-DD
     freeOnly: false,
-    range: "week", // default window: next 7 days
     query: "",
+    geo: null, // {lat, lng} once granted
+    surprise: null, // event shown by "surprise me"
+    map: null,
+    mapLoaded: false,
   };
 
   const SOURCE_LABELS = {
@@ -18,6 +24,16 @@
     numinity: "Numinity",
     eventbrite: "Eventbrite",
     other: "elsewhere",
+  };
+
+  // Intent categories — the primary way in. Colors tint badges, pills
+  // and placeholder gradients.
+  const CATEGORIES = {
+    move:    { label: "move",    color: "#e8836f", colorB: "#d96a9e" },
+    connect: { label: "connect", color: "#e3c08d", colorB: "#e8836f" },
+    expand:  { label: "expand",  color: "#9d7fd1", colorB: "#6f5bb5" },
+    think:   { label: "think",   color: "#5fb5a2", colorB: "#3d8fa8" },
+    make:    { label: "make",    color: "#d96a9e", colorB: "#9d7fd1" },
   };
 
   // Candidate vocabulary for the "popular" tag cloud, curated from what
@@ -34,9 +50,6 @@
   ];
   const TAG_CLOUD_SIZE = 14;
   const TAG_MIN_COUNT = 3;
-  // Always-shown tags with a fixed position: {tag, before}. The tag is
-  // included regardless of its count and placed before the named tag
-  // (or appended if that tag isn't currently in the cloud).
   const PINNED_TAGS = [{ tag: "psychedelics", before: "dance" }];
 
   // Deterministic placeholder gradient for events without an image.
@@ -44,6 +57,11 @@
     ["#4f46e5", "#9333ea"], ["#0891b2", "#2563eb"], ["#059669", "#0d9488"],
     ["#d97706", "#dc2626"], ["#db2777", "#9333ea"], ["#475569", "#1e293b"],
   ];
+
+  const PICK_THRESHOLD = 75; // quality_score at or above ⇒ "✦ pick"
+  const WEEK_STRIP_DAYS = 14;
+
+  // ---------- data ----------
 
   async function fetchEvents() {
     const today = new Date();
@@ -74,35 +92,74 @@
     return res.json();
   }
 
-  function applyFilters() {
-    const q = state.query.trim().toLowerCase();
-    const now = new Date();
-    let until = null;
-    if (state.range === "today") {
-      until = new Date(now);
-      until.setHours(23, 59, 59, 999);
-    } else if (state.range === "week") {
-      until = new Date(now.getTime() + 7 * 864e5);
-    } else if (state.range === "month") {
-      until = new Date(now.getTime() + 30 * 864e5);
-    }
+  // ---------- time helpers ----------
 
+  function londonDate(d) {
+    // YYYY-MM-DD in Europe/London
+    return new Date(d).toLocaleDateString("en-CA", { timeZone: "Europe/London" });
+  }
+
+  function londonHour(d) {
+    return Number(
+      new Date(d).toLocaleTimeString("en-GB", {
+        hour: "numeric",
+        hour12: false,
+        timeZone: "Europe/London",
+      })
+    );
+  }
+
+  // ---------- filtering ----------
+
+  function baseFilter(e) {
+    if (state.category !== "all" && e.category !== state.category) return false;
+    if (state.area !== "all" && e.area !== state.area) return false;
+    if (state.freeOnly && !e.is_free) return false;
+    const q = state.query.trim().toLowerCase();
+    if (q && !matchesQuery(e, q)) return false;
+    return true;
+  }
+
+  function browseEvents() {
     return state.events.filter((e) => {
-      if (state.source !== "all" && e.source !== state.source) return false;
-      if (state.freeOnly && !e.is_free) return false;
-      if (until && new Date(e.start_at) > until) return false;
-      if (q && !matchesQuery(e, q)) return false;
+      if (!baseFilter(e)) return false;
+      if (state.day !== "all" && londonDate(e.start_at) !== state.day)
+        return false;
       return true;
     });
+  }
+
+  function tonightEvents() {
+    const now = Date.now();
+    const today = londonDate(now);
+    return state.events.filter((e) => {
+      if (!baseFilter(e)) return false;
+      if (londonDate(e.start_at) !== today) return false;
+      if (e.is_all_day) return true;
+      return new Date(e.start_at).getTime() >= now - 30 * 60000;
+    });
+  }
+
+  function mapEvents() {
+    const horizon = Date.now() + 30 * 864e5;
+    return state.events.filter(
+      (e) =>
+        baseFilter(e) &&
+        e.latitude != null &&
+        e.longitude != null &&
+        new Date(e.start_at).getTime() <= horizon
+    );
   }
 
   function haystack(e) {
     return [
       e.title,
       e.description,
+      e.hook,
       e.venue_name,
       e.organizer_name,
       (e.tags || []).join(" "),
+      (e.traits || []).join(" "),
     ]
       .filter(Boolean)
       .join(" ")
@@ -122,6 +179,56 @@
 
   function escapeRe(s) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  // ---------- controls ----------
+
+  function renderWeekStrip() {
+    const strip = document.getElementById("week-strip");
+    const chips = [chipEl("all days", "all")];
+    const now = new Date();
+    for (let i = 0; i < WEEK_STRIP_DAYS; i++) {
+      const d = new Date(now.getTime() + i * 864e5);
+      const key = londonDate(d);
+      let label;
+      if (i === 0) label = "today";
+      else if (i === 1) label = "tmrw";
+      else
+        label = d
+          .toLocaleDateString("en-GB", {
+            weekday: "short",
+            day: "numeric",
+            timeZone: "Europe/London",
+          })
+          .toLowerCase();
+      chips.push(chipEl(label, key));
+    }
+    strip.replaceChildren(...chips);
+
+    function chipEl(label, key) {
+      const btn = document.createElement("button");
+      btn.className = "chip day-chip" + (key === state.day ? " active" : "");
+      btn.dataset.day = key;
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        state.day = key;
+        state.surprise = null;
+        strip
+          .querySelectorAll(".day-chip")
+          .forEach((c) => c.classList.toggle("active", c === btn));
+        render();
+      });
+      return btn;
+    }
+  }
+
+  function maybeShowEnrichedControls() {
+    // These rows only make sense once the pipeline has classified events.
+    const withCategory = state.events.filter((e) => e.category).length;
+    if (withCategory >= 5)
+      document.getElementById("category-pills").hidden = false;
+    const withArea = state.events.filter((e) => e.area).length;
+    if (withArea >= 5) document.getElementById("area-chips").hidden = false;
   }
 
   function renderTagCloud() {
@@ -163,6 +270,13 @@
     row.hidden = false;
   }
 
+  function syncTagHighlight() {
+    const q = state.query.trim().toLowerCase();
+    document
+      .querySelectorAll("#tag-cloud .tag")
+      .forEach((t) => t.classList.toggle("active", t.textContent === q));
+  }
+
   function renderLastUpdated() {
     const latest = state.events.reduce(
       (max, e) => (e.last_seen_at > max ? e.last_seen_at : max),
@@ -187,17 +301,30 @@
     return `${days} day${days === 1 ? "" : "s"} ago`;
   }
 
-  function syncTagHighlight() {
-    const q = state.query.trim().toLowerCase();
-    document
-      .querySelectorAll("#tag-cloud .tag")
-      .forEach((t) => t.classList.toggle("active", t.textContent === q));
-  }
+  // ---------- rendering ----------
 
   function render() {
-    const container = document.getElementById("events");
-    const events = applyFilters();
+    const controls = document.getElementById("controls");
+    const main = document.getElementById("events");
+    const mapView = document.getElementById("map-view");
 
+    controls.hidden = state.view === "map";
+    mapView.hidden = state.view !== "map";
+    main.hidden = state.view === "map";
+
+    if (state.view === "map") {
+      renderMap();
+      return;
+    }
+    if (state.view === "tonight") {
+      renderTonight(main);
+      return;
+    }
+    renderBrowse(main);
+  }
+
+  function renderBrowse(container) {
+    const events = browseEvents();
     if (!events.length) {
       container.innerHTML =
         '<p class="status">nothing here — the city is resting. try a wider window.</p>';
@@ -252,6 +379,82 @@
     container.replaceChildren(frag);
   }
 
+  function renderTonight(container) {
+    requestGeo();
+    const events = tonightEvents();
+
+    const frag = document.createDocumentFragment();
+    const head = document.createElement("div");
+    head.className = "tonight-head";
+    const h2 = document.createElement("h2");
+    h2.className = "tonight-title";
+    h2.textContent = "tonight";
+    const sub = document.createElement("p");
+    sub.className = "tonight-sub";
+    sub.textContent = events.length
+      ? `${events.length} gathering${events.length === 1 ? "" : "s"} still to come in london`
+      : "";
+    const dice = document.createElement("button");
+    dice.className = "pill surprise";
+    dice.textContent = "surprise me";
+    dice.addEventListener("click", () => {
+      const pool = events.length ? events : weekPool();
+      if (!pool.length) return;
+      let pick = pool[Math.floor(Math.random() * pool.length)];
+      if (pool.length > 1 && state.surprise && pick === state.surprise) {
+        pick = pool[(pool.indexOf(pick) + 1) % pool.length];
+      }
+      state.surprise = pick;
+      render();
+    });
+    head.append(h2, sub, dice);
+    frag.appendChild(head);
+
+    if (state.surprise) {
+      const note = document.createElement("p");
+      note.className = "status surprise-note";
+      note.textContent = "the dice say —";
+      frag.appendChild(note);
+      const grid = document.createElement("div");
+      grid.className = "grid grid-solo";
+      grid.appendChild(card(state.surprise, 0));
+      frag.appendChild(grid);
+      const back = document.createElement("button");
+      back.className = "pill show-all";
+      back.textContent = "show everything tonight";
+      back.addEventListener("click", () => {
+        state.surprise = null;
+        render();
+      });
+      frag.appendChild(back);
+      container.replaceChildren(frag);
+      return;
+    }
+
+    if (!events.length) {
+      const empty = document.createElement("p");
+      empty.className = "status";
+      empty.textContent =
+        "the city is quiet tonight — try surprise me for the days ahead.";
+      frag.appendChild(empty);
+      container.replaceChildren(frag);
+      return;
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    events.forEach((e, i) => grid.appendChild(card(e, i)));
+    frag.appendChild(grid);
+    container.replaceChildren(frag);
+  }
+
+  function weekPool() {
+    const until = Date.now() + 7 * 864e5;
+    return state.events.filter(
+      (e) => baseFilter(e) && new Date(e.start_at).getTime() <= until
+    );
+  }
+
   function relativeLabel(startAt) {
     const fmt = (d) =>
       d.toLocaleDateString("en-GB", { timeZone: "Europe/London" });
@@ -261,6 +464,111 @@
     if (eventDay === fmt(new Date(now.getTime() + 864e5))) return "tomorrow —";
     return "";
   }
+
+  // ---------- map ----------
+
+  function renderMap() {
+    if (state.mapLoaded) {
+      drawMarkers();
+      return;
+    }
+    state.mapLoaded = true;
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(css);
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.onload = () => {
+      state.map = L.map("map", { scrollWheelZoom: true }).setView(
+        [51.5072, -0.1276],
+        11
+      );
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          maxZoom: 19,
+        }
+      ).addTo(state.map);
+      state.markerLayer = L.layerGroup().addTo(state.map);
+      drawMarkers();
+    };
+    script.onerror = () => {
+      document.getElementById("map").innerHTML =
+        '<p class="status">the map wouldn\'t load — try again later.</p>';
+    };
+    document.head.appendChild(script);
+  }
+
+  function drawMarkers() {
+    if (!state.map || !state.markerLayer) return;
+    state.markerLayer.clearLayers();
+    for (const e of mapEvents()) {
+      const color = (CATEGORIES[e.category] || { color: "#8e7aa8" }).color;
+      const marker = L.circleMarker([e.latitude, e.longitude], {
+        radius: 7,
+        color,
+        weight: 1.5,
+        fillColor: color,
+        fillOpacity: 0.65,
+      });
+      const when = new Date(e.start_at).toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        timeZone: "Europe/London",
+      });
+      marker.bindPopup(
+        `<strong>${escapeHtml(e.title)}</strong><br>` +
+          `${when} · ${escapeHtml(formatTime(e))}<br>` +
+          `${escapeHtml(e.venue_name || e.address || "")}<br>` +
+          `<a href="${escapeHtml(e.source_url)}" target="_blank" rel="noopener">open ↗</a>`
+      );
+      state.markerLayer.addLayer(marker);
+    }
+    // Leaflet mis-sizes when initialized while hidden
+    setTimeout(() => state.map.invalidateSize(), 60);
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? "").replace(
+      /[&<>"']/g,
+      (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+    );
+  }
+
+  // ---------- geolocation ----------
+
+  function requestGeo() {
+    if (state.geo !== null || !("geolocation" in navigator)) return;
+    state.geo = false; // only ask once
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        state.geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (state.view === "tonight") render();
+      },
+      () => {},
+      { maximumAge: 600000, timeout: 8000 }
+    );
+  }
+
+  function distanceKm(e) {
+    if (!state.geo || e.latitude == null || e.longitude == null) return null;
+    const R = 6371;
+    const dLat = ((e.latitude - state.geo.lat) * Math.PI) / 180;
+    const dLng = ((e.longitude - state.geo.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((state.geo.lat * Math.PI) / 180) *
+        Math.cos((e.latitude * Math.PI) / 180) *
+        Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // ---------- cards ----------
 
   function card(e, index) {
     const a = document.createElement("a");
@@ -279,17 +587,32 @@
       img.loading = "lazy";
       img.onerror = () => {
         img.remove();
-        paintPlaceholder(banner, e.title);
+        paintPlaceholder(banner, e);
       };
       banner.appendChild(img);
     } else {
-      paintPlaceholder(banner, e.title);
+      paintPlaceholder(banner, e);
+    }
+
+    if (e.category && CATEGORIES[e.category]) {
+      const cat = document.createElement("span");
+      cat.className = `badge badge-cat badge-cat-${e.category}`;
+      cat.textContent = CATEGORIES[e.category].label;
+      banner.appendChild(cat);
     }
 
     const badge = document.createElement("span");
-    badge.className = `badge badge-${e.source}`;
+    badge.className = `badge badge-src badge-${e.source}`;
     badge.textContent = SOURCE_LABELS[e.source] || e.source;
     banner.appendChild(badge);
+
+    if ((e.quality_score ?? 0) >= PICK_THRESHOLD) {
+      const pick = document.createElement("span");
+      pick.className = "pick-mark";
+      pick.textContent = "✦ pick";
+      pick.title = "one of the richer listings this week";
+      banner.appendChild(pick);
+    }
 
     const body = document.createElement("div");
     body.className = "card-body";
@@ -306,10 +629,21 @@
     title.textContent = e.title;
     body.appendChild(title);
 
+    if (e.hook) {
+      const hook = document.createElement("p");
+      hook.className = "hook";
+      hook.textContent = e.hook;
+      body.appendChild(hook);
+    }
+
     if (e.venue_name || e.address) {
       const venue = document.createElement("p");
       venue.className = "venue";
-      venue.textContent = e.venue_name || e.address;
+      let where = e.venue_name || e.address;
+      const km = distanceKm(e);
+      if (km != null)
+        where += ` · ${km < 10 ? km.toFixed(1) : Math.round(km)} km away`;
+      venue.textContent = where;
       body.appendChild(venue);
     }
 
@@ -334,9 +668,14 @@
         meta.appendChild(document.createTextNode(" · "));
       meta.appendChild(document.createTextNode(e.organizer_name));
     }
+    if (e.area) {
+      if (meta.childNodes.length)
+        meta.appendChild(document.createTextNode(" · "));
+      meta.appendChild(document.createTextNode(e.area));
+    }
     if (meta.childNodes.length) body.appendChild(meta);
 
-    if (e.description) {
+    if (!e.hook && e.description) {
       const blurb = document.createElement("p");
       blurb.className = "blurb";
       blurb.textContent = e.description.replace(/\s+/g, " ").slice(0, 220);
@@ -348,24 +687,23 @@
   }
 
   function timeOfDayClass(e) {
-    const hour = Number(
-      new Date(e.start_at).toLocaleTimeString("en-GB", {
-        hour: "numeric",
-        hour12: false,
-        timeZone: "Europe/London",
-      })
-    );
+    const hour = londonHour(e.start_at);
     if (hour < 12) return "dot-morning";
     if (hour < 17) return "dot-afternoon";
     return "dot-evening";
   }
 
-  function paintPlaceholder(banner, title) {
-    const [c1, c2] = GRADIENTS[hash(title) % GRADIENTS.length];
+  function paintPlaceholder(banner, e) {
+    let c1, c2;
+    if (e.category && CATEGORIES[e.category]) {
+      ({ color: c1, colorB: c2 } = CATEGORIES[e.category]);
+    } else {
+      [c1, c2] = GRADIENTS[hash(e.title || "?") % GRADIENTS.length];
+    }
     banner.style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
     const span = document.createElement("span");
     span.className = "placeholder-initial";
-    span.textContent = (title || "?").trim().charAt(0).toUpperCase();
+    span.textContent = (e.title || "?").trim().charAt(0).toUpperCase();
     banner.appendChild(span);
   }
 
@@ -388,20 +726,94 @@
     return `${start} – ${end}`;
   }
 
+  // ---------- submissions ----------
+
+  function bindSubmitBox() {
+    const form = document.getElementById("submit-form");
+    const note = document.getElementById("submit-note");
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const input = document.getElementById("submit-url");
+      const url = input.value.trim();
+      if (!url) return;
+      note.hidden = false;
+      note.textContent = "sending…";
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
+          method: "POST",
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({ url }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        input.value = "";
+        note.textContent =
+          "thank you — if it checks out, it appears after the next sweep.";
+      } catch {
+        note.textContent = "that didn't go through — try again in a bit.";
+      }
+    });
+  }
+
+  // ---------- theming ----------
+
+  function applyTimeTheme() {
+    const hour = new Date().getHours();
+    const theme =
+      hour >= 5 && hour < 11
+        ? "dawn"
+        : hour >= 11 && hour < 17
+          ? "day"
+          : hour >= 17 && hour < 22
+            ? "dusk"
+            : "night";
+    document.body.classList.add(`theme-${theme}`);
+  }
+
+  // ---------- wiring ----------
+
   function bindControls() {
     document.getElementById("search").addEventListener("input", (ev) => {
       state.query = ev.target.value;
+      state.surprise = null;
       syncTagHighlight();
       render();
     });
 
-    document.getElementById("source-pills").addEventListener("click", (ev) => {
-      const btn = ev.target.closest("button[data-source]");
+    document.getElementById("view-tabs").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-view]");
       if (!btn) return;
-      state.source = btn.dataset.source;
+      state.view = btn.dataset.view;
+      state.surprise = null;
       document
-        .querySelectorAll("#source-pills .pill")
+        .querySelectorAll("#view-tabs .view-tab")
+        .forEach((t) => t.classList.toggle("active", t === btn));
+      render();
+    });
+
+    document.getElementById("category-pills").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-category]");
+      if (!btn) return;
+      state.category = btn.dataset.category;
+      state.surprise = null;
+      document
+        .querySelectorAll("#category-pills .pill")
         .forEach((p) => p.classList.toggle("active", p === btn));
+      render();
+    });
+
+    document.getElementById("area-chips").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-area]");
+      if (!btn) return;
+      state.area = btn.dataset.area;
+      state.surprise = null;
+      document
+        .querySelectorAll("#area-chips .chip")
+        .forEach((c) => c.classList.toggle("active", c === btn));
       render();
     });
 
@@ -410,18 +822,16 @@
       ev.target.classList.toggle("active", state.freeOnly);
       render();
     });
-
-    document.getElementById("range").addEventListener("change", (ev) => {
-      state.range = ev.target.value;
-      render();
-    });
   }
 
   async function init() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js").catch(() => {});
     }
+    applyTimeTheme();
     bindControls();
+    bindSubmitBox();
+    renderWeekStrip();
     if (SUPABASE_URL.startsWith("YOUR_")) {
       document.getElementById("events").innerHTML =
         '<p class="status">set SUPABASE_URL and SUPABASE_ANON_KEY in web/config.js</p>';
@@ -429,6 +839,7 @@
     }
     try {
       state.events = await fetchEvents();
+      maybeShowEnrichedControls();
       renderTagCloud();
       renderLastUpdated();
       render();

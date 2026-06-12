@@ -13,6 +13,7 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "pydantic>=2.0",
     "click>=8.1",
+    "anthropic>=0.95",
 ]
 
 [tool.setuptools.packages.find]

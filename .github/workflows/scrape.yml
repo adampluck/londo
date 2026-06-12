@@ -9,6 +9,11 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -23,8 +28,31 @@ jobs:
       - name: Install
         run: pip install -e .
 
-      - name: Scrape and upsert
+      - name: Scrape, enrich and upsert
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: londo scrape --store supabase
+
+      # Rebuild the static site (per-event SEO/OG pages) from fresh data
+      - name: Build site
+        run: python3 scripts/build_site.py build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    needs: scrape
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>londo — what's on, in between</title>
   <meta name="theme-color" content="#14101f">
-  <meta name="description" content="A calm little window onto London's gatherings — all in one place.">
+  <meta name="description" content="In-person London gatherings that connect and inspire — ecstatic dance to AI salons, breathwork to philosophy nights.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/favicon.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -26,32 +26,37 @@
 
   <header class="topbar">
     <h1>londo</h1>
+    <nav class="views" id="view-tabs" aria-label="views">
+      <button class="view-tab active" data-view="browse">browse</button>
+      <button class="view-tab" data-view="tonight">tonight</button>
+      <button class="view-tab" data-view="map">map</button>
+    </nav>
   </header>
 
-  <div class="controls">
+  <div class="controls" id="controls">
     <div class="controls-row">
       <input id="search" type="search" placeholder="search for something…" autocomplete="off">
       <button class="pill" id="free-toggle">free only</button>
-      <label class="select-wrap" for="range">
-        <select id="range">
-          <option value="today">today</option>
-          <option value="week" selected>next 7 days</option>
-          <option value="month">next 30 days</option>
-          <option value="all">everything upcoming</option>
-        </select>
-        <svg class="chevron" viewBox="0 0 12 8" width="12" height="8" aria-hidden="true">
-          <path d="M1 1.5 L6 6.5 L11 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </label>
     </div>
-    <div class="controls-row pills" id="source-pills">
-      <button class="pill active" data-source="all">everywhere</button>
-      <button class="pill" data-source="dandelion">dandelion</button>
-      <button class="pill" data-source="luma">luma</button>
-      <button class="pill" data-source="newspeak">newspeak house</button>
-      <button class="pill" data-source="numinity">numinity</button>
-      <button class="pill" data-source="eventbrite">eventbrite</button>
-      <button class="pill" data-source="other">elsewhere</button>
+    <div class="controls-row pills" id="category-pills" hidden>
+      <button class="pill active" data-category="all">everything</button>
+      <button class="pill pill-move" data-category="move">move</button>
+      <button class="pill pill-connect" data-category="connect">connect</button>
+      <button class="pill pill-expand" data-category="expand">expand</button>
+      <button class="pill pill-think" data-category="think">think</button>
+      <button class="pill pill-make" data-category="make">make</button>
+    </div>
+    <div class="controls-row pills areas" id="area-chips" hidden>
+      <span class="tag-label">around:</span>
+      <button class="chip active" data-area="all">anywhere</button>
+      <button class="chip" data-area="central">central</button>
+      <button class="chip" data-area="east">east</button>
+      <button class="chip" data-area="north">north</button>
+      <button class="chip" data-area="south">south</button>
+      <button class="chip" data-area="west">west</button>
+    </div>
+    <div class="controls-row week-strip" id="week-strip">
+      <!-- day chips rendered from live data -->
     </div>
     <div class="controls-row tag-row" id="tag-cloud" hidden>
       <span class="tag-label">popular:</span>
@@ -61,13 +66,28 @@
 
   <main id="events"><p class="status">gathering events…</p></main>
 
+  <section id="map-view" hidden>
+    <div id="map"></div>
+  </section>
+
+  <section class="submit" id="submit-box">
+    <p class="submit-prompt">know a gathering we don't?</p>
+    <form id="submit-form">
+      <input id="submit-url" type="url" required placeholder="paste an event link…" autocomplete="off">
+      <button type="submit" class="pill">send it in</button>
+    </form>
+    <p class="submit-note" id="submit-note" hidden></p>
+  </section>
+
   <footer>
     <p id="last-updated" hidden></p>
-    <p>stitched nightly from
+    <p>stitched from
        <a href="https://dandelion.events">dandelion</a> ·
        <a href="https://luma.com/london">luma</a> ·
        <a href="https://newspeak.house/#events">newspeak house</a> ·
-       <a href="https://www.eventbrite.co.uk/o/numinity-33797188771">numinity</a></p>
+       eventbrite ·
+       <a href="https://www.psycalendar.com">psycalendar</a> ·
+       and the people of london</p>
   </footer>
 
   <script src="config.js"></script>
