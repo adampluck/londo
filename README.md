@@ -34,9 +34,13 @@ canonical record.
 After dedupe, each new canonical event gets one Claude Haiku call
 (`londo/enrich.py`) assigning:
 
-- **category** — the frontend's primary navigation: `move` (dance,
-  movement), `connect` (relating, socials), `expand` (breathwork,
-  psychedelics, ceremony), `think` (AI, talks, salons), `make` (workshops)
+- **category** — the event's *form*: `move` (dance, movement), `connect`
+  (relating, socials), `expand` (breathwork, psychedelics, ceremony),
+  `think` (AI, talks, salons), `make` (workshops)
+- **topics** — 1-3 subject/scene labels from a fixed vocabulary
+  (psychedelics, consciousness, connection & intimacy, tech & ai,
+  startups & work, …): what the event is *about*. Powers the topic chips
+  and the one-tap tech / non-tech lens
 - **traits** — fixed vocabulary (beginner-friendly, sober, outdoors, …)
 - **hook** — a one-line editorial sell shown on cards and shared pages
 - **quality_score** — 0-100 listing completeness; ≥75 gets a "✦ pick" mark
@@ -48,18 +52,20 @@ in the area when the address has neither.
 
 ## Frontend
 
-Three views: **browse** (category pills, area chips, a Mon–Sun week strip,
-search, tag cloud), **tonight** (what's still to come today, distance away
-when location is allowed, and a "surprise me" dice roll), and **map**
-(Leaflet, category-coloured markers). The page palette shifts with the time
-of day. Source is a small badge; the way in is intent, not plumbing.
+Three views: **browse** (category pills, topic chips, tech/non-tech lens,
+area chips, a Mon–Sun week strip, search), **tonight** (what's still to
+come today and a "surprise me" dice roll), and **map** (Leaflet,
+category-coloured markers, obeying the same filters). The page palette
+shifts with the time of day. Source is a small badge; the way in is
+intent and subject, not plumbing.
 
 ## Static pages & SEO
 
 The site is client-rendered, so `scripts/build_site.py` (stdlib only) also
-emits a static page per event (`/e/<source>-<id>.html`) and per category
-(`/c/<category>.html`) with OG tags, Twitter cards, schema.org JSON-LD and a
-sitemap — WhatsApp unfurls and Google both see real content. Both workflows
+emits a static page per event (`/e/<source>-<id>.html`), per category
+(`/c/<category>.html`) and per topic (`/t/<topic>.html`) with OG tags,
+Twitter cards, schema.org JSON-LD and a sitemap — WhatsApp unfurls and
+Google both see real content. Both workflows
 deploy this build; the scrape regenerates it every 6 hours.
 
 ## Setup

@@ -28,6 +28,22 @@ CATEGORIES = {
     "make": ("make", "Workshops, crafts & creative events in London"),
 }
 
+# Subject topics (londo/enrich.py TOPIC_VOCAB): key -> (slug, SEO title)
+TOPICS = {
+    "psychedelics": ("psychedelics", "Psychedelics events in London"),
+    "consciousness": ("consciousness", "Consciousness events in London"),
+    "connection & intimacy": ("connection", "Human connection & intimacy events in London"),
+    "tech & ai": ("tech-ai", "Tech & AI events in London"),
+    "startups & work": ("startups", "Startup & founders events in London"),
+    "arts & creativity": ("arts", "Arts & creativity events in London"),
+    "music & sound": ("music", "Music & sound events in London"),
+    "nature & outdoors": ("nature", "Nature & outdoors events in London"),
+    "healing & wellbeing": ("healing", "Healing & wellbeing events in London"),
+    "spirituality & ritual": ("spirituality", "Spirituality & ritual events in London"),
+    "society & politics": ("society", "Society & politics events in London"),
+    "science & ideas": ("ideas", "Science & ideas events in London"),
+}
+
 
 def read_config() -> tuple[str, str]:
     text = (ROOT / "web" / "config.js").read_text()
@@ -237,9 +253,8 @@ def event_page(event: dict) -> str:
     )
 
 
-def category_page(key: str, events: list[dict]) -> str:
-    label, seo_title = CATEGORIES[key]
-    canonical = f"{BASE_URL}/c/{key}.html"
+def listing_page(label: str, seo_title: str, canonical: str,
+                 events: list[dict]) -> str:
     items = "".join(
         f"""
     <li style="margin:1.1rem 0;list-style:none">
@@ -278,12 +293,26 @@ def build(outdir: Path) -> None:
         urls.append(f"{BASE_URL}/e/{slug(event)}.html")
 
     (outdir / "c").mkdir()
-    for key in CATEGORIES:
+    for key, (label, seo_title) in CATEGORIES.items():
         cat_events = [e for e in events if e.get("category") == key]
         if not cat_events:
             continue
-        (outdir / "c" / f"{key}.html").write_text(category_page(key, cat_events))
-        urls.append(f"{BASE_URL}/c/{key}.html")
+        canonical = f"{BASE_URL}/c/{key}.html"
+        (outdir / "c" / f"{key}.html").write_text(
+            listing_page(label, seo_title, canonical, cat_events)
+        )
+        urls.append(canonical)
+
+    (outdir / "t").mkdir()
+    for key, (slug_, seo_title) in TOPICS.items():
+        topic_events = [e for e in events if key in (e.get("topics") or [])]
+        if not topic_events:
+            continue
+        canonical = f"{BASE_URL}/t/{slug_}.html"
+        (outdir / "t" / f"{slug_}.html").write_text(
+            listing_page(key, seo_title, canonical, topic_events)
+        )
+        urls.append(canonical)
 
     today = datetime.now(timezone.utc).date().isoformat()
     sitemap = (

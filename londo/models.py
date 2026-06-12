@@ -62,6 +62,7 @@ class Event(BaseModel):
     # Enrichment: LLM classification (category/traits/hook/quality) and
     # deterministic area pass — see londo/enrich.py.
     category: str | None = None  # move | connect | expand | think | make
+    topics: list[str] = Field(default_factory=list)  # subject/scene labels
     traits: list[str] = Field(default_factory=list)
     hook: str | None = None
     quality_score: int | None = None

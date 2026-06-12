@@ -229,12 +229,7 @@ body {
   pointer-events: none;
 }
 
-/* ---------- popular tags: quiet little doorways ---------- */
-
-.tag-row {
-  gap: 0.15rem 0.55rem;
-  min-height: 1.6rem;
-}
+/* ---------- row labels ---------- */
 
 .tag-label {
   font-size: 0.78rem;
@@ -242,30 +237,6 @@ body {
   font-style: italic;
   flex: none;
   margin-right: 0.15rem;
-}
-
-.tag {
-  border: none;
-  background: none;
-  padding: 0.15rem 0.3rem;
-  font-family: "Fraunces", Georgia, serif;
-  font-style: italic;
-  color: var(--mauve);
-  cursor: pointer;
-  white-space: nowrap;
-  border-radius: 8px;
-  transition: color 0.2s ease, background 0.2s ease, transform 0.15s ease;
-}
-
-.tag.size-1 { font-size: 0.82rem; opacity: 0.75; }
-.tag.size-2 { font-size: 0.95rem; opacity: 0.88; }
-.tag.size-3 { font-size: 1.08rem; }
-
-.tag:hover { color: var(--peach); transform: translateY(-1px); }
-
-.tag.active {
-  color: var(--gold);
-  background: rgba(227, 192, 141, 0.12);
 }
 
 /* ---------- events ---------- */
@@ -517,10 +488,6 @@ footer a:hover { color: var(--gold); }
     padding-top: 2.2rem;
   }
 
-  .tag.size-1 { font-size: 0.8rem; }
-  .tag.size-2 { font-size: 0.9rem; }
-  .tag.size-3 { font-size: 1rem; }
-
   /* day headings float at the top while scrolling that day's events */
   .day-group { margin-top: 1.4rem; }
 
@@ -536,17 +503,6 @@ footer a:hover { color: var(--gold); }
   }
 }
 
-/* desktop: tags stay on one line, fading out instead of wrapping */
-@media (min-width: 641px) {
-  .tag-row {
-    flex-wrap: nowrap;
-    overflow: hidden;
-    mask-image: linear-gradient(to right, black calc(100% - 56px), transparent);
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 56px), transparent);
-  }
-
-  .tag { flex: none; }
-}
 
 /* ---------- view tabs ---------- */
 
@@ -610,6 +566,37 @@ footer a:hover { color: var(--gold); }
 .chip.active {
   color: var(--ink);
   background: rgba(142, 122, 168, 0.22);
+}
+
+.topics { gap: 0.15rem 0.25rem; }
+
+.topic-chip {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-size: 0.84rem;
+}
+
+.topic-chip.active {
+  color: var(--gold);
+  background: rgba(227, 192, 141, 0.14);
+}
+
+/* the tech / non-tech lens: cycles all -> tech only -> beyond tech */
+
+.lens {
+  border-style: dashed;
+  border-color: rgba(142, 122, 168, 0.55);
+}
+
+.lens.active {
+  border-color: #5fb5a2;
+  background: rgba(95, 181, 162, 0.16);
+  color: var(--ink);
+}
+
+.lens.active.lens-beyond {
+  border-color: var(--mauve);
+  background: rgba(157, 127, 209, 0.18);
 }
 
 .week-strip {

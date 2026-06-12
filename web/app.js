@@ -7,6 +7,8 @@
     events: [],
     view: "browse", // browse | tonight | map
     category: "all",
+    topic: "all",
+    lens: "all", // all | tech | beyond
     area: "all",
     day: "all", // "all" or a London YYYY-MM-DD
     freeOnly: false,
@@ -35,21 +37,21 @@
     make:    { label: "make",    color: "#d96a9e", colorB: "#9d7fd1" },
   };
 
-  // Candidate vocabulary for the "popular" tag cloud, curated from what
-  // actually recurs in the data. Tags are search shortcuts, not labels:
-  // only those matching enough currently-loaded events are shown.
-  const TAG_VOCAB = [
-    "community", "connection", "ai", "art", "healing", "meditation",
-    "breathwork", "nature", "ritual", "dance", "ecstatic dance", "ceremony",
-    "tech", "movement", "cacao", "embodiment", "music", "sound healing",
-    "sound bath", "founders", "spiritual", "retreat", "wellbeing", "somatic",
-    "networking", "running", "kundalini", "yoga", "tantra", "politics",
-    "intimacy", "men's", "women's", "authentic relating", "hackathon",
-    "book club", "singing", "comedy", "poetry", "climate",
+  // Subject/scene labels assigned by enrichment (londo/enrich.py
+  // TOPIC_VOCAB) — what an event is about, independent of its form.
+  const TOPICS = [
+    "psychedelics", "consciousness", "connection & intimacy", "tech & ai",
+    "startups & work", "arts & creativity", "music & sound",
+    "nature & outdoors", "healing & wellbeing", "spirituality & ritual",
+    "society & politics", "science & ideas",
   ];
-  const TAG_CLOUD_SIZE = 14;
-  const TAG_MIN_COUNT = 3;
-  const PINNED_TAGS = [{ tag: "psychedelics", before: "dance" }];
+  // the tech / non-tech lens: one tap to see (or hide) the tech scene
+  const TECH_TOPICS = ["tech & ai", "startups & work"];
+  const LENS_LABELS = {
+    all: "tech & beyond",
+    tech: "tech only",
+    beyond: "beyond tech",
+  };
 
   // Deterministic placeholder gradient for events without an image.
   const GRADIENTS = [
@@ -110,8 +112,16 @@
 
   // ---------- filtering ----------
 
+  function isTech(e) {
+    return (e.topics || []).some((t) => TECH_TOPICS.includes(t));
+  }
+
   function baseFilter(e) {
     if (state.category !== "all" && e.category !== state.category) return false;
+    if (state.topic !== "all" && !(e.topics || []).includes(state.topic))
+      return false;
+    if (state.lens === "tech" && !isTech(e)) return false;
+    if (state.lens === "beyond" && isTech(e)) return false;
     if (state.area !== "all" && e.area !== state.area) return false;
     if (state.freeOnly && !e.is_free) return false;
     const q = state.query.trim().toLowerCase();
@@ -155,6 +165,7 @@
       e.venue_name,
       e.organizer_name,
       (e.tags || []).join(" "),
+      (e.topics || []).join(" "),
       (e.traits || []).join(" "),
     ]
       .filter(Boolean)
@@ -225,52 +236,46 @@
       document.getElementById("category-pills").hidden = false;
     const withArea = state.events.filter((e) => e.area).length;
     if (withArea >= 5) document.getElementById("area-chips").hidden = false;
+    const withTopics = state.events.filter(
+      (e) => (e.topics || []).length
+    ).length;
+    if (withTopics >= 5) {
+      renderTopicChips();
+      document.getElementById("topic-chips").hidden = false;
+      document.getElementById("lens-toggle").hidden = false;
+    }
   }
 
-  function renderTagCloud() {
-    const row = document.getElementById("tag-cloud");
-    const countFor = (tag) =>
-      state.events.filter((e) => matchesQuery(e, tag)).length;
+  function renderTopicChips() {
+    const row = document.getElementById("topic-chips");
+    const countFor = (topic) =>
+      state.events.filter((e) => (e.topics || []).includes(topic)).length;
 
-    const pinned = PINNED_TAGS.map((p) => p.tag);
-    const counts = TAG_VOCAB.filter((t) => !pinned.includes(t))
-      .map((tag) => [tag, countFor(tag)])
-      .filter(([, n]) => n >= TAG_MIN_COUNT)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, TAG_CLOUD_SIZE - PINNED_TAGS.length);
-
-    for (const { tag, before } of PINNED_TAGS) {
-      const at = counts.findIndex(([t]) => t === before);
-      counts.splice(at === -1 ? counts.length : at, 0, [tag, countFor(tag)]);
-    }
-
-    if (!counts.length) return;
-    const max = Math.max(...counts.map(([, n]) => n), 1);
-
-    for (const [tag, n] of counts) {
-      const btn = document.createElement("button");
-      const size = n > max * 0.6 ? 3 : n > max * 0.25 ? 2 : 1;
-      btn.className = `tag size-${size}`;
-      btn.textContent = tag;
+    const chips = [chip("anything", "all")];
+    for (const topic of TOPICS) {
+      const n = countFor(topic);
+      if (n < 2) continue; // don't offer near-empty doorways
+      const btn = chip(topic, topic);
       btn.title = `${n} events`;
+      chips.push(btn);
+    }
+    row.replaceChildren(row.firstElementChild, ...chips); // keep the label
+
+    function chip(label, key) {
+      const btn = document.createElement("button");
+      btn.className = "chip topic-chip" + (key === state.topic ? " active" : "");
+      btn.dataset.topic = key;
+      btn.textContent = label;
       btn.addEventListener("click", () => {
-        const search = document.getElementById("search");
-        const active = state.query.trim().toLowerCase() === tag;
-        search.value = active ? "" : tag;
-        state.query = search.value;
-        syncTagHighlight();
+        state.topic = key;
+        state.surprise = null;
+        row
+          .querySelectorAll(".topic-chip")
+          .forEach((c) => c.classList.toggle("active", c === btn));
         render();
       });
-      row.appendChild(btn);
+      return btn;
     }
-    row.hidden = false;
-  }
-
-  function syncTagHighlight() {
-    const q = state.query.trim().toLowerCase();
-    document
-      .querySelectorAll("#tag-cloud .tag")
-      .forEach((t) => t.classList.toggle("active", t.textContent === q));
   }
 
   function renderLastUpdated() {
@@ -769,7 +774,16 @@
     document.getElementById("search").addEventListener("input", (ev) => {
       state.query = ev.target.value;
       state.surprise = null;
-      syncTagHighlight();
+      render();
+    });
+
+    document.getElementById("lens-toggle").addEventListener("click", (ev) => {
+      const order = ["all", "tech", "beyond"];
+      state.lens = order[(order.indexOf(state.lens) + 1) % order.length];
+      state.surprise = null;
+      ev.target.textContent = LENS_LABELS[state.lens];
+      ev.target.classList.toggle("active", state.lens !== "all");
+      ev.target.classList.toggle("lens-beyond", state.lens === "beyond");
       render();
     });
 
@@ -831,7 +845,6 @@
     try {
       state.events = await fetchEvents();
       maybeShowEnrichedControls();
-      renderTagCloud();
       renderLastUpdated();
       render();
     } catch (err) {

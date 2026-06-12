@@ -50,7 +50,8 @@ class SupabaseStore:
     # Columns added by migrations/2026-06-12_enrichment_and_submissions.sql.
     # If that migration hasn't been applied yet, upserts retry without them.
     ENRICHMENT_COLUMNS = (
-        "category", "traits", "hook", "quality_score", "area", "enriched_at",
+        "category", "topics", "traits", "hook", "quality_score", "area",
+        "enriched_at",
     )
 
     def upsert_events(self, events: list[Event]) -> int:
@@ -216,6 +217,7 @@ def _event_to_row(event: Event) -> dict:
         "organizer_name": event.organizer.name if event.organizer else None,
         "organizer_url": event.organizer.url if event.organizer else None,
         "category": event.category,
+        "topics": event.topics,
         "traits": event.traits,
         "hook": event.hook,
         "quality_score": event.quality_score,

@@ -34,6 +34,7 @@ create table if not exists public.events (
 
   -- enrichment (LLM classification + deterministic area pass)
   category      text,            -- move | connect | expand | think | make
+  topics        text[] not null default '{}',  -- subject/scene labels
   traits        text[] not null default '{}',
   hook          text,            -- one-line editorial hook
   quality_score smallint,        -- 0-100

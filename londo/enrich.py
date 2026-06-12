@@ -17,6 +17,15 @@ MODEL = "claude-haiku-4-5"
 # Intent categories — the frontend's primary navigation.
 CATEGORIES = ("move", "connect", "expand", "think", "make")
 
+# Subject/scene labels — what the event is *about*, independent of form.
+# Also powers the tech / non-tech lens (see web/app.js TECH_TOPICS).
+TOPIC_VOCAB = (
+    "psychedelics", "consciousness", "connection & intimacy", "tech & ai",
+    "startups & work", "arts & creativity", "music & sound",
+    "nature & outdoors", "healing & wellbeing", "spirituality & ritual",
+    "society & politics", "science & ideas",
+)
+
 TRAIT_VOCAB = (
     "beginner-friendly", "sober", "outdoors", "touch-based", "talky",
     "embodied", "ceremony", "music", "workshop", "late-night",
@@ -37,6 +46,12 @@ Assign exactly one category:
 
 Pick the category matching the PRIMARY activity a visitor would do there.
 
+Topics: pick 1-3 that describe what the event is ABOUT (its subject and
+scene, not its format), only from: {", ".join(TOPIC_VOCAB)}.
+A founders' dinner is "startups & work"; a philosophy salon is
+"science & ideas"; an ecstatic dance is "music & sound" and maybe
+"spirituality & ritual" — never force a topic that doesn't clearly fit.
+
 Traits: pick 0-4 that clearly apply, only from: {", ".join(TRAIT_VOCAB)}.
 
 Hook: one vivid sentence (max 110 characters) selling why to go. Concrete and
@@ -54,6 +69,7 @@ west), judged from the venue name and address. null if you can't tell.\
 
 class Enrichment(BaseModel):
     category: Literal["move", "connect", "expand", "think", "make"]
+    topics: list[str] = Field(default_factory=list)
     traits: list[str] = Field(default_factory=list)
     hook: str
     quality_score: int
@@ -88,8 +104,16 @@ def enrich_events(
         if event.duplicate_of:
             continue  # hidden in the UI; don't spend tokens on it
         prior = existing.get((event.source, event.source_id))
-        if prior and prior.get("category") and prior.get("hook"):
+        # topics arrived later than the other fields: their absence forces
+        # one re-enrichment of older rows, then reuse resumes
+        if (
+            prior
+            and prior.get("category")
+            and prior.get("hook")
+            and prior.get("topics")
+        ):
             event.category = prior["category"]
+            event.topics = prior["topics"]
             event.traits = prior.get("traits") or []
             event.hook = prior["hook"]
             event.quality_score = prior.get("quality_score")
@@ -111,6 +135,7 @@ def enrich_events(
             continue
         calls += 1
         event.category = enrichment.category
+        event.topics = [t for t in enrichment.topics if t in TOPIC_VOCAB][:3]
         event.traits = [t for t in enrichment.traits if t in TRAIT_VOCAB]
         event.hook = enrichment.hook[:140].strip()
         event.quality_score = max(0, min(100, enrichment.quality_score))
