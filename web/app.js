@@ -50,7 +50,6 @@
   // drum rows, top to bottom; default "all" sits centred so both
   // neighbours peek into view
   const LENS_ORDER = ["tech", "all", "beyond"];
-  const DRUM_ROW_REM = 1.55;
 
   // Deterministic placeholder gradient for events without an image.
   const GRADIENTS = [
@@ -256,6 +255,7 @@
       renderTopicTokens();
       document.getElementById("topic-unit").hidden = false;
       document.getElementById("lens-unit").hidden = false;
+      setLens(state.lens); // drum was hidden until now; position the scroll
       startTapeDrift();
     }
   }
@@ -302,22 +302,34 @@
     });
   }
 
-  function setLens(lens) {
-    state.lens = lens;
-    const i = LENS_ORDER.indexOf(lens);
-    const tape = document.getElementById("lens-tape");
-    [...tape.children].forEach((row, idx) =>
+  function drumRowH() {
+    const row = document.querySelector("#lens-tape .drum-row");
+    return row ? row.offsetHeight : 0;
+  }
+
+  function markLensRow(i) {
+    [...document.getElementById("lens-tape").children].forEach((row, idx) =>
       row.classList.toggle("center", idx === i + 1)
     );
-    tape.style.transform = `translateY(${-i * DRUM_ROW_REM}rem)`;
+  }
+
+  function setLens(lens, smooth = false) {
+    state.lens = lens;
+    const i = LENS_ORDER.indexOf(lens);
+    markLensRow(i);
+    document.getElementById("lens-drum").scrollTo({
+      top: i * drumRowH(),
+      behavior: smooth ? "smooth" : "auto",
+    });
   }
 
   function syncCompass() {
     document
       .querySelectorAll("#compass .zone")
       .forEach((z) => z.classList.toggle("lit", z.dataset.area === state.area));
-    document.getElementById("compass-readout").textContent =
-      state.area === "all" ? "anywhere" : state.area;
+    document
+      .querySelectorAll("#area-labels .area-label")
+      .forEach((l) => l.classList.toggle("lit", l.dataset.area === state.area));
   }
 
   // drift the topic tape gently until first touch — a quiet hint that
@@ -391,6 +403,16 @@
   }
 
   // ---------- rendering ----------
+
+  function setView(view) {
+    state.view = view;
+    state.surprise = null;
+    document
+      .querySelectorAll(".view-key")
+      .forEach((k) => k.classList.toggle("lit", k.dataset.view === view));
+    countView(view);
+    render();
+  }
 
   function render() {
     const main = document.getElementById("events");
@@ -865,29 +887,41 @@
       render();
     });
 
-    // lens drum: tap to flick to the next stop
-    document.getElementById("lens-drum").addEventListener("click", () => {
+    // lens drum: tap flicks to the next stop, or scroll/swipe it directly
+    const drum = document.getElementById("lens-drum");
+    drum.addEventListener("click", () => {
       const next =
         LENS_ORDER[(LENS_ORDER.indexOf(state.lens) + 1) % LENS_ORDER.length];
       state.surprise = null;
-      setLens(next);
+      setLens(next, true);
       render();
     });
+    let drumTimer;
+    drum.addEventListener(
+      "scroll",
+      () => {
+        clearTimeout(drumTimer);
+        drumTimer = setTimeout(() => {
+          const h = drumRowH();
+          if (!h) return;
+          const i = Math.max(0, Math.min(2, Math.round(drum.scrollTop / h)));
+          if (LENS_ORDER[i] !== state.lens) {
+            state.lens = LENS_ORDER[i];
+            state.surprise = null;
+            markLensRow(i);
+            render();
+          }
+        }, 90);
+      },
+      { passive: true }
+    );
 
     // view keys live in the header (desktop) and bottom bar (mobile)
     for (const navId of ["view-tabs", "bottom-tabs"]) {
       document.getElementById(navId).addEventListener("click", (ev) => {
         const btn = ev.target.closest("button[data-view]");
         if (!btn) return;
-        state.view = btn.dataset.view;
-        state.surprise = null;
-        document
-          .querySelectorAll(".view-key")
-          .forEach((k) =>
-            k.classList.toggle("lit", k.dataset.view === state.view)
-          );
-        countView(state.view);
-        render();
+        setView(btn.dataset.view);
       });
     }
 
@@ -902,11 +936,16 @@
       render();
     });
 
-    // map: press a zone; press it again to go back to anywhere
-    document.getElementById("compass").addEventListener("click", (ev) => {
-      const zone = ev.target.closest("[data-area]");
-      if (!zone) return;
-      state.area = state.area === zone.dataset.area ? "all" : zone.dataset.area;
+    // area dial + labels: press a zone or its name; "anywhere" resets
+    document.getElementById("compass-unit").addEventListener("click", (ev) => {
+      if (ev.target.closest("#open-map")) {
+        setView("map");
+        return;
+      }
+      const el = ev.target.closest("[data-area]");
+      if (!el) return;
+      const area = el.dataset.area;
+      state.area = area === "all" || state.area === area ? "all" : area;
       state.surprise = null;
       syncCompass();
       render();

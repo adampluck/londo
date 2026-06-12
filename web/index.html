@@ -73,22 +73,26 @@
       </div>
 
       <div class="unit" id="compass-unit" hidden>
-        <div class="compass" id="compass" role="group" aria-label="london area">
-          <!-- a simplified london: five zones and the thames -->
-          <svg viewBox="0 0 120 100" aria-hidden="true">
-            <path class="zone" data-area="north" d="M 49.4 39.4 A 15 15 0 0 1 70.6 39.4 L 98.2 20.3 A 54 42 0 0 0 21.8 20.3 Z"><title>north</title></path>
-            <path class="zone" data-area="east" d="M 70.6 39.4 A 15 15 0 0 1 70.6 60.6 L 98.2 79.7 A 54 42 0 0 0 98.2 20.3 Z"><title>east</title></path>
-            <path class="zone" data-area="south" d="M 70.6 60.6 A 15 15 0 0 1 49.4 60.6 L 21.8 79.7 A 54 42 0 0 0 98.2 79.7 Z"><title>south</title></path>
-            <path class="zone" data-area="west" d="M 49.4 60.6 A 15 15 0 0 1 49.4 39.4 L 21.8 20.3 A 54 42 0 0 0 21.8 79.7 Z"><title>west</title></path>
-            <circle class="zone" data-area="central" cx="60" cy="50" r="13"><title>central</title></circle>
-            <path class="thames" d="M 10 55 C 22 50 28 60 38 57 C 46 54 47 46 56 49 C 62 51 60 57 66 57 C 72 57 72 50 78 50 C 84 50 82 60 88 60 C 94 60 96 52 106 54"/>
-            <text class="map-label" x="60" y="16" text-anchor="middle">N</text>
-            <text class="map-label" x="92" y="53" text-anchor="middle">E</text>
-            <text class="map-label" x="60" y="90" text-anchor="middle">S</text>
-            <text class="map-label" x="28" y="53" text-anchor="middle">W</text>
-          </svg>
+        <div class="areas" role="group" aria-label="london area">
+          <div class="compass" id="compass">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <path class="zone" data-area="north" d="M 40.1 40.1 A 14 14 0 0 1 59.9 40.1 L 81.8 18.2 A 45 45 0 0 0 18.2 18.2 Z"><title>north london</title></path>
+              <path class="zone" data-area="east" d="M 59.9 40.1 A 14 14 0 0 1 59.9 59.9 L 81.8 81.8 A 45 45 0 0 0 81.8 18.2 Z"><title>east london</title></path>
+              <path class="zone" data-area="south" d="M 59.9 59.9 A 14 14 0 0 1 40.1 59.9 L 18.2 81.8 A 45 45 0 0 0 81.8 81.8 Z"><title>south london</title></path>
+              <path class="zone" data-area="west" d="M 40.1 59.9 A 14 14 0 0 1 40.1 40.1 L 18.2 18.2 A 45 45 0 0 0 18.2 81.8 Z"><title>west london</title></path>
+              <circle class="zone" data-area="central" cx="50" cy="50" r="13"><title>central london</title></circle>
+            </svg>
+          </div>
+          <div class="area-labels" id="area-labels">
+            <button class="area-label lit" data-area="all">anywhere</button>
+            <button class="area-label" data-area="north">north london</button>
+            <button class="area-label" data-area="east">east london</button>
+            <button class="area-label" data-area="south">south london</button>
+            <button class="area-label" data-area="west">west london</button>
+            <button class="area-label" data-area="central">central</button>
+            <button class="area-label map-link" id="open-map">full map ↗</button>
+          </div>
         </div>
-        <span class="legend">around · <b id="compass-readout">anywhere</b></span>
       </div>
 
       <div class="unit unit-grow">

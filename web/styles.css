@@ -271,7 +271,10 @@ body {
 .drum {
   width: 9.6rem;
   height: 4.65rem;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
   position: relative;
   border-radius: 12px;
   border: 1px solid var(--card-edge);
@@ -282,11 +285,12 @@ body {
   -webkit-user-select: none;
 }
 
-.drum-tape { transition: transform 0.22s cubic-bezier(0.3, 1.4, 0.5, 1); }
+.drum::-webkit-scrollbar { display: none; }
 
 .drum-row {
   height: 1.55rem;
   line-height: 1.55rem;
+  scroll-snap-align: center;
   text-align: center;
   font-family: var(--mono);
   font-size: 0.76rem;
@@ -309,10 +313,16 @@ body {
   border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* --- the london map: five zones, one river --- */
+/* --- the area dial: five zones + a synced label column --- */
+
+.areas {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
 
 .compass {
-  width: 9.5rem;
+  width: 6.2rem;
   flex: none;
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55));
 }
@@ -327,27 +337,43 @@ body {
   transition: fill 0.15s ease, stroke 0.15s ease;
 }
 
-.zone:hover { fill: rgba(232, 169, 140, 0.14); }
-
 .zone.lit {
   fill: rgba(227, 192, 141, 0.3);
   stroke: rgba(227, 192, 141, 0.75);
 }
 
-.thames {
-  fill: none;
-  stroke: rgba(232, 169, 140, 0.45);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  pointer-events: none;
+.area-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
-.map-label {
+.area-label {
   font-family: var(--mono);
-  font-size: 7px;
-  letter-spacing: 0.1em;
-  fill: var(--ink-dim);
-  pointer-events: none;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+  background: none;
+  border: none;
+  border-radius: 6px;
+  text-align: left;
+  padding: 0.13rem 0.35rem;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.area-label.lit {
+  color: var(--gold);
+  background: rgba(227, 192, 141, 0.12);
+}
+
+.map-link { color: var(--mauve); margin-top: 0.15rem; }
+
+/* hover highlights only where hover exists — on touch they stick */
+@media (hover: hover) {
+  .zone:hover { fill: rgba(232, 169, 140, 0.14); }
+  .area-label:hover { color: var(--ink); }
+  .map-link:hover { color: var(--peach); }
 }
 
 /* --- day ticker tape (scrolling dates + pinned 7/30) --- */
@@ -400,7 +426,9 @@ body {
 
 .tick small { display: block; font-size: 0.58rem; opacity: 0.6; }
 
-.tick:hover { color: var(--ink); }
+@media (hover: hover) {
+  .tick:hover { color: var(--ink); }
+}
 
 .tick.cursor {
   color: var(--gold);
@@ -437,7 +465,9 @@ body {
   transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 
-.token:hover { color: var(--ink); }
+@media (hover: hover) {
+  .token:hover { color: var(--ink); }
+}
 
 .token.lit {
   color: var(--gold);
@@ -885,7 +915,8 @@ body.theme-night .blob { opacity: 0.35; }
 
   .drum { width: 7.3rem; }
   .drum-row { font-size: 0.68rem; }
-  .compass { width: 6.6rem; }
+  .compass { width: 5.4rem; }
+  .areas { gap: 0.6rem; }
   .tick { padding: 0.36rem 0.55rem 0.32rem; font-size: 0.66rem; }
   .token { font-size: 0.64rem; padding: 0.28rem 0.45rem; }
   .switch { width: 2.9rem; height: 1.5rem; }
