@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#2a1f42"/>
+      <stop offset="100%" stop-color="#14101f"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e3c08d" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#e3c08d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- soft centre glow -->
+  <circle cx="256" cy="256" r="200" fill="url(#glow)"/>
+
+  <!-- dial face -->
+  <circle cx="256" cy="256" r="196" fill="rgba(0,0,0,0.3)" stroke="#e3c08d" stroke-opacity="0.22" stroke-width="2"/>
+
+  <!-- compass zones (same paths as the in-app SVG, scaled to 512 viewBox) -->
+  <!-- north -->
+  <path d="M 205.3 205.3 A 71.7 71.7 0 0 1 306.7 205.3 L 418.8 93.2 A 230.4 230.4 0 0 0 93.2 93.2 Z"
+        fill="#e3c08d" fill-opacity="0.13" stroke="#e3c08d" stroke-opacity="0.45" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- east -->
+  <path d="M 306.7 205.3 A 71.7 71.7 0 0 1 306.7 306.7 L 418.8 418.8 A 230.4 230.4 0 0 0 418.8 93.2 Z"
+        fill="#e3c08d" fill-opacity="0.07" stroke="#e3c08d" stroke-opacity="0.35" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- south -->
+  <path d="M 306.7 306.7 A 71.7 71.7 0 0 1 205.3 306.7 L 93.2 418.8 A 230.4 230.4 0 0 0 418.8 418.8 Z"
+        fill="#e3c08d" fill-opacity="0.10" stroke="#e3c08d" stroke-opacity="0.40" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- west -->
+  <path d="M 205.3 306.7 A 71.7 71.7 0 0 1 205.3 205.3 L 93.2 93.2 A 230.4 230.4 0 0 0 93.2 418.8 Z"
+        fill="#e3c08d" fill-opacity="0.07" stroke="#e3c08d" stroke-opacity="0.35" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- centre hub -->
+  <circle cx="256" cy="256" r="66" fill="#14101f" stroke="#e3c08d" stroke-opacity="0.5" stroke-width="1.5"/>
+  <circle cx="256" cy="256" r="52" fill="#e3c08d" fill-opacity="0.08"/>
+
+  <!-- cardinal labels -->
+  <text x="256" y="112" text-anchor="middle" dominant-baseline="central"
+        font-family="ui-monospace,monospace" font-size="52" font-weight="600"
+        fill="#e3c08d" opacity="0.9">n</text>
+  <text x="400" y="256" text-anchor="middle" dominant-baseline="central"
+        font-family="ui-monospace,monospace" font-size="52" font-weight="600"
+        fill="#e3c08d" opacity="0.7">e</text>
+  <text x="256" y="400" text-anchor="middle" dominant-baseline="central"
+        font-family="ui-monospace,monospace" font-size="52" font-weight="600"
+        fill="#e3c08d" opacity="0.9">s</text>
+  <text x="112" y="256" text-anchor="middle" dominant-baseline="central"
+        font-family="ui-monospace,monospace" font-size="52" font-weight="600"
+        fill="#e3c08d" opacity="0.7">w</text>
+</svg>
