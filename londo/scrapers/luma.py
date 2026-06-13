@@ -21,6 +21,12 @@ PAGE_SIZE = 50
 
 SLUG_RE = re.compile(r"https?://(?:www\.)?(?:luma\.com|lu\.ma)/([A-Za-z0-9_-]+)")
 
+# Extra Luma calendars to scrape in addition to the London discover feed.
+# Add slugs from luma.com/<slug> calendar pages here.
+EXTRA_CALENDARS = [
+    "unseen",
+]
+
 
 class LumaScraper(BaseScraper):
     """Scrapes luma.com/london.
@@ -83,7 +89,49 @@ class LumaScraper(BaseScraper):
                 len(events) - n_api,
             )
 
+        # also add iCal-only source_ids so extra-calendar dedup is complete
+        for e in events[n_api:]:
+            seen.add(e.source_id)
+        for slug in EXTRA_CALENDARS:
+            cal_events = self._scrape_calendar(slug, descriptions)
+            for e in cal_events:
+                if e.source_id not in seen:
+                    events.append(e)
+                    seen.add(e.source_id)
+
         logger.info("Scraped %d events from Luma", len(events))
+        return events
+
+    def _scrape_calendar(self, slug: str, descriptions: dict[str, str]) -> list[Event]:
+        """Fetch all upcoming events from a Luma calendar page (luma.com/<slug>)."""
+        data = self.get(EVENT_API.format(slug=slug)).json()
+        cal = (data.get("data") or {}).get("calendar") or {}
+        cal_api_id = cal.get("api_id")
+        if not cal_api_id:
+            logger.warning("Could not resolve Luma calendar slug '%s'", slug)
+            return []
+
+        logger.info("Scraping Luma calendar '%s' (%s)", slug, cal_api_id)
+        events: list[Event] = []
+        cursor: str | None = None
+        while True:
+            params = {
+                "calendar_api_id": cal_api_id,
+                "pagination_limit": str(PAGE_SIZE),
+            }
+            if cursor:
+                params["pagination_cursor"] = cursor
+            resp = self.get(f"{DISCOVER_URL}?{urlencode(params)}").json()
+            for entry in resp.get("entries", []):
+                try:
+                    events.append(self._build_event(entry, descriptions))
+                except Exception:
+                    logger.exception("Failed to parse calendar entry from '%s'", slug)
+            if not resp.get("has_more") or not resp.get("next_cursor"):
+                break
+            cursor = resp["next_cursor"]
+
+        logger.info("Got %d events from Luma calendar '%s'", len(events), slug)
         return events
 
     def _parse_ics(self) -> dict[str, dict]:
