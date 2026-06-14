@@ -123,6 +123,10 @@
   }
 
   function browseEvents() {
+    // when searching, scan all loaded events (up to 30 days) — day filter hides too much
+    if (state.query.trim()) {
+      return state.events.filter((e) => baseFilter(e));
+    }
     const until =
       state.day === "7" || state.day === "30"
         ? Date.now() + Number(state.day) * 864e5
@@ -171,8 +175,8 @@
 
   function matchesQuery(e, q) {
     const text = haystack(e);
-    // short queries match whole words only ("ai" shouldn't match "air")
-    if (q.length <= 3) {
+    // 1-2 char queries match whole words only ("ai" shouldn't match "air")
+    if (q.length <= 2) {
       return new RegExp(`(^|[^a-z0-9])${escapeRe(q)}([^a-z0-9]|$)`, "i").test(text);
     }
     if (text.includes(q)) return true;
