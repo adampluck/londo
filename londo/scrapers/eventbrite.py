@@ -70,6 +70,9 @@ class EventbriteOrganizerScraper(BaseScraper):
             url = DEST_API.format(ids=",".join(ids[i : i + BATCH]))
             data = self.get(url).json()
             for ev in data.get("events", []):
+                if not _is_london_inperson(ev):
+                    logger.debug("Skipping non-London/online event %s", ev.get("id"))
+                    continue
                 listing = listings.get(ev["id"], {})
                 try:
                     events.extend(
@@ -122,7 +125,27 @@ EVENTBRITE_ORGANIZERS = {
     "62049657303": "The School of Sufi Teaching",
     "8588572090": "Ecstatic Dance London & URUBU Wellbeing Events",
     "4269650797": "The Royal Institution",
+    "36463428713": "Seed Talks",
 }
+
+# Greater London bounding box — events outside this are skipped.
+_LONDON_BBOX = (51.25, 51.75, -0.6, 0.35)
+
+
+def _is_london_inperson(ev: dict) -> bool:
+    """True only for offline events whose venue is plausibly in London."""
+    if ev.get("is_online_event"):
+        return False
+    addr = (ev.get("primary_venue") or {}).get("address") or {}
+    city = (addr.get("city") or "").lower()
+    if "london" in city:
+        return True
+    lat = _to_float(addr.get("latitude"))
+    lng = _to_float(addr.get("longitude"))
+    if lat is not None and lng is not None:
+        min_lat, max_lat, min_lng, max_lng = _LONDON_BBOX
+        return min_lat <= lat <= max_lat and min_lng <= lng <= max_lng
+    return False
 
 
 class EventbriteListingsScraper(BaseScraper):
