@@ -510,12 +510,13 @@ main {
   font-family: var(--display);
   font-weight: 400;
   font-size: 1.1rem;
-  animation: breathe 3.2s ease-in-out infinite;
+  animation: breathe 2.2s ease-in-out infinite;
+  transition: opacity 0.4s ease;
 }
 
 @keyframes breathe {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.95; }
 }
 
 .day-heading {

@@ -994,6 +994,30 @@
       .addEventListener("click", resetFilters);
   }
 
+  const LOADING_LINES = [
+    "gathering events…",
+    "consulting the city…",
+    "finding the good stuff…",
+    "asking around…",
+    "scanning noticeboards…",
+    "following the chalk arrows…",
+    "checking what's on…",
+    "listening for drums…",
+    "something's happening tonight…",
+    "the city never really sleeps…",
+    "hold tight…",
+  ];
+
+  function startLoadingCycle() {
+    const el = document.getElementById("loading-msg");
+    if (!el) return;
+    let i = 0;
+    return setInterval(() => {
+      i = (i + 1) % LOADING_LINES.length;
+      el.textContent = LOADING_LINES[i];
+    }, 2200);
+  }
+
   async function init() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -1004,17 +1028,21 @@
     bindSubmitBox();
     renderWeekStrip();
     setLens("all");
+    const loadingTimer = startLoadingCycle();
     if (SUPABASE_URL.startsWith("YOUR_")) {
+      clearInterval(loadingTimer);
       document.getElementById("events").innerHTML =
         '<p class="status">set SUPABASE_URL and SUPABASE_ANON_KEY in web/config.js</p>';
       return;
     }
     try {
       state.events = await fetchEvents();
+      clearInterval(loadingTimer);
       maybeShowEnrichedControls();
       renderLastUpdated();
       render();
     } catch (err) {
+      clearInterval(loadingTimer);
       document.getElementById("events").innerHTML =
         `<p class="status">the window is fogged up — events wouldn't load (${err.message})</p>`;
     }
