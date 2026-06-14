@@ -67,7 +67,7 @@ class MeetupScraper(BaseScraper):
         """Fetch og:image from an event page (server-rendered by Meetup)."""
         try:
             html = self.get(url).text
-            soup = BeautifulSoup(html, "lxml")
+            soup = BeautifulSoup(html, "html.parser")
             tag = soup.find("meta", property="og:image")
             if tag and tag.get("content"):
                 return tag["content"]
