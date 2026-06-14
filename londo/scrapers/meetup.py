@@ -15,6 +15,8 @@ ICS_URL = "https://www.meetup.com/{slug}/events/ical/"
 
 MEETUP_GROUPS = [
     "socialsportsmix",
+    "the-philosophy-cafe-london",
+    "watkinsbooks",
 ]
 
 _MEETUP_URL_RE = re.compile(r"https?://(?:www\.)?meetup\.com/\S+")
@@ -45,7 +47,9 @@ class MeetupScraper(BaseScraper):
         for component in cal.walk():
             if component.name == "VCALENDAR":
                 raw = component.get("X-WR-CALNAME", "")
-                group_name = str(raw).strip() or None
+                if isinstance(raw, list):
+                    raw = raw[0] if raw else ""
+                group_name = raw.to_ical().decode() if hasattr(raw, "to_ical") else str(raw).strip() or None
                 break
 
         events = []
