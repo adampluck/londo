@@ -28,6 +28,14 @@ EXTRA_CALENDARS = [
     "cml",
 ]
 
+# Luma user/organiser profiles to scrape (luma.com/user/<username>).
+# Events where they are a host are fetched via the discover API.
+EXTRA_HOSTS = [
+    "DeSciLondon",
+]
+
+USER_API_ID_RE = re.compile(r'"api_id"\s*:\s*"(usr-[^"]+)"')
+
 
 class LumaScraper(BaseScraper):
     """Scrapes luma.com/london.
@@ -99,6 +107,12 @@ class LumaScraper(BaseScraper):
                 if e.source_id not in seen:
                     events.append(e)
                     seen.add(e.source_id)
+        for username in EXTRA_HOSTS:
+            host_events = self._scrape_host(username, descriptions)
+            for e in host_events:
+                if e.source_id not in seen:
+                    events.append(e)
+                    seen.add(e.source_id)
 
         logger.info("Scraped %d events from Luma", len(events))
         return events
@@ -133,6 +147,38 @@ class LumaScraper(BaseScraper):
             cursor = resp["next_cursor"]
 
         logger.info("Got %d events from Luma calendar '%s'", len(events), slug)
+        return events
+
+    def _scrape_host(self, username: str, descriptions: dict[str, str]) -> list[Event]:
+        """Fetch events hosted by a Luma user profile (luma.com/user/<username>)."""
+        page = self.get(f"https://luma.com/user/{username}")
+        m = USER_API_ID_RE.search(page.text)
+        if not m:
+            logger.warning("Could not find user api_id for Luma host '%s'", username)
+            return []
+        user_api_id = m.group(1)
+
+        logger.info("Scraping Luma host '%s' (%s)", username, user_api_id)
+        events: list[Event] = []
+        cursor: str | None = None
+        while True:
+            params = {
+                "host_api_id": user_api_id,
+                "pagination_limit": str(PAGE_SIZE),
+            }
+            if cursor:
+                params["pagination_cursor"] = cursor
+            resp = self.get(f"{DISCOVER_URL}?{urlencode(params)}").json()
+            for entry in resp.get("entries", []):
+                try:
+                    events.append(self._build_event(entry, descriptions))
+                except Exception:
+                    logger.exception("Failed to parse host entry from '%s'", username)
+            if not resp.get("has_more") or not resp.get("next_cursor"):
+                break
+            cursor = resp["next_cursor"]
+
+        logger.info("Got %d events from Luma host '%s'", len(events), username)
         return events
 
     def _parse_ics(self) -> dict[str, dict]:
