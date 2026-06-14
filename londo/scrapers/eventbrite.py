@@ -121,6 +121,7 @@ EVENTBRITE_ORGANIZERS = {
     "70754628523": "London Night Cafe",
     "62049657303": "The School of Sufi Teaching",
     "8588572090": "Ecstatic Dance London & URUBU Wellbeing Events",
+    "4269650797": "The Royal Institution",
 }
 
 
