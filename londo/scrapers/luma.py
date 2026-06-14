@@ -25,6 +25,7 @@ SLUG_RE = re.compile(r"https?://(?:www\.)?(?:luma\.com|lu\.ma)/([A-Za-z0-9_-]+)"
 # Add slugs from luma.com/<slug> calendar pages here.
 EXTRA_CALENDARS = [
     "unseen",
+    "cml",
 ]
 
 
