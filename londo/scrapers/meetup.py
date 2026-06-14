@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timezone
 
 import icalendar
+from bs4 import BeautifulSoup
 
 from londo.models import Event, Location, Organizer
 from londo.scrapers.base import BaseScraper
@@ -56,8 +57,23 @@ class MeetupScraper(BaseScraper):
         for component in cal.walk("VEVENT"):
             event = self._build_event(component, slug, group_name)
             if event is not None:
+                image_url = self._fetch_image(event.source_url)
+                if image_url:
+                    event = event.model_copy(update={"image_url": image_url})
                 events.append(event)
         return events
+
+    def _fetch_image(self, url: str) -> str | None:
+        """Fetch og:image from an event page (server-rendered by Meetup)."""
+        try:
+            html = self.get(url).text
+            soup = BeautifulSoup(html, "lxml")
+            tag = soup.find("meta", property="og:image")
+            if tag and tag.get("content"):
+                return tag["content"]
+        except Exception:
+            logger.debug("Could not fetch image for %s", url)
+        return None
 
     def _build_event(
         self, component, slug: str, group_name: str | None
