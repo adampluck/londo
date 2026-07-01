@@ -821,7 +821,7 @@
     banner.style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
     const span = document.createElement("span");
     span.className = "placeholder-initial";
-    span.textContent = (e.title || "?").trim().charAt(0).toUpperCase();
+    span.textContent = (e.title || "?").trim();
     banner.appendChild(span);
   }
 
