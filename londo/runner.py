@@ -15,6 +15,7 @@ from londo.scrapers.meetup import MeetupScraper
 from londo.scrapers.newspeak import NewspeakScraper
 from londo.scrapers.psycalendar import PsyCalendarScraper
 from londo.scrapers.seeds import SeedsScraper
+from londo.scrapers.studysociety import StudySocietyScraper
 from londo.scrapers.submissions import SubmissionsScraper
 from londo.storage import SupabaseStore, load_dotenv
 
@@ -26,6 +27,7 @@ SCRAPERS = {
     "numinity": NuminityScraper,
     "eventbrite": EventbriteListingsScraper,
     "psycalendar": PsyCalendarScraper,  # aggregator; events land under 'other'
+    "studysociety": StudySocietyScraper,
     "seeds": SeedsScraper,  # chat-ingested URLs; needs Supabase credentials
     "submissions": SubmissionsScraper,  # community links; needs Supabase creds
 }
