@@ -35,7 +35,7 @@ SITES = {
         "outdir": ROOT / "build",
     },
     "psyconnect": {
-        "base_url": "https://adampluck.github.io/psyconnect",
+        "base_url": "https://psyconnect.london",
         "name": "psyconnect",
         "tagline": "consciousness, connection & ceremony in london",
         "overlay": ROOT / "sites" / "psyconnect",
