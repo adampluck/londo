@@ -25,7 +25,8 @@ self.LONDO_CONFIG = {
       "exclude": [
         "social sports mix", "football", "futsal", "5-a-side",
         "dodgeball", "rounders", "netball", "basketball", "volleyball",
-        "rugby", "cricket", "softball", "badminton", "kickabout"
+        "rugby", "cricket", "softball", "badminton", "kickabout",
+        "startup", "founder"
       ]
     },
     "topics": [
