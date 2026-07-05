@@ -32,7 +32,10 @@ self.LONDO_CONFIG = {
       "psychedelics", "consciousness", "spirituality & ritual",
       "connection & intimacy", "healing & wellbeing"
     ],
-    "features": { "lens": false, "categoryPills": false },
+    "features": {
+      "lens": false, "categoryPills": false,
+      "views": false, "compass": false, "topics": false
+    },
     "mapTiles": "light_all",
     "shellExtras": ["theme.css"]
   } /*END-SITE-JSON*/,

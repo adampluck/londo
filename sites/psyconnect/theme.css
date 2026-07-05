@@ -82,6 +82,11 @@ body {
   background: rgba(176, 125, 36, 0.12);
 }
 
+/* mobile sticky day header: parchment, not londo's dark plum */
+@media (max-width: 640px) {
+  .day-heading { background: rgba(246, 239, 228, 0.92); }
+}
+
 /* re-lit time-of-day: same mechanism, daytime-friendly warm light */
 body.theme-dawn {
   background: linear-gradient(175deg, #fbeedd 0%, #f7e6cd 40%, #f2d9b8 75%, #eccfa8 100%);

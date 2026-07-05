@@ -263,11 +263,12 @@
     if (withCategory >= 5 && FEATURES.categoryPills !== false)
       document.getElementById("category-pills").hidden = false;
     const withArea = state.events.filter((e) => e.area).length;
-    if (withArea >= 5) document.getElementById("compass-unit").hidden = false;
+    if (withArea >= 5 && FEATURES.compass !== false)
+      document.getElementById("compass-unit").hidden = false;
     const withTopics = state.events.filter(
       (e) => (e.topics || []).length
     ).length;
-    if (withTopics >= 5) {
+    if (withTopics >= 5 && FEATURES.topics !== false) {
       renderTopicTokens();
       document.getElementById("topic-unit").hidden = false;
       if (FEATURES.lens !== false) {
@@ -1052,6 +1053,11 @@
     applyTimeTheme();
     initAnalytics();
     bindControls();
+    if (FEATURES.views === false) {
+      // single-view site: browse only, no tab bars
+      document.getElementById("view-tabs").hidden = true;
+      document.getElementById("bottom-tabs").hidden = true;
+    }
     bindSubmitBox();
     renderWeekStrip();
     setLens("all");
