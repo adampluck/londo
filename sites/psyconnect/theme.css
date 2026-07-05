@@ -56,10 +56,14 @@ body {
   border-radius: 12px;
 }
 
-/* the instrument bench: londo's dark wells (hardcoded blacks/whites in
-   styles.css) become sunlit parchment */
+/* the instrument bench: no box at all — controls sit straight on the
+   page pattern. Without a background the sticky bar would float
+   transparently over scrolling cards, so it scrolls away instead. */
 .controls {
-  background: linear-gradient(to bottom, rgba(246, 239, 228, 0.94) 82%, rgba(246, 239, 228, 0));
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  position: static;
 }
 
 #search {
