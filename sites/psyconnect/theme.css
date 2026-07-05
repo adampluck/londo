@@ -63,8 +63,15 @@ body {
 }
 
 #search {
-  background: rgba(255, 252, 245, 0.75);
+  background: #fff;
   color: var(--ink);
+}
+
+/* flat bench: no keycap/well shadows anywhere in the controls box
+   (!important outguns styles.css's .key:active/.lit variants) */
+.controls,
+.controls * {
+  box-shadow: none !important;
 }
 
 .slider { background: rgba(122, 90, 60, 0.25); }
@@ -78,7 +85,6 @@ body {
   background:
     repeating-linear-gradient(90deg, rgba(90, 62, 40, 0.06) 0 1px, transparent 1px 9px),
     rgba(255, 252, 245, 0.6);
-  box-shadow: inset 0 2px 8px rgba(122, 90, 60, 0.18);
 }
 .tick { border-right: 1px solid rgba(90, 62, 40, 0.1); }
 
