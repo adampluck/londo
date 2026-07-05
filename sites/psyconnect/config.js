@@ -38,6 +38,7 @@ self.LONDO_CONFIG = {
       "views": false, "compass": false, "topics": false
     },
     "mapTiles": "light_all",
+    "featured": { "organizers": ["PsyConnect London"], "label": "our next event" },
     "logo": "logo.png",
     "shellExtras": ["theme.css", "bg.jpg", "logo.png"]
   } /*END-SITE-JSON*/,

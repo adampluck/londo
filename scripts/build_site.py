@@ -92,6 +92,10 @@ def read_site_block() -> dict:
 
 def site_match(event: dict) -> bool:
     """Mirror of siteMatch() in web/app.js — keep the two in step."""
+    org = (event.get("organizer_name") or "").lower()
+    featured = SITE_JSON.get("featured") or {}
+    if any(org == o.lower() for o in featured.get("organizers") or []):
+        return True
     flt = SITE_JSON.get("filter")
     if not flt:
         return True

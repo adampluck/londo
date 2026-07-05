@@ -112,11 +112,21 @@
     return (e.topics || []).some((t) => TECH_TOPICS.includes(t));
   }
 
+  // Our own events (SITE.featured.organizers) are always in, whatever
+  // the filter or enrichment says — it's our site.
+  function isOurs(e) {
+    const org = (e.organizer_name || "").toLowerCase();
+    return ((SITE.featured || {}).organizers || []).some(
+      (o) => org === o.toLowerCase()
+    );
+  }
+
   // A filtered site (SITE.filter) only ever sees its slice of the table:
   // category in the list, or any topic overlapping — minus anything whose
   // title/organizer hits an exclude term (e.g. team sports mis-tagged as
   // connection events).
   function siteMatch(e) {
+    if (isOurs(e)) return true;
     if (!SITE.filter) return true;
     const hay = ((e.title || "") + " " + (e.organizer_name || "")).toLowerCase();
     if ((SITE.filter.exclude || []).some((term) => hay.includes(term)))
@@ -867,6 +877,78 @@
     return `${start} – ${end}`;
   }
 
+  // ---------- featured: our own next event ----------
+
+  function renderFeatured() {
+    if (!SITE.featured) return;
+    // state.events is start_at-sorted, so the first match is the next one
+    const e = state.events.find(
+      (ev) => isOurs(ev) && new Date(ev.start_at).getTime() > Date.now()
+    );
+    if (!e) return;
+
+    const card = document.createElement("a");
+    card.className = "featured-card";
+    card.href = e.source_url;
+    card.target = "_blank";
+    card.rel = "noopener";
+
+    if (e.image_url) {
+      const media = document.createElement("div");
+      media.className = "featured-media";
+      const img = document.createElement("img");
+      img.src = e.image_url;
+      img.alt = "";
+      img.onerror = () => media.remove();
+      media.appendChild(img);
+      card.appendChild(media);
+    }
+
+    const body = document.createElement("div");
+    body.className = "featured-body";
+
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "featured-eyebrow";
+    eyebrow.textContent = "✦ " + (SITE.featured.label || "our next event");
+    body.appendChild(eyebrow);
+
+    const title = document.createElement("h2");
+    title.textContent = e.title;
+    body.appendChild(title);
+
+    const when = document.createElement("p");
+    when.className = "featured-when";
+    const day = new Date(e.start_at).toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      timeZone: "Europe/London",
+    });
+    when.textContent = [day, formatTime(e), e.venue_name]
+      .filter(Boolean)
+      .join(" · ");
+    body.appendChild(when);
+
+    const blurb = (e.hook || e.description || "").trim();
+    if (blurb) {
+      const p = document.createElement("p");
+      p.className = "featured-blurb";
+      p.textContent =
+        blurb.length > 160 ? blurb.slice(0, 157).trimEnd() + "…" : blurb;
+      body.appendChild(p);
+    }
+
+    const cta = document.createElement("span");
+    cta.className = "key featured-cta";
+    cta.textContent = "join us ↗";
+    body.appendChild(cta);
+
+    card.appendChild(body);
+    const section = document.getElementById("featured");
+    section.replaceChildren(card);
+    section.hidden = false;
+  }
+
   // ---------- analytics (GoatCounter: open source, cookieless) ----------
 
   function initAnalytics() {
@@ -1032,6 +1114,7 @@
     try {
       state.events = (await fetchEvents()).filter(siteMatch);
       clearInterval(loadingTimer);
+      renderFeatured();
       maybeShowEnrichedControls();
       renderLastUpdated();
       render();

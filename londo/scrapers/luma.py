@@ -18,6 +18,8 @@ DISCOVER_URL = "https://api.lu.ma/discover/get-paginated-events"
 CALENDAR_ITEMS_URL = "https://api.lu.ma/calendar/get-items"
 ICS_URL = f"https://api.luma.com/ics/get?entity=discover&id={PLACE_ID}"
 EVENT_API = "https://api.lu.ma/url?url={slug}"
+PROFILE_URL = "https://api.luma.com/user/profile?username={username}"
+USER_EVENTS_URL = "https://api.luma.com/user/profile/events-hosting"
 PAGE_SIZE = 50
 
 SLUG_RE = re.compile(r"https?://(?:www\.)?(?:luma\.com|lu\.ma)/([A-Za-z0-9_-]+)")
@@ -27,6 +29,13 @@ SLUG_RE = re.compile(r"https?://(?:www\.)?(?:luma\.com|lu\.ma)/([A-Za-z0-9_-]+)"
 EXTRA_CALENDARS = [
     "unseen",
     "cml",
+]
+
+# Luma user profiles whose hosted events are scraped in addition to the
+# feeds above (luma.com/user/<username>). PsyConnect London is our own
+# organizer account — the psyconnect site features its next event.
+EXTRA_USERS = [
+    "psyconnect",
 ]
 
 
@@ -100,7 +109,67 @@ class LumaScraper(BaseScraper):
                 if e.source_id not in seen:
                     events.append(e)
                     seen.add(e.source_id)
+        for username in EXTRA_USERS:
+            for e in self._scrape_user(username, descriptions):
+                if e.source_id in seen:
+                    # the discover/calendar copy of this event carries the
+                    # host's personal-calendar name ("Personal"); the profile
+                    # identity is what sites key featured events on
+                    existing = next(
+                        x for x in events if x.source_id == e.source_id
+                    )
+                    existing.organizer = e.organizer
+                else:
+                    events.append(e)
+                    seen.add(e.source_id)
         logger.info("Scraped %d events from Luma", len(events))
+        return events
+
+    def _scrape_user(
+        self, username: str, descriptions: dict[str, str]
+    ) -> list[Event]:
+        """Fetch upcoming events hosted by a Luma user (luma.com/user/<name>)."""
+        profile = self.get(PROFILE_URL.format(username=username)).json()
+        user = profile.get("user") or {}
+        user_api_id = user.get("api_id")
+        if not user_api_id:
+            logger.warning("Could not resolve Luma user '%s'", username)
+            return []
+
+        organizer = Organizer(
+            name=user.get("name") or username,
+            url=f"https://luma.com/user/{username}",
+        )
+        events: list[Event] = []
+        cursor: str | None = None
+        while True:
+            params = {
+                "user_api_id": user_api_id,
+                "period": "future",
+                "pagination_limit": str(PAGE_SIZE),
+            }
+            if cursor:
+                params["pagination_cursor"] = cursor
+            resp = self.get(f"{USER_EVENTS_URL}?{urlencode(params)}").json()
+            for entry in resp.get("entries", []):
+                try:
+                    event = self._build_event(entry, descriptions)
+                    # entries surface the host's personal calendar ("Personal")
+                    # as organizer — the public profile identity is the one
+                    # that means anything downstream
+                    event.organizer = organizer
+                    events.append(event)
+                except Exception:
+                    logger.exception(
+                        "Failed to parse hosted event from '%s'", username
+                    )
+            if not resp.get("has_more") or not resp.get("next_cursor"):
+                break
+            cursor = resp["next_cursor"]
+
+        logger.info(
+            "Got %d upcoming events from Luma user '%s'", len(events), username
+        )
         return events
 
     def _scrape_calendar(self, slug: str, descriptions: dict[str, str]) -> list[Event]:
