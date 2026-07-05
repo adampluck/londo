@@ -867,44 +867,6 @@
     return `${start} – ${end}`;
   }
 
-  // ---------- submissions ----------
-
-  function bindSubmitBox() {
-    const form = document.getElementById("submit-form");
-    const note = document.getElementById("submit-note");
-    form.addEventListener("submit", async (ev) => {
-      ev.preventDefault();
-      const input = document.getElementById("submit-url");
-      const url = input.value.trim();
-      if (!url) return;
-      note.hidden = false;
-      note.textContent = "sending…";
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
-          method: "POST",
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-            Prefer: "return=minimal",
-          },
-          body: JSON.stringify({ url }),
-        });
-        if (res.status === 409) {
-          input.value = "";
-          note.textContent = "someone already sent that one — it's in the queue.";
-          return;
-        }
-        if (!res.ok) throw new Error(String(res.status));
-        input.value = "";
-        note.textContent =
-          "thank you — if it checks out, it appears after the next sweep.";
-      } catch {
-        note.textContent = "that didn't go through — try again in a bit.";
-      }
-    });
-  }
-
   // ---------- analytics (GoatCounter: open source, cookieless) ----------
 
   function initAnalytics() {
@@ -1058,7 +1020,6 @@
       document.getElementById("view-tabs").hidden = true;
       document.getElementById("bottom-tabs").hidden = true;
     }
-    bindSubmitBox();
     renderWeekStrip();
     setLens("all");
     const loadingTimer = startLoadingCycle();
