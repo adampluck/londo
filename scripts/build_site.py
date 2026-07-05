@@ -195,7 +195,7 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
 </head>
 <body class="static-page">
   <div class="sky" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div><div class="grain"></div></div>
-  <header class="topbar"><h1><a href="{BASE_URL}/" style="text-decoration:none;color:inherit">{esc(SITE["name"])}</a></h1></header>
+  <header class="topbar"><h1><a href="{BASE_URL}/" style="text-decoration:none;color:inherit">{site_wordmark(css_prefix)}</a></h1></header>
   <main style="max-width:720px;margin:0 auto;padding:1rem 1.5rem 4rem">
   {body}
   </main>
@@ -203,6 +203,16 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
 </body>
 </html>
 """
+
+
+def site_wordmark(css_prefix: str) -> str:
+    logo = SITE_JSON.get("logo")
+    if not logo:
+        return esc(SITE["name"])
+    return (
+        f'<img src="{css_prefix}/{esc(logo)}" alt="{esc(SITE["name"])}" '
+        'style="display:block;height:2.4rem;width:auto;max-width:100%">'
+    )
 
 
 def extra_css(css_prefix: str) -> str:

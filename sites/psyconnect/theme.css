@@ -25,6 +25,14 @@ body {
   background: linear-gradient(175deg, #faf4e8 0%, var(--dusk-0) 38%, var(--dusk-1) 72%, #e5d3b8 100%);
 }
 
+/* cross-stitch wordmark instead of the gradient-text h1 */
+.topbar h1 img {
+  display: block;
+  height: clamp(2.2rem, 4.5vw, 3rem);
+  width: auto;
+  max-width: 100%;
+}
+
 /* repeating pattern in the fixed backdrop; the body's time-of-day
    gradient tints through the transparency */
 .sky::before {

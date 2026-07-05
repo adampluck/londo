@@ -38,6 +38,7 @@ self.LONDO_CONFIG = {
       "views": false, "compass": false, "topics": false
     },
     "mapTiles": "light_all",
-    "shellExtras": ["theme.css", "bg.jpg"]
+    "logo": "logo.png",
+    "shellExtras": ["theme.css", "bg.jpg", "logo.png"]
   } /*END-SITE-JSON*/,
 };
