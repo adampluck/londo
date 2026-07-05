@@ -136,12 +136,8 @@ body.theme-night {
 }
 body.theme-night .blob { opacity: 0.3; }
 
-/* category badges, re-fired in kiln tones (expand loses its purple) */
-.badge-cat-move    { background: rgba(184, 90, 51, 0.85); }
-.badge-cat-connect { background: rgba(176, 125, 36, 0.85); }
-.badge-cat-expand  { background: rgba(147, 94, 60, 0.85); }
-.badge-cat-think   { background: rgba(125, 138, 106, 0.9); }
-.badge-cat-make    { background: rgba(166, 92, 110, 0.85); }
+/* no category badges on cards — the whole site is one theme */
+.badge-cat { display: none; }
 
 /* lit category keys were pastel-on-dark; deepen for cream (kept for
    safety although the pills stay hidden here) */
