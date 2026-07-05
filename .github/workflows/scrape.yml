@@ -56,3 +56,22 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # psyconnect: rebuilt from the fresh data and pushed to its own Pages repo
+  deploy-psyconnect:
+    needs: scrape
+    runs-on: ubuntu-latest
+    concurrency:
+      group: psyconnect-pages
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build psyconnect
+        run: python3 scripts/build_site.py --site psyconnect build-psyconnect
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.PSYCONNECT_DEPLOY_KEY }}
+          external_repository: adampluck/psyconnect
+          publish_branch: gh-pages
+          publish_dir: build-psyconnect
+          force_orphan: true

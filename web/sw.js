@@ -1,8 +1,13 @@
-/* londo service worker: app shell cached for instant/offline loads,
+/* Service worker: app shell cached for instant/offline loads,
    events API network-first with cached fallback (offline shows the
-   last events you saw). */
+   last events you saw). Shared by every site built from web/; the
+   per-site config.js gives each its own cache name — both sites live
+   on the same github.io origin, where Cache Storage is origin-wide. */
 
-const CACHE = "londo-v10";
+importScripts("config.js");
+
+const SITE = (self.LONDO_CONFIG && self.LONDO_CONFIG.SITE) || {};
+const CACHE = (SITE.id || "londo") + "-v11";
 const SHELL = [
   "./",
   "index.html",
@@ -12,6 +17,7 @@ const SHELL = [
   "manifest.webmanifest",
   "icons/icon-192.png",
   "icons/icon-512.png",
+  ...(SITE.shellExtras || []),
 ];
 
 self.addEventListener("install", (e) => {

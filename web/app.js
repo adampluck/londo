@@ -2,6 +2,11 @@
   "use strict";
 
   const { SUPABASE_URL, SUPABASE_ANON_KEY } = window.LONDO_CONFIG;
+  // Per-site block (sites/<name>/config.js): dataset filter, topic nav,
+  // feature flags. Absent on londo — every fallback below is londo's
+  // current behavior.
+  const SITE = window.LONDO_CONFIG.SITE || {};
+  const FEATURES = SITE.features || {};
 
   const state = {
     events: [],
@@ -30,7 +35,7 @@
 
   // Subject/scene labels assigned by enrichment (londo/enrich.py
   // TOPIC_VOCAB) — what an event is about, independent of its form.
-  const TOPICS = [
+  const TOPICS = SITE.topics || [
     "psychedelics", "consciousness", "connection & intimacy", "tech & ai",
     "startups & work", "arts & creativity", "music & sound",
     "nature & outdoors", "healing & wellbeing", "spirituality & ritual",
@@ -105,6 +110,16 @@
 
   function isTech(e) {
     return (e.topics || []).some((t) => TECH_TOPICS.includes(t));
+  }
+
+  // A filtered site (SITE.filter) only ever sees its slice of the table:
+  // category in the list, or any topic overlapping.
+  function siteMatch(e) {
+    if (!SITE.filter) return true;
+    if ((SITE.filter.categories || []).includes(e.category)) return true;
+    return (e.topics || []).some((t) =>
+      (SITE.filter.topics || []).includes(t)
+    );
   }
 
   function baseFilter(e) {
@@ -240,7 +255,7 @@
   function maybeShowEnrichedControls() {
     // These instruments only make sense once events are classified.
     const withCategory = state.events.filter((e) => e.category).length;
-    if (withCategory >= 5)
+    if (withCategory >= 5 && FEATURES.categoryPills !== false)
       document.getElementById("category-pills").hidden = false;
     const withArea = state.events.filter((e) => e.area).length;
     if (withArea >= 5) document.getElementById("compass-unit").hidden = false;
@@ -250,8 +265,10 @@
     if (withTopics >= 5) {
       renderTopicTokens();
       document.getElementById("topic-unit").hidden = false;
-      document.getElementById("lens-unit").hidden = false;
-      setLens(state.lens);
+      if (FEATURES.lens !== false) {
+        document.getElementById("lens-unit").hidden = false;
+        setLens(state.lens);
+      }
       startTapeDrift();
     }
   }
@@ -640,7 +657,7 @@
         11
       );
       L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        `https://{s}.basemaps.cartocdn.com/${SITE.mapTiles || "dark_all"}/{z}/{x}/{y}{r}.png`,
         {
           attribution:
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -899,7 +916,7 @@
     if (window.goatcounter && window.goatcounter.count) {
       window.goatcounter.count({
         path: "/" + view,
-        title: "londo — " + view,
+        title: (SITE.name || "londo") + " — " + view,
         event: false,
       });
     }
@@ -1041,7 +1058,7 @@
       return;
     }
     try {
-      state.events = await fetchEvents();
+      state.events = (await fetchEvents()).filter(siteMatch);
       clearInterval(loadingTimer);
       maybeShowEnrichedControls();
       renderLastUpdated();

@@ -1,0 +1,155 @@
+<!doctype html>
+<!-- psyconnect shell — a copy of web/index.html with different branding.
+     Keep ALL control markup in sync with web/index.html: controls start
+     hidden and app.js binds them unconditionally (getElementById with no
+     null guards), so a missing element crashes the app. Feature flags in
+     config.js decide what actually appears. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>psyconnect — consciousness, connection &amp; ceremony in london</title>
+  <meta name="theme-color" content="#f6efe4">
+  <meta name="description" content="Consciousness, connection & ceremony in London — psychedelic salons, breathwork, meditation sits, cacao ceremonies and authentic relating, in one place.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="psyconnect">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+  <div class="sky" aria-hidden="true">
+    <div class="blob blob-a"></div>
+    <div class="blob blob-b"></div>
+    <div class="grain"></div>
+  </div>
+
+  <header class="topbar">
+    <div>
+      <h1>psyconnect</h1>
+      <p class="tagline">consciousness, connection &amp; ceremony in london</p>
+    </div>
+    <nav class="views" id="view-tabs" aria-label="views">
+      <button class="key view-key lit" data-view="browse">browse</button>
+      <button class="key view-key" data-view="tonight">tonight</button>
+      <button class="key view-key" data-view="map">map</button>
+    </nav>
+  </header>
+
+  <div class="controls" id="controls">
+    <div class="controls-row">
+      <input id="search" type="search" placeholder="search…" autocomplete="off">
+      <div class="unit unit-inline">
+        <label class="switch" title="free events only">
+          <input type="checkbox" id="free-toggle">
+          <span class="slider"></span>
+        </label>
+        <span class="legend">free</span>
+      </div>
+      <button class="key reset-key" id="reset-filters" title="clear every filter">reset</button>
+    </div>
+
+    <div class="controls-row keys" id="category-pills" hidden>
+      <button class="key cat-key lit" data-category="all">all</button>
+      <button class="key cat-key key-move" data-category="move">move</button>
+      <button class="key cat-key key-connect" data-category="connect">connect</button>
+      <button class="key cat-key key-expand" data-category="expand">expand</button>
+      <button class="key cat-key key-think" data-category="think">think</button>
+      <button class="key cat-key key-make" data-category="make">make</button>
+    </div>
+
+    <div class="controls-row bench">
+      <div class="unit" id="lens-unit" hidden>
+        <div class="lens-toggle" id="lens-toggle" role="radiogroup" aria-label="tech lens">
+          <button class="lens-stop" data-lens="tech" role="radio" aria-checked="false">tech</button>
+          <button class="lens-stop lit" data-lens="all" role="radio" aria-checked="true">tech &amp; beyond</button>
+          <button class="lens-stop" data-lens="beyond" role="radio" aria-checked="false">beyond</button>
+        </div>
+      </div>
+
+      <div class="unit" id="compass-unit" hidden>
+        <div class="areas" role="group" aria-label="london area">
+          <div class="compass" id="compass">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="dial-face" cx="50" cy="50" r="49.5" />
+              <path class="zone" data-area="north" d="M 40.1 40.1 A 14 14 0 0 1 59.9 40.1 L 81.8 18.2 A 45 45 0 0 0 18.2 18.2 Z"><title>north london</title></path>
+              <path class="zone" data-area="east" d="M 59.9 40.1 A 14 14 0 0 1 59.9 59.9 L 81.8 81.8 A 45 45 0 0 0 81.8 18.2 Z"><title>east london</title></path>
+              <path class="zone" data-area="south" d="M 59.9 59.9 A 14 14 0 0 1 40.1 59.9 L 18.2 81.8 A 45 45 0 0 0 81.8 81.8 Z"><title>south london</title></path>
+              <path class="zone" data-area="west" d="M 40.1 59.9 A 14 14 0 0 1 40.1 40.1 L 18.2 18.2 A 45 45 0 0 0 18.2 81.8 Z"><title>west london</title></path>
+              <circle class="zone" data-area="central" cx="50" cy="50" r="13"><title>central london</title></circle>
+              <g class="dial-pts">
+                <text x="50" y="21">n</text>
+                <text x="79" y="50">e</text>
+                <text x="50" y="79">s</text>
+                <text x="21" y="50">w</text>
+              </g>
+            </svg>
+          </div>
+          <div class="area-labels">
+            <span class="area-readout" id="area-readout">anywhere in london</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="unit unit-grow">
+        <div class="ticker-shell">
+          <div class="ticker" id="week-strip">
+            <!-- day cells rendered from live data -->
+          </div>
+          <div class="ticker-fixed" id="range-ticks">
+            <button class="tick" data-day="7">7<small>days</small></button>
+            <button class="tick" data-day="30">30<small>days</small></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls-row unit" id="topic-unit" hidden>
+      <div class="tape-shell">
+        <div class="tape-fixed" id="topic-anchor">
+          <!-- the "anything" token stays put -->
+        </div>
+        <div class="tape" id="topic-chips">
+          <!-- topic tokens rendered from live data -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main id="events"><p class="status" id="loading-msg">gathering events…</p></main>
+
+  <section id="map-view" hidden>
+    <div id="map"></div>
+  </section>
+
+  <section class="submit" id="submit-box">
+    <p class="submit-prompt">know a gathering we don't?</p>
+    <form id="submit-form">
+      <input id="submit-url" type="url" required placeholder="paste an event link…" autocomplete="off">
+      <button type="submit" class="key">send it in</button>
+    </form>
+    <p class="submit-note" id="submit-note" hidden></p>
+  </section>
+
+  <footer>
+    <p id="last-updated" hidden></p>
+    <p>made in london</p>
+  </footer>
+
+  <nav class="bottom-tabs" id="bottom-tabs" aria-label="views">
+    <button class="key view-key lit" data-view="browse">browse</button>
+    <button class="key view-key" data-view="tonight">tonight</button>
+    <button class="key view-key" data-view="map">map</button>
+  </nav>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

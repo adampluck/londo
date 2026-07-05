@@ -1,24 +1,53 @@
-"""Build the deployable site: web/ plus static per-event and per-category
-pages with OG/meta tags, JSON-LD, and a sitemap — so Google (and WhatsApp
-link unfurls) can see what the client-side app renders.
+"""Build a deployable site: web/ (plus the site's overlay) and static
+per-event and per-listing pages with OG/meta tags, JSON-LD, and a sitemap —
+so Google (and WhatsApp link unfurls) can see what the client-side app
+renders.
 
-Stdlib only, so CI needs no installs:  python3 scripts/build_site.py [outdir]
-Reads Supabase credentials from web/config.js (public anon key).
+Stdlib only, so CI needs no installs:
+    python3 scripts/build_site.py [--site londo|psyconnect] [outdir]
+Reads Supabase credentials from the site's config.js (public anon key).
 """
 from __future__ import annotations
 
+import argparse
 import html
 import json
 import re
 import shutil
-import sys
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-BASE_URL = "https://adampluck.github.io/londo"
+
+# Each site is web/ plus an optional overlay directory copied on top; its
+# config.js may carry a SITE block (strict JSON between the SITE-JSON
+# markers) that filters which events the site shows — the same block the
+# SPA reads, so the two can't diverge.
+SITES = {
+    "londo": {
+        "base_url": "https://adampluck.github.io/londo",
+        "name": "londo",
+        "tagline": "the other london, in person",
+        "overlay": None,
+        "config": ROOT / "web" / "config.js",
+        "outdir": ROOT / "build",
+    },
+    "psyconnect": {
+        "base_url": "https://adampluck.github.io/psyconnect",
+        "name": "psyconnect",
+        "tagline": "consciousness, connection & ceremony in london",
+        "overlay": ROOT / "sites" / "psyconnect",
+        "config": ROOT / "sites" / "psyconnect" / "config.js",
+        "outdir": ROOT / "build-psyconnect",
+    },
+}
+
+# set from SITES by main(); the script builds one site per invocation
+BASE_URL = SITES["londo"]["base_url"]
+SITE = SITES["londo"]
+SITE_JSON: dict = {}
 
 CATEGORIES = {
     "move": ("move", "Ecstatic dance, movement & embodiment events in London"),
@@ -46,14 +75,33 @@ TOPICS = {
 
 
 def read_config() -> tuple[str, str]:
-    text = (ROOT / "web" / "config.js").read_text()
+    text = SITE["config"].read_text()
     url = re.search(r'SUPABASE_URL:\s*"([^"]+)"', text).group(1)
     key = re.search(r'"(eyJ[^"]+)"', text).group(1)
     return url, key
 
 
+def read_site_block() -> dict:
+    m = re.search(
+        r"/\*SITE-JSON\*/(.*?)/\*END-SITE-JSON\*/",
+        SITE["config"].read_text(),
+        re.DOTALL,
+    )
+    return json.loads(m.group(1)) if m else {}
+
+
+def site_match(event: dict) -> bool:
+    """Mirror of siteMatch() in web/app.js — keep the two in step."""
+    flt = SITE_JSON.get("filter")
+    if not flt:
+        return True
+    if event.get("category") in (flt.get("categories") or []):
+        return True
+    return any(t in (flt.get("topics") or []) for t in event.get("topics") or [])
+
+
 def goatcounter_snippet() -> str:
-    text = (ROOT / "web" / "config.js").read_text()
+    text = SITE["config"].read_text()
     m = re.search(r'GOATCOUNTER:\s*"([^"]+)"', text)
     if not m:
         return ""
@@ -76,6 +124,7 @@ def fetch_events() -> list[dict]:
             "duplicate_of": "is.null",
             "is_online": "eq.false",
             "last_seen_at": f"gte.{stale}",
+            "hidden": "is.false",
         }
     )
     req = urllib.request.Request(
@@ -127,7 +176,7 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
   <title>{esc(title)}</title>
   <meta name="description" content="{esc(description)}">
   <link rel="canonical" href="{esc(canonical)}">
-  <meta property="og:site_name" content="londo">
+  <meta property="og:site_name" content="{esc(SITE["name"])}">
   <meta property="og:title" content="{esc(title)}">
   <meta property="og:description" content="{esc(description)}">
   <meta property="og:url" content="{esc(canonical)}">
@@ -137,19 +186,28 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{css_prefix}/styles.css">
+  {extra_css(css_prefix)}
   {ld}
   {goatcounter_snippet()}
 </head>
 <body class="static-page">
   <div class="sky" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div><div class="grain"></div></div>
-  <header class="topbar"><h1><a href="{BASE_URL}/" style="text-decoration:none;color:inherit">londo</a></h1></header>
+  <header class="topbar"><h1><a href="{BASE_URL}/" style="text-decoration:none;color:inherit">{esc(SITE["name"])}</a></h1></header>
   <main style="max-width:720px;margin:0 auto;padding:1rem 1.5rem 4rem">
   {body}
   </main>
-  <footer><p><a href="{BASE_URL}/">londo</a> — the other london, in person</p></footer>
+  <footer><p><a href="{BASE_URL}/">{esc(SITE["name"])}</a> — {esc(SITE["tagline"])}</p></footer>
 </body>
 </html>
 """
+
+
+def extra_css(css_prefix: str) -> str:
+    return "\n  ".join(
+        f'<link rel="stylesheet" href="{css_prefix}/{esc(sheet)}">'
+        for sheet in SITE_JSON.get("shellExtras") or []
+        if sheet.endswith(".css")
+    )
 
 
 def event_page(event: dict) -> str:
@@ -244,7 +302,7 @@ def event_page(event: dict) -> str:
     <p style="margin-top:1.5rem"><a href="{BASE_URL}/" style="color:var(--mauve)">← everything else on in london this week</a></p>
   </article>"""
     return page(
-        f"{event['title']} — londo",
+        f"{event['title']} — {SITE['name']}",
         description,
         canonical,
         event.get("image_url"),
@@ -268,9 +326,9 @@ def listing_page(label: str, seo_title: str, canonical: str,
   <h2 style="font-family:Bricolage Grotesque,sans-serif;font-weight:480;font-size:1.8rem;margin:1.2rem 0 0.3rem">{esc(label)} — {esc(seo_title.lower())}</h2>
   <p style="color:var(--ink-dim)">{len(events)} upcoming · updated several times a day</p>
   <ul style="padding:0">{items}</ul>
-  <p style="margin-top:2rem"><a href="{BASE_URL}/" style="color:var(--mauve)">← all of londo</a></p>"""
+  <p style="margin-top:2rem"><a href="{BASE_URL}/" style="color:var(--mauve)">← all of {esc(SITE["name"])}</a></p>"""
     return page(
-        f"{seo_title} — londo",
+        f"{seo_title} — {SITE['name']}",
         f"{seo_title}: {len(events)} upcoming events, updated several times a day.",
         canonical,
         None,
@@ -279,12 +337,14 @@ def listing_page(label: str, seo_title: str, canonical: str,
 
 
 def build(outdir: Path) -> None:
-    events = fetch_events()
-    print(f"Building site with {len(events)} events")
+    events = [e for e in fetch_events() if site_match(e)]
+    print(f"Building {SITE['name']} with {len(events)} events")
 
     if outdir.exists():
         shutil.rmtree(outdir)
     shutil.copytree(ROOT / "web", outdir)
+    if SITE["overlay"]:
+        shutil.copytree(SITE["overlay"], outdir, dirs_exist_ok=True)
 
     (outdir / "e").mkdir()
     urls = [f"{BASE_URL}/"]
@@ -292,19 +352,25 @@ def build(outdir: Path) -> None:
         (outdir / "e" / f"{slug(event)}.html").write_text(event_page(event))
         urls.append(f"{BASE_URL}/e/{slug(event)}.html")
 
-    (outdir / "c").mkdir()
-    for key, (label, seo_title) in CATEGORIES.items():
-        cat_events = [e for e in events if e.get("category") == key]
-        if not cat_events:
-            continue
-        canonical = f"{BASE_URL}/c/{key}.html"
-        (outdir / "c" / f"{key}.html").write_text(
-            listing_page(label, seo_title, canonical, cat_events)
-        )
-        urls.append(canonical)
+    # category pages only make sense when the site spans all categories;
+    # on a filtered site one of them would just mirror the homepage
+    if not SITE_JSON.get("filter"):
+        (outdir / "c").mkdir()
+        for key, (label, seo_title) in CATEGORIES.items():
+            cat_events = [e for e in events if e.get("category") == key]
+            if not cat_events:
+                continue
+            canonical = f"{BASE_URL}/c/{key}.html"
+            (outdir / "c" / f"{key}.html").write_text(
+                listing_page(label, seo_title, canonical, cat_events)
+            )
+            urls.append(canonical)
 
+    site_topics = SITE_JSON.get("topics")
     (outdir / "t").mkdir()
     for key, (slug_, seo_title) in TOPICS.items():
+        if site_topics is not None and key not in site_topics:
+            continue
         topic_events = [e for e in events if key in (e.get("topics") or [])]
         if not topic_events:
             continue
@@ -331,5 +397,18 @@ def build(outdir: Path) -> None:
     print(f"Wrote {len(urls)} pages -> {outdir}")
 
 
+def main() -> None:
+    global BASE_URL, SITE, SITE_JSON
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--site", choices=sorted(SITES), default="londo")
+    parser.add_argument("outdir", nargs="?", type=Path)
+    args = parser.parse_args()
+
+    SITE = SITES[args.site]
+    BASE_URL = SITE["base_url"]
+    SITE_JSON = read_site_block()
+    build(args.outdir or SITE["outdir"])
+
+
 if __name__ == "__main__":
-    build(Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "build")
+    main()

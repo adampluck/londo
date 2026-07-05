@@ -3,7 +3,7 @@ name: Deploy frontend
 on:
   push:
     branches: [main]
-    paths: ["web/**", "scripts/build_site.py"]
+    paths: ["web/**", "sites/**", "scripts/build_site.py"]
   workflow_dispatch:
 
 permissions:
@@ -36,3 +36,22 @@ jobs:
           path: build
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # psyconnect: same codebase, filtered dataset, pushed to its own Pages
+  # repo (deploy key SSH — no GITHUB_TOKEN permissions involved)
+  deploy-psyconnect:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: psyconnect-pages
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build psyconnect
+        run: python3 scripts/build_site.py --site psyconnect build-psyconnect
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.PSYCONNECT_DEPLOY_KEY }}
+          external_repository: adampluck/psyconnect
+          publish_branch: gh-pages
+          publish_dir: build-psyconnect
+          force_orphan: true
