@@ -95,6 +95,9 @@ def site_match(event: dict) -> bool:
     flt = SITE_JSON.get("filter")
     if not flt:
         return True
+    hay = f"{event.get('title') or ''} {event.get('organizer_name') or ''}".lower()
+    if any(term in hay for term in flt.get("exclude") or []):
+        return False
     if event.get("category") in (flt.get("categories") or []):
         return True
     return any(t in (flt.get("topics") or []) for t in event.get("topics") or [])

@@ -21,6 +21,11 @@ self.LONDO_CONFIG = {
       "topics": [
         "psychedelics", "consciousness", "spirituality & ritual",
         "connection & intimacy", "healing & wellbeing"
+      ],
+      "exclude": [
+        "social sports mix", "football", "futsal", "5-a-side",
+        "dodgeball", "rounders", "netball", "basketball", "volleyball",
+        "rugby", "cricket", "softball", "badminton", "kickabout"
       ]
     },
     "topics": [

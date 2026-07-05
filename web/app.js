@@ -113,9 +113,14 @@
   }
 
   // A filtered site (SITE.filter) only ever sees its slice of the table:
-  // category in the list, or any topic overlapping.
+  // category in the list, or any topic overlapping — minus anything whose
+  // title/organizer hits an exclude term (e.g. team sports mis-tagged as
+  // connection events).
   function siteMatch(e) {
     if (!SITE.filter) return true;
+    const hay = ((e.title || "") + " " + (e.organizer_name || "")).toLowerCase();
+    if ((SITE.filter.exclude || []).some((term) => hay.includes(term)))
+      return false;
     if ((SITE.filter.categories || []).includes(e.category)) return true;
     return (e.topics || []).some((t) =>
       (SITE.filter.topics || []).includes(t)
