@@ -940,7 +940,7 @@
 
     const cta = document.createElement("span");
     cta.className = "key featured-cta";
-    cta.textContent = "join us ↗";
+    cta.textContent = "join us";
     body.appendChild(cta);
 
     card.appendChild(body);
