@@ -19,6 +19,7 @@ SOURCE_PRIORITY = [
     "eventbrite",
     "luma",
     "studysociety",
+    "momence",
     "other",
 ]
 

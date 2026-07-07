@@ -12,6 +12,7 @@ from londo.scrapers.dandelion import DandelionScraper
 from londo.scrapers.eventbrite import EventbriteListingsScraper, NuminityScraper
 from londo.scrapers.luma import LumaScraper
 from londo.scrapers.meetup import MeetupScraper
+from londo.scrapers.momence import MomenceScraper
 from londo.scrapers.newspeak import NewspeakScraper
 from londo.scrapers.psycalendar import PsyCalendarScraper
 from londo.scrapers.seeds import SeedsScraper
@@ -23,6 +24,7 @@ SCRAPERS = {
     "dandelion": DandelionScraper,
     "luma": LumaScraper,
     "meetup": MeetupScraper,
+    "momence": MomenceScraper,  # host workshops only; classes are skipped
     "newspeak": NewspeakScraper,
     "numinity": NuminityScraper,
     "eventbrite": EventbriteListingsScraper,
