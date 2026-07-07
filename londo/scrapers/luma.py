@@ -29,6 +29,7 @@ SLUG_RE = re.compile(r"https?://(?:www\.)?(?:luma\.com|lu\.ma)/([A-Za-z0-9_-]+)"
 EXTRA_CALENDARS = [
     "unseen",
     "cml",
+    "theofflineclublondon",
 ]
 
 # Luma user profiles whose hosted events are scraped in addition to the
