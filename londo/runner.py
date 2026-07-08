@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 import click
 
@@ -35,6 +36,17 @@ SCRAPERS = {
 }
 
 SUPABASE_ONLY_SOURCES = ("seeds", "submissions")
+
+# Event types we never list, whatever the source (matched against title).
+UNWANTED_TITLE_RE = re.compile(r"book[\s-]*signing", re.IGNORECASE)
+
+
+def drop_unwanted(events: list[Event]) -> list[Event]:
+    kept = [e for e in events if not UNWANTED_TITLE_RE.search(e.title or "")]
+    dropped = len(events) - len(kept)
+    if dropped:
+        click.echo(f"Dropped {dropped} unwanted event(s) (book signings)")
+    return kept
 
 
 @click.group()
@@ -101,6 +113,8 @@ def scrape(
             continue
         click.echo(f"  {len(events)} events")
         all_events.extend(events)
+
+    all_events = drop_unwanted(all_events)
 
     if not all_events:
         click.echo("No events scraped.")
@@ -202,6 +216,8 @@ def ingest_whatsapp(
             }
         )
         click.echo(f"  [{kind}] {events[0].title} ({len(events)} event(s))")
+
+    all_events = drop_unwanted(all_events)
 
     if not all_events:
         click.echo("No usable events found in this export.")
