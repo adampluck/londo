@@ -126,6 +126,12 @@ EVENTBRITE_ORGANIZERS = {
     "8588572090": "Ecstatic Dance London & URUBU Wellbeing Events",
     "4269650797": "The Royal Institution",
     "36463428713": "Seed Talks",
+    # psyconnect-leaning organisers (shared events pool)
+    "67359356833": "London Psychedelic Community",
+    "18247139079": "The Maudsley Psychedelic Society",
+    "109324686131": "YOUnited Breath Space",
+    "95867879283": "Moon Haven",
+    "121274518486": "Gaia Wellbeing Collective CIC",
 }
 
 # Greater London bounding box — events outside this are skipped.

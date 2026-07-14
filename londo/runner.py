@@ -237,3 +237,150 @@ def ingest_whatsapp(
         click.echo(
             f"Upserted {len(all_events)} events and {len(seeds)} seeds to Supabase"
         )
+
+
+@cli.command("seed")
+@click.argument("urls", nargs=-1, required=True)
+@click.option(
+    "--store",
+    type=click.Choice(["json", "supabase", "both"]),
+    default="supabase",
+    help="Where to write the results (default: supabase).",
+)
+@click.option("--output-dir", "-o", default="data")
+@click.option("--rate-limit", "-r", default=1.0, type=float)
+@click.option(
+    "--seed-only",
+    is_flag=True,
+    help="Only upsert the seed row(s); skip fetch/enrich for now.",
+)
+@click.option("--verbose", "-v", is_flag=True)
+def seed(
+    urls: tuple[str, ...],
+    store: str,
+    output_dir: str,
+    rate_limit: float,
+    seed_only: bool,
+    verbose: bool,
+) -> None:
+    """Add event URL(s) to the seeds table so the daily scrape keeps them fresh.
+
+    Fetches each link now (unless --seed-only), enriches, and upserts both the
+    events and a seed row (added_by=cli). Same shared pool as WhatsApp ingest
+    and web submissions — londo and psyconnect both see matching events.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from londo.links import LinkFetcher, classify_url
+
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.INFO,
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    )
+    load_dotenv()
+
+    if store in ("supabase", "both") and not os.environ.get("SUPABASE_URL"):
+        click.echo(
+            "SUPABASE_URL not set. Copy .env.example to .env and fill credentials.",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    classified: list[tuple[str, str, str]] = []  # (url, kind, key)
+    seen_keys: set[tuple[str, str]] = set()
+    for raw in urls:
+        url = raw.strip()
+        result = classify_url(url)
+        if result is None:
+            click.echo(f"  skip (not an event link): {url}", err=True)
+            continue
+        kind, key = result
+        if (kind, key) in seen_keys:
+            click.echo(f"  skip (duplicate): {url}")
+            continue
+        seen_keys.add((kind, key))
+        classified.append((url, kind, key))
+
+    if not classified:
+        click.echo("No usable event links.", err=True)
+        raise SystemExit(1)
+
+    if seed_only:
+        seeds = [
+            {
+                "url": url,
+                "kind": kind,
+                "added_by": "cli",
+                "active": True,
+            }
+            for url, kind, _ in classified
+        ]
+        if store in ("supabase", "both"):
+            SupabaseStore().upsert_seeds(seeds)
+            click.echo(f"Upserted {len(seeds)} seed(s) to Supabase (fetch skipped)")
+        for url, kind, _ in classified:
+            click.echo(f"  [{kind}] {url}")
+        return
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+    fetcher = LinkFetcher(rate_limit=rate_limit)
+    all_events: list[Event] = []
+    seeds: list[dict] = []
+
+    for url, kind, _ in classified:
+        events = fetcher.fetch(url)
+        events = [
+            e
+            for e in events
+            if e.start_datetime is None or e.start_datetime >= cutoff
+        ]
+        starts = [e.start_datetime for e in events if e.start_datetime]
+        seeds.append(
+            {
+                "url": url,
+                "kind": kind,
+                "added_by": "cli",
+                "active": True,
+                "event_start_at": max(starts).isoformat() if starts else None,
+                "last_fetched_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+        if not events:
+            click.echo(f"  [{kind}] no upcoming event details yet — seed kept: {url}")
+            continue
+        all_events.extend(events)
+        click.echo(f"  [{kind}] {events[0].title} ({len(events)} event(s))")
+
+    all_events = drop_unwanted(all_events)
+
+    if all_events:
+        dedupe(all_events)
+        from londo.enrich import enrich_events
+
+        existing = {}
+        if os.environ.get("SUPABASE_URL"):
+            try:
+                existing = SupabaseStore().fetch_enrichment()
+            except Exception:
+                logging.getLogger(__name__).exception("Could not fetch enrichment")
+        calls = enrich_events(all_events, existing=existing)
+        click.echo(
+            f"Total: {len(all_events)} event(s) from {len(seeds)} link(s); "
+            f"enriched {calls} new"
+        )
+    else:
+        click.echo(
+            "No events fetched yet; seed row(s) will be retried on the next scrape."
+        )
+
+    if store in ("json", "both") and all_events:
+        filepath = write_events(all_events, "seed", output_dir)
+        click.echo(f"Wrote JSON -> {filepath}")
+
+    if store in ("supabase", "both"):
+        supabase = SupabaseStore()
+        if all_events:
+            written = supabase.upsert_events(all_events)
+            click.echo(f"Upserted {written} event(s) to Supabase")
+        supabase.upsert_seeds(seeds)
+        click.echo(f"Upserted {len(seeds)} seed(s) to Supabase")
