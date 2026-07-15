@@ -37,7 +37,7 @@ SITES = {
     "psyconnect": {
         "base_url": "https://psyconnect.london",
         "name": "psyconnect",
-        "tagline": "consciousness, connection & ceremony in london",
+        "tagline": "consciousness, connection, ceremony & psychedelics — in person in london",
         "overlay": ROOT / "sites" / "psyconnect",
         "config": ROOT / "sites" / "psyconnect" / "config.js",
         "outdir": ROOT / "build-psyconnect",
@@ -99,12 +99,39 @@ def site_match(event: dict) -> bool:
     flt = SITE_JSON.get("filter")
     if not flt:
         return True
-    hay = f"{event.get('title') or ''} {event.get('organizer_name') or ''}".lower()
+    hay = " ".join(
+        p
+        for p in (
+            event.get("title") or "",
+            event.get("organizer_name") or "",
+            event.get("hook") or "",
+            event.get("description") or "",
+            " ".join(event.get("tags") or []),
+        )
+        if p
+    ).lower()
     if any(term in hay for term in flt.get("exclude") or []):
         return False
+
+    topics = event.get("topics") or []
+    techish = ("tech & ai", "startups & work")
+    strong_scene = (
+        "psychedelics",
+        "consciousness",
+        "spirituality & ritual",
+        "connection & intimacy",
+    )
+    # "healing & wellbeing" + tech is how health hackathons leak in
+    if (
+        any(t in techish for t in topics)
+        and not any(t in strong_scene for t in topics)
+        and event.get("category") != "expand"
+    ):
+        return False
+
     if event.get("category") in (flt.get("categories") or []):
         return True
-    return any(t in (flt.get("topics") or []) for t in event.get("topics") or [])
+    return any(t in (flt.get("topics") or []) for t in topics)
 
 
 def goatcounter_snippet() -> str:
@@ -203,10 +230,36 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
   <main style="max-width:720px;margin:0 auto;padding:1rem 1.5rem 4rem">
   {body}
   </main>
-  <footer><p><a href="{BASE_URL}/">{esc(SITE["name"])}</a> — {esc(SITE["tagline"])}</p></footer>
+  <footer>
+    {seo_nav_html()}
+    <p><a href="{BASE_URL}/">{esc(SITE["name"])}</a> — {esc(SITE["tagline"])}</p>
+  </footer>
 </body>
 </html>
 """
+
+
+def seo_nav_html() -> str:
+    """Topic links for static pages — same set the SPA footer renders."""
+    site_topics = SITE_JSON.get("topics")
+    keys = [
+        k
+        for k in TOPICS
+        if site_topics is None or k in site_topics
+    ]
+    if not keys:
+        return ""
+    parts = []
+    for i, key in enumerate(keys):
+        slug_, _ = TOPICS[key]
+        if i:
+            parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
+        parts.append(
+            f'<a href="{BASE_URL}/t/{slug_}.html">{esc(key)}</a>'
+        )
+    return (
+        f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
+    )
 
 
 def site_wordmark(css_prefix: str) -> str:

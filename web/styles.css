@@ -101,6 +101,27 @@ body {
   font-weight: 400;
 }
 
+/* tagline words link to /t/*.html for crawl — stay visually inert */
+.tagline a {
+  color: inherit;
+  text-decoration: none;
+  border: none;
+  cursor: text;
+}
+.tagline a:hover,
+.tagline a:active {
+  color: inherit;
+  text-decoration: none;
+  border: none;
+}
+.tagline a:focus {
+  outline: none;
+}
+.tagline a:focus-visible {
+  outline: 1px dotted var(--ink-dim);
+  outline-offset: 2px;
+}
+
 /* ---------- the mechanical kit ---------- */
 
 .legend {
@@ -844,6 +865,36 @@ footer a {
 }
 
 footer a:hover { color: var(--gold); }
+
+/* quiet topic nav for crawl paths; not a loud UI chrome */
+.seo-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.25rem 0.15rem;
+  max-width: 36rem;
+  margin: 0 auto 1.1rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+.seo-nav a {
+  color: var(--ink-dim);
+  text-decoration: none;
+  border-bottom: none;
+  padding: 0 0.35rem;
+}
+.seo-nav a:hover {
+  color: var(--ink-dim);
+  border-bottom: none;
+  opacity: 0.85;
+}
+.seo-sep {
+  color: var(--ink-dim);
+  opacity: 0.45;
+  user-select: none;
+}
 
 #last-updated {
   font-family: var(--mono);

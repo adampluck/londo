@@ -15,7 +15,7 @@ self.LONDO_CONFIG = {
   SITE: /*SITE-JSON*/ {
     "id": "psyconnect",
     "name": "psyconnect",
-    "tagline": "consciousness, connection & ceremony in london",
+    "tagline": "consciousness, connection, ceremony & psychedelics — in person in london",
     "filter": {
       "categories": ["expand"],
       "topics": [
@@ -26,7 +26,9 @@ self.LONDO_CONFIG = {
         "social sports mix", "football", "futsal", "5-a-side",
         "dodgeball", "rounders", "netball", "basketball", "volleyball",
         "rugby", "cricket", "softball", "badminton", "kickabout",
-        "startup", "founder"
+        "startup", "founder",
+        "hackathon", "openai", "emed", "ai engine", "demo day",
+        "pitch night", "pitch competition", "y combinator"
       ]
     },
     "topics": [

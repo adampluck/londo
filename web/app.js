@@ -41,6 +41,21 @@
     "nature & outdoors", "healing & wellbeing", "spirituality & ritual",
     "society & politics", "science & ideas",
   ];
+  // static /t/<slug>.html pages (scripts/build_site.py TOPICS) — keep in step
+  const TOPIC_SLUGS = {
+    "psychedelics": "psychedelics",
+    "consciousness": "consciousness",
+    "connection & intimacy": "connection",
+    "tech & ai": "tech-ai",
+    "startups & work": "startups",
+    "arts & creativity": "arts",
+    "music & sound": "music",
+    "nature & outdoors": "nature",
+    "healing & wellbeing": "healing",
+    "spirituality & ritual": "spirituality",
+    "society & politics": "society",
+    "science & ideas": "ideas",
+  };
   // the tech / non-tech lens: which side of the tech divide to see
   const TECH_TOPICS = ["tech & ai", "startups & work"];
 
@@ -123,18 +138,45 @@
 
   // A filtered site (SITE.filter) only ever sees its slice of the table:
   // category in the list, or any topic overlapping — minus anything whose
-  // title/organizer hits an exclude term (e.g. team sports mis-tagged as
-  // connection events).
+  // title/organizer/hook/description hits an exclude term (sports mis-tags,
+  // tech hackathons that pick up "healing & wellbeing", etc.).
+  // Tech/startup topics alone never admit an event unless a stronger scene
+  // topic is also present (or category is expand).
   function siteMatch(e) {
     if (isOurs(e)) return true;
     if (!SITE.filter) return true;
-    const hay = ((e.title || "") + " " + (e.organizer_name || "")).toLowerCase();
+    const hay = [
+      e.title,
+      e.organizer_name,
+      e.hook,
+      e.description,
+      (e.tags || []).join(" "),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
     if ((SITE.filter.exclude || []).some((term) => hay.includes(term)))
       return false;
+
+    const topics = e.topics || [];
+    const techish = ["tech & ai", "startups & work"];
+    const strongScene = [
+      "psychedelics",
+      "consciousness",
+      "spirituality & ritual",
+      "connection & intimacy",
+    ];
+    // "healing & wellbeing" + tech is how health hackathons leak in
+    if (
+      topics.some((t) => techish.includes(t)) &&
+      !topics.some((t) => strongScene.includes(t)) &&
+      e.category !== "expand"
+    ) {
+      return false;
+    }
+
     if ((SITE.filter.categories || []).includes(e.category)) return true;
-    return (e.topics || []).some((t) =>
-      (SITE.filter.topics || []).includes(t)
-    );
+    return topics.some((t) => (SITE.filter.topics || []).includes(t));
   }
 
   function baseFilter(e) {
@@ -1139,12 +1181,40 @@
     }, 2200);
   }
 
+  // Footer topic links → static /t/*.html pages (sitemap alone is weak for
+  // crawl; this gives the SPA an internal link graph without cluttering
+  // the main chrome).
+  function renderSeoNav() {
+    const nav = document.getElementById("seo-nav");
+    if (!nav) return;
+    const frag = document.createDocumentFragment();
+    let first = true;
+    for (const topic of TOPICS) {
+      const slug = TOPIC_SLUGS[topic];
+      if (!slug) continue;
+      if (!first) {
+        const sep = document.createElement("span");
+        sep.className = "seo-sep";
+        sep.setAttribute("aria-hidden", "true");
+        sep.textContent = "·";
+        frag.appendChild(sep);
+      }
+      first = false;
+      const a = document.createElement("a");
+      a.href = `t/${slug}.html`;
+      a.textContent = topic;
+      frag.appendChild(a);
+    }
+    nav.replaceChildren(frag);
+  }
+
   async function init() {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js").catch(() => {});
     }
     applyTimeTheme();
     initAnalytics();
+    renderSeoNav();
     bindControls();
     if (FEATURES.views === false) {
       // single-view site: browse only, no tab bars
