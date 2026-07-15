@@ -515,9 +515,54 @@
     renderBrowse(main);
   }
 
+  // True when a wider day window (30 days) would surface more listings than
+  // the current filter. Search already spans the full horizon; on "30" there
+  // is nothing further to open.
+  function canExpandTo30() {
+    if (state.day === "30" || state.query.trim()) return false;
+    const shown = browseEvents().length;
+    const until30 = Date.now() + 30 * 864e5;
+    const all30 = state.events.filter(
+      (e) => baseFilter(e) && new Date(e.start_at).getTime() <= until30
+    ).length;
+    return all30 > shown;
+  }
+
+  function expandTo30() {
+    if (state.day === "30") return;
+    state.day = "30";
+    state.surprise = null;
+    syncDayTicks();
+    render();
+  }
+
+  function showMoreButton() {
+    const wrap = document.createElement("div");
+    wrap.className = "show-more";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "key show-more-btn";
+    btn.textContent = "show more";
+    btn.title = "show the next 30 days";
+    btn.addEventListener("click", expandTo30);
+    wrap.appendChild(btn);
+    return wrap;
+  }
+
   function renderBrowse(container) {
     const events = browseEvents();
     if (!events.length) {
+      if (canExpandTo30()) {
+        const frag = document.createDocumentFragment();
+        const empty = document.createElement("p");
+        empty.className = "status";
+        empty.textContent =
+          "nothing in this window — try a wider look.";
+        frag.appendChild(empty);
+        frag.appendChild(showMoreButton());
+        container.replaceChildren(frag);
+        return;
+      }
       container.innerHTML =
         '<p class="status">nothing here — the city is resting. try a wider window.</p>';
       return;
@@ -568,6 +613,7 @@
       section.appendChild(grid);
       frag.appendChild(section);
     }
+    if (canExpandTo30()) frag.appendChild(showMoreButton());
     container.replaceChildren(frag);
   }
 

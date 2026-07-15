@@ -514,6 +514,16 @@ main {
   transition: opacity 0.4s ease;
 }
 
+/* expand default 7-day browse to the full 30-day horizon */
+.show-more {
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0 1rem;
+}
+.show-more-btn {
+  min-width: 10rem;
+}
+
 @keyframes breathe {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 0.95; }

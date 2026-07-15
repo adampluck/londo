@@ -13,13 +13,15 @@ LONDON = ZoneInfo("Europe/London")
 
 # When the same event appears in several sources (or as multiple same-day
 # ticket times), the canonical copy is the earliest start; ties break by
-# this source order.
+# this source order. Luma sits above Dandelion so a dual-listed gathering
+# keeps the Luma registration URL and host name (often more accurate for
+# featured/own events) while still merging Dandelion's missing fields.
 SOURCE_PRIORITY = [
     "newspeak",
+    "luma",
     "dandelion",
     "numinity",
     "eventbrite",
-    "luma",
     "studysociety",
     "momence",
     "other",
