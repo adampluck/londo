@@ -38,7 +38,7 @@ self.LONDO_CONFIG = {
     "features": {
       "lens": false,
       "categoryPills": false,
-      "views": true,
+      "views": false,
       "map": false,
       "compass": false,
       "topics": true

@@ -3,8 +3,8 @@ per-event and per-listing pages with OG/meta tags, JSON-LD, and a sitemap —
 so Google (and WhatsApp link unfurls) can see what the client-side app
 renders.
 
-Pages are written as directory indexes (e/<id>/index.html) so URLs drop
-the .html extension on GitHub Pages: /e/<id>/ and /t/<topic>/.
+Pages are written as directory indexes (e/<name-slug>/index.html) so URLs
+drop the .html extension on GitHub Pages: /e/<event-name>/ and /t/<topic>/.
 
 Stdlib only, so CI needs no installs:
     python3 scripts/build_site.py [--site londo|psyconnect] [outdir]
@@ -17,6 +17,7 @@ import html
 import json
 import re
 import shutil
+import unicodedata
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -271,13 +272,69 @@ def fetch_events() -> list[dict]:
         return json.load(resp)
 
 
-def event_id(event: dict) -> str:
+# Filled once per build by assign_event_slugs() — unique, title-based paths.
+_EVENT_SLUGS: dict[tuple[str, str], str] = {}
+
+
+def slugify_title(title: str) -> str:
+    """URL-safe slug from an event name: 'PsyConnect: Park…' → 'psyconnect-park'."""
+    text = unicodedata.normalize("NFKD", title or "")
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    text = re.sub(r"-{2,}", "-", text).strip("-")
+    if len(text) > 72:
+        text = text[:72].rstrip("-")
+    return text or "event"
+
+
+def legacy_event_id(event: dict) -> str:
+    """Previous /e/<source>-<id>/ path — kept as a redirect target only."""
     sid = re.sub(r"[^A-Za-z0-9_-]", "", event["source_id"])[:48]
     return f"{event['source']}-{sid}"
 
 
+def assign_event_slugs(events: list[dict]) -> dict[tuple[str, str], str]:
+    """Prefer bare title slug; on collision append date, then a short unique tail."""
+    used: set[str] = set()
+    mapping: dict[tuple[str, str], str] = {}
+    for event in events:
+        base = slugify_title(event.get("title") or "event")
+        day = ""
+        if event.get("start_at"):
+            day = event["start_at"][:10]  # YYYY-MM-DD
+        short = re.sub(r"[^A-Za-z0-9]", "", event.get("source_id") or "")[-8:]
+        candidates = [base]
+        if day:
+            candidates.append(f"{base}-{day}")
+        if day and short:
+            candidates.append(f"{base}-{day}-{short.lower()}")
+        candidates.append(f"{base}-{legacy_event_id(event).lower()}")
+
+        chosen = None
+        for c in candidates:
+            if c and c not in used:
+                chosen = c
+                break
+        if chosen is None:
+            n = 2
+            while f"{base}-{n}" in used:
+                n += 1
+            chosen = f"{base}-{n}"
+        used.add(chosen)
+        mapping[(event["source"], event["source_id"])] = chosen
+    return mapping
+
+
+def event_slug(event: dict) -> str:
+    key = (event["source"], event["source_id"])
+    if key in _EVENT_SLUGS:
+        return _EVENT_SLUGS[key]
+    return slugify_title(event.get("title") or "event")
+
+
 def event_url(event: dict) -> str:
-    return f"{BASE_URL}/e/{event_id(event)}/"
+    return f"{BASE_URL}/e/{event_slug(event)}/"
 
 
 def topic_url(slug_: str) -> str:
@@ -709,6 +766,7 @@ def listing_page(
 
 
 def build(outdir: Path) -> None:
+    global _EVENT_SLUGS
     events = [e for e in fetch_events() if site_match(e)]
     print(f"Building {SITE['name']} with {len(events)} events")
 
@@ -718,13 +776,30 @@ def build(outdir: Path) -> None:
     if SITE["overlay"]:
         shutil.copytree(SITE["overlay"], outdir, dirs_exist_ok=True)
 
+    _EVENT_SLUGS = assign_event_slugs(events)
     urls = [f"{BASE_URL}/"]
 
     for event in events:
-        eid = event_id(event)
+        slug = event_slug(event)
         canonical = event_url(event)
-        write_index(outdir / "e" / eid, event_page(event))
-        write_html_redirect(outdir / "e" / f"{eid}.html", canonical)
+        write_index(outdir / "e" / slug, event_page(event))
+        # legacy source-id paths keep working for old sitemaps / shares
+        legacy = legacy_event_id(event)
+        if legacy != slug:
+            write_html_redirect(outdir / "e" / f"{legacy}.html", canonical)
+            write_index(
+                outdir / "e" / legacy,
+                (
+                    f'<!doctype html><html lang="en"><head>'
+                    f'<meta charset="utf-8">'
+                    f'<link rel="canonical" href="{esc(canonical)}">'
+                    f'<meta http-equiv="refresh" content="0;url={esc(canonical)}">'
+                    f"</head><body>"
+                    f'<p><a href="{esc(canonical)}">This page has moved</a>.</p>'
+                    f"</body></html>"
+                ),
+            )
+        write_html_redirect(outdir / "e" / f"{slug}.html", canonical)
         urls.append(canonical)
 
     # category pages only make sense when the site spans all categories;
