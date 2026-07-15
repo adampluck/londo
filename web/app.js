@@ -485,6 +485,9 @@
   // ---------- rendering ----------
 
   function setView(view) {
+    // map can be hidden per-site (FEATURES.map: false) without killing
+    // the tonight/browse tabs
+    if (view === "map" && FEATURES.map === false) view = "browse";
     state.view = view;
     state.surprise = null;
     document
@@ -1101,6 +1104,13 @@
       // single-view site: browse only, no tab bars
       document.getElementById("view-tabs").hidden = true;
       document.getElementById("bottom-tabs").hidden = true;
+    } else if (FEATURES.map === false) {
+      // keep browse/tonight; hide map entry points only
+      document
+        .querySelectorAll('.view-key[data-view="map"]')
+        .forEach((el) => {
+          el.hidden = true;
+        });
     }
     renderWeekStrip();
     setLens("all");

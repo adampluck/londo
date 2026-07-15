@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from londo.models import Event
@@ -10,8 +11,9 @@ logger = logging.getLogger(__name__)
 
 LONDON = ZoneInfo("Europe/London")
 
-# When the same event appears in several sources, the canonical copy comes
-# from the earliest source in this list; the rest are marked duplicate_of it.
+# When the same event appears in several sources (or as multiple same-day
+# ticket times), the canonical copy is the earliest start; ties break by
+# this source order.
 SOURCE_PRIORITY = [
     "newspeak",
     "dandelion",
@@ -25,9 +27,19 @@ SOURCE_PRIORITY = [
 
 
 def dedupe(events: list[Event]) -> list[Event]:
-    """Assign dedupe keys, mark cross-source duplicates, and enrich the
-    canonical event with any fields its duplicates have but it lacks."""
+    """Assign dedupe keys, mark cross-source / same-day duplicates, and
+    enrich the canonical event with any fields its duplicates have but it
+    lacks.
+
+    Same normalised title on the same London calendar day collapses to one
+    listing (earliest start wins). Multi-slot tickets (7pm + 8pm) and
+    cross-source copies of the same gathering both land in that rule — the
+    ticket page usually still offers every slot.
+    """
     for event in events:
+        # Recompute from scratch so a re-scrape can un-mark rows that no
+        # longer group with anything.
+        event.duplicate_of = None
         event.dedupe_key = _dedupe_key(event)
 
     groups = _group(events)
@@ -51,7 +63,7 @@ def dedupe(events: list[Event]) -> list[Event]:
             _merge_missing(canonical, dup)
 
     if n_dupes:
-        logger.info("Marked %d cross-source duplicates", n_dupes)
+        logger.info("Marked %d duplicates (cross-source or same-day slots)", n_dupes)
     return events
 
 
@@ -59,7 +71,7 @@ def _group(events: list[Event]) -> list[list[Event]]:
     """Cluster events that share ANY match signal. external_ref is only set by
     some sources (luma/eventbrite/meetup/newspeak), so a Dandelion copy of a
     Luma event carries none; keying on external_ref alone would split the two
-    even though their title+time matches. Union-find over the union of both keys
+    even though their title+day matches. Union-find over the union of both keys
     means events need to agree on just one signal to be judged duplicates."""
     parent: dict[int, int] = {i: i for i in range(len(events))}
 
@@ -89,7 +101,7 @@ def _group(events: list[Event]) -> list[list[Event]]:
 
 
 def _match_keys(event: Event) -> list[str]:
-    keys = [_title_time_key(event)]
+    keys = [_title_day_key(event)]
     if event.external_ref:
         keys.append(event.external_ref)
     return keys
@@ -98,15 +110,18 @@ def _match_keys(event: Event) -> list[str]:
 def _dedupe_key(event: Event) -> str:
     if event.external_ref:
         return event.external_ref
-    return _title_time_key(event)
+    return _title_day_key(event)
 
 
-def _title_time_key(event: Event) -> str:
-    # Keyed to the minute, not the day: some venues run the same event several
-    # times a day (different sessions), and those must stay separate. Genuine
-    # cross-source duplicates of a single event share an exact start time.
+def _title_day_key(event: Event) -> str:
+    """Normalised title + London calendar day.
+
+    Same-day slots of one listing (and cross-source copies of it) share this
+    key so only the earliest start is shown. Distinct gatherings on different
+    days stay separate.
+    """
     if event.start_datetime:
-        when = event.start_datetime.astimezone(LONDON).isoformat(timespec="minutes")
+        when = event.start_datetime.astimezone(LONDON).date().isoformat()
     elif event.start_date:
         when = event.start_date.isoformat()
     else:
@@ -116,12 +131,27 @@ def _title_time_key(event: Event) -> str:
     return f"{slug}|{when}"
 
 
-def _priority(event: Event) -> tuple[int, str]:
+def _priority(event: Event) -> tuple[datetime, int, str]:
+    """Earliest start wins; source rank breaks ties; source_id is stable last."""
+    if event.start_datetime is not None:
+        start = event.start_datetime
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+    elif event.start_date is not None:
+        start = datetime(
+            event.start_date.year,
+            event.start_date.month,
+            event.start_date.day,
+            tzinfo=timezone.utc,
+        )
+    else:
+        start = datetime.max.replace(tzinfo=timezone.utc)
+
     try:
         rank = SOURCE_PRIORITY.index(event.source)
     except ValueError:
         rank = len(SOURCE_PRIORITY)
-    return (rank, event.source_id)
+    return (start, rank, event.source_id)
 
 
 def _merge_missing(canonical: Event, dup: Event) -> None:
