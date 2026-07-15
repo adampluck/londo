@@ -19,6 +19,9 @@
     freeOnly: false,
     query: "",
     surprise: null, // event shown by "surprise me"
+    // Header-link landing: { kind: "topic"|"category", key } — intro + filter.
+    // Not set when using chips/pills so landings stay a special entry path.
+    landing: null,
     map: null,
     mapLoaded: false,
   };
@@ -41,7 +44,8 @@
     "nature & outdoors", "healing & wellbeing", "spirituality & ritual",
     "society & politics", "science & ideas",
   ];
-  // static /t/<slug>.html pages (scripts/build_site.py TOPICS) — keep in step
+  // static /t/<slug>/ pages + ?topic=<slug> landings — keep in step with
+  // scripts/build_site.py TOPICS
   const TOPIC_SLUGS = {
     "psychedelics": "psychedelics",
     "consciousness": "consciousness",
@@ -58,6 +62,125 @@
   };
   // the tech / non-tech lens: which side of the tech divide to see
   const TECH_TOPICS = ["tech & ai", "startups & work"];
+
+  // Warm intros for header-link landings (?topic= / ?category=).
+  // Mirror tone of scripts/build_site.py CATEGORY_INTROS / TOPIC_INTROS.
+  const LANDING_INTROS = {
+    category: {
+      move: {
+        title: "move — body first",
+        paras: [
+          "Bodies first. These are the nights and mornings when London moves — ecstatic dance floors, 5Rhythms waves, yoga that feels like play, contact improv and everything in between.",
+          "No performance required. Show up as you are, follow what feels good, and leave a little more awake than you arrived.",
+        ],
+      },
+      connect: {
+        title: "connect — real conversation",
+        paras: [
+          "For the people who miss real conversation. Circles, authentic relating, shared tables and soft socials where the point is each other — not networking, not small talk that goes nowhere.",
+          "Come curious. Leave with a face you recognise next time.",
+        ],
+      },
+      expand: {
+        title: "expand — breath, ceremony, stillness",
+        paras: [
+          "Quiet rooms, deep breath, altered edges. Breathwork, meditation, sound baths, ceremony and the soft practices that open something wider than the usual week.",
+          "In person, in London — chosen for presence, not spectacle.",
+        ],
+      },
+      think: {
+        title: "think — ideas in the room",
+        paras: [
+          "Salons, talks and long-form evenings for people who like their ideas with other humans in the room. Philosophy, AI, science, civic chat — without the webinar energy.",
+          "Bring a question. Stay for the conversation after.",
+        ],
+      },
+      make: {
+        title: "make — hands busy",
+        paras: [
+          "Hands busy, mind quieter. Workshops, craft, song and making things together — the kind of evening where you leave with something you built, not just a ticket stub.",
+          "No portfolio needed. Just show up ready to try.",
+        ],
+      },
+    },
+    topic: {
+      psychedelics: {
+        title: "psychedelics in london",
+        paras: [
+          "Talks, integration circles, community nights and careful conversations about plant medicine and psychedelic culture — education and connection, in person.",
+          "A gentle way in if you're curious, and a place to land if you've already been out there.",
+        ],
+      },
+      consciousness: {
+        title: "consciousness",
+        paras: [
+          "Explorations of mind, awareness and the odd miracle of being awake. From contemplative evenings to lively salons — always with other people in the room.",
+        ],
+      },
+      "connection & intimacy": {
+        title: "connection & intimacy",
+        paras: [
+          "Spaces for relating with a bit more honesty. Circles, workshops and gatherings about friendship, intimacy and the courage to be seen.",
+          "Come as you are. Leave a little less alone in the city.",
+        ],
+      },
+      "tech & ai": {
+        title: "tech & ai",
+        paras: [
+          "Builders, thinkers and the quietly obsessed — in-person nights about AI, tools and the future, without another Zoom grid.",
+        ],
+      },
+      "startups & work": {
+        title: "startups & work",
+        paras: [
+          "Founders, side projects and the people building things in London. Meetups and evenings that feel human, not like a pitch deck.",
+        ],
+      },
+      "arts & creativity": {
+        title: "arts & creativity",
+        paras: [
+          "Making, looking, listening. Creative gatherings for anyone who wants art in their week, not only on a gallery wall.",
+        ],
+      },
+      "music & sound": {
+        title: "music & sound",
+        paras: [
+          "Sound baths, live rooms, shared listening and the evenings where music is the medicine. Ears open, phones down if you can.",
+        ],
+      },
+      "nature & outdoors": {
+        title: "nature & outdoors",
+        paras: [
+          "Parks, walks and outdoor rituals — London still has green edges if you know where to look. Come for the sky and the company.",
+        ],
+      },
+      "healing & wellbeing": {
+        title: "healing & wellbeing",
+        paras: [
+          "Gentle practices for nervous systems that live in a loud city. Bodywork, breath, rest and care — in person, at a human pace.",
+        ],
+      },
+      "spirituality & ritual": {
+        title: "ceremony & spirituality",
+        paras: [
+          "Ceremony, ritual and the sacred ordinary. Cacao, prayer, seasonal gatherings and rooms held with intention.",
+          "You don't need a fixed belief — only a little openness.",
+        ],
+      },
+      "society & politics": {
+        title: "society & politics",
+        paras: [
+          "Civic conversation without the shouty timeline. Evenings about how we live together, face to face.",
+        ],
+      },
+      "science & ideas": {
+        title: "science & ideas",
+        paras: [
+          "Curiosity as a social sport. Talks and salons where science and big ideas get a pint and a good audience.",
+        ],
+      },
+    },
+  };
 
   // Deterministic placeholder gradient for events without an image.
   const GRADIENTS = [
@@ -357,6 +480,7 @@
       btn.dataset.topic = key;
       btn.textContent = label;
       btn.addEventListener("click", () => {
+        clearLanding();
         if (key === "all") state.topics.clear();
         else if (state.topics.has(key)) state.topics.delete(key);
         else state.topics.add(key);
@@ -480,7 +604,108 @@
     raf = requestAnimationFrame(step);
   }
 
+  function topicKeyFromSlug(slug) {
+    if (!slug) return null;
+    const s = slug.toLowerCase();
+    for (const [key, val] of Object.entries(TOPIC_SLUGS)) {
+      if (val === s) return key;
+    }
+    // also accept the raw topic key (encoded)
+    if (TOPICS.includes(slug)) return slug;
+    return null;
+  }
+
+  function clearLanding({ keepUrl } = {}) {
+    state.landing = null;
+    if (!keepUrl && (location.search || "").length > 1) {
+      const path = location.pathname + (location.hash || "");
+      history.replaceState(null, "", path);
+    }
+  }
+
+  // Header tagline landings: /?topic=psychedelics or /?category=expand
+  function applyLandingFromUrl() {
+    const params = new URLSearchParams(location.search);
+    const topicSlug = params.get("topic");
+    const cat = params.get("category");
+    if (topicSlug) {
+      const key = topicKeyFromSlug(topicSlug);
+      if (key && TOPICS.includes(key)) {
+        state.landing = { kind: "topic", key };
+        state.topics = new Set([key]);
+        state.category = "all";
+        state.day = "30";
+        return true;
+      }
+    }
+    if (cat && CATEGORIES[cat]) {
+      state.landing = { kind: "category", key: cat };
+      state.category = cat;
+      state.topics.clear();
+      state.day = "30";
+      return true;
+    }
+    return false;
+  }
+
+  function landingCopy() {
+    if (!state.landing) return null;
+    const { kind, key } = state.landing;
+    const pack = (LANDING_INTROS[kind] || {})[key];
+    if (pack) return pack;
+    return {
+      title: key,
+      paras: [`In-person ${key} gatherings in London.`],
+    };
+  }
+
+  function renderLandingIntro() {
+    const copy = landingCopy();
+    if (!copy) return null;
+    const head = document.createElement("header");
+    head.className = "landing-intro";
+
+    const kicker = document.createElement("p");
+    kicker.className = "landing-kicker";
+    kicker.textContent = "in person · london";
+    head.appendChild(kicker);
+
+    const h2 = document.createElement("h2");
+    h2.className = "landing-title";
+    h2.textContent = copy.title;
+    head.appendChild(h2);
+
+    for (const text of copy.paras || []) {
+      const p = document.createElement("p");
+      p.className = "landing-lead";
+      p.textContent = text;
+      head.appendChild(p);
+    }
+
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "landing-clear";
+    clear.textContent = "show everything";
+    clear.addEventListener("click", () => {
+      clearLanding();
+      state.category = "all";
+      state.topics.clear();
+      state.day = "7";
+      document
+        .querySelectorAll("#category-pills .key")
+        .forEach((k) =>
+          k.classList.toggle("lit", k.dataset.category === "all")
+        );
+      syncDayTicks();
+      syncTopicTokens();
+      render();
+    });
+    head.appendChild(clear);
+    return head;
+  }
+
   function resetFilters() {
+    clearLanding();
     state.category = "all";
     state.topics.clear();
     state.area = "all";
@@ -593,9 +818,12 @@
 
   function renderBrowse(container) {
     const events = browseEvents();
+    const frag = document.createDocumentFragment();
+    const intro = renderLandingIntro();
+    if (intro) frag.appendChild(intro);
+
     if (!events.length) {
       if (canExpandTo30()) {
-        const frag = document.createDocumentFragment();
         const empty = document.createElement("p");
         empty.className = "status";
         empty.textContent =
@@ -605,8 +833,12 @@
         container.replaceChildren(frag);
         return;
       }
-      container.innerHTML =
-        '<p class="status">nothing here — the city is resting. try a wider window.</p>';
+      const empty = document.createElement("p");
+      empty.className = "status";
+      empty.textContent =
+        "nothing here — the city is resting. try a wider window.";
+      frag.appendChild(empty);
+      container.replaceChildren(frag);
       return;
     }
 
@@ -622,7 +854,6 @@
       byDay.get(day).push(e);
     }
 
-    const frag = document.createDocumentFragment();
     for (const [day, dayEvents] of byDay) {
       const section = document.createElement("section");
       section.className = "day-group";
@@ -1108,6 +1339,7 @@
     document.getElementById("category-pills").addEventListener("click", (ev) => {
       const btn = ev.target.closest("button[data-category]");
       if (!btn) return;
+      clearLanding();
       state.category = btn.dataset.category;
       state.surprise = null;
       document
@@ -1240,8 +1472,18 @@
     try {
       state.events = (await fetchEvents()).filter(siteMatch);
       clearInterval(loadingTimer);
+      applyLandingFromUrl();
+      // sync chrome to any landing filter (topic chips / category / day)
+      document
+        .querySelectorAll("#category-pills .key")
+        .forEach((k) =>
+          k.classList.toggle("lit", k.dataset.category === state.category)
+        );
+      syncDayTicks();
       renderFeatured();
       maybeShowEnrichedControls();
+      // topic chips only exist after maybeShowEnrichedControls
+      syncTopicTokens();
       renderLastUpdated();
       render();
     } catch (err) {
