@@ -33,6 +33,16 @@ body {
   max-width: 100%;
 }
 
+/* force tagline crawl-links to match body tagline colour (no blue/purple) */
+.topbar .tagline a:any-link,
+.topbar .tagline a:link,
+.topbar .tagline a:visited,
+.topbar .tagline a:hover,
+.topbar .tagline a:active {
+  color: var(--ink-dim) !important;
+  text-decoration: none !important;
+}
+
 /* repeating pattern in the fixed backdrop; the body's time-of-day
    gradient tints through the transparency */
 .sky::before {

@@ -3,6 +3,9 @@ per-event and per-listing pages with OG/meta tags, JSON-LD, and a sitemap —
 so Google (and WhatsApp link unfurls) can see what the client-side app
 renders.
 
+Pages are written as directory indexes (e/<id>/index.html) so URLs drop
+the .html extension on GitHub Pages: /e/<id>/ and /t/<topic>/.
+
 Stdlib only, so CI needs no installs:
     python3 scripts/build_site.py [--site londo|psyconnect] [outdir]
 Reads Supabase credentials from the site's config.js (public anon key).
@@ -18,6 +21,9 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+LONDON = ZoneInfo("Europe/London")
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -57,6 +63,41 @@ CATEGORIES = {
     "make": ("make", "Workshops, crafts & creative events in London"),
 }
 
+# Warm intro copy for /c/<category>/ pages (1–2 short paragraphs).
+CATEGORY_INTROS = {
+    "move": (
+        "Bodies first. These are the nights and mornings when London moves — "
+        "ecstatic dance floors, 5Rhythms waves, yoga that feels like play, "
+        "contact improv and everything in between.",
+        "No performance required. Show up as you are, follow what feels good, "
+        "and leave a little more awake than you arrived.",
+    ),
+    "connect": (
+        "For the people who miss real conversation. Circles, authentic relating, "
+        "shared tables and soft socials where the point is each other — "
+        "not networking, not small talk that goes nowhere.",
+        "Come curious. Leave with a face you recognise next time.",
+    ),
+    "expand": (
+        "Quiet rooms, deep breath, altered edges. Breathwork, meditation, "
+        "sound baths, ceremony and the soft practices that open something "
+        "wider than the usual week.",
+        "In person, in London — chosen for presence, not spectacle.",
+    ),
+    "think": (
+        "Salons, talks and long-form evenings for people who like their "
+        "ideas with other humans in the room. Philosophy, AI, science, "
+        "civic chat — without the webinar energy.",
+        "Bring a question. Stay for the conversation after.",
+    ),
+    "make": (
+        "Hands busy, mind quieter. Workshops, craft, song and making "
+        "things together — the kind of evening where you leave with "
+        "something you built, not just a ticket stub.",
+        "No portfolio needed. Just show up ready to try.",
+    ),
+}
+
 # Subject topics (londo/enrich.py TOPIC_VOCAB): key -> (slug, SEO title)
 TOPICS = {
     "psychedelics": ("psychedelics", "Psychedelics events in London"),
@@ -72,6 +113,67 @@ TOPICS = {
     "society & politics": ("society", "Society & politics events in London"),
     "science & ideas": ("ideas", "Science & ideas events in London"),
 }
+
+# Warm intro copy for /t/<topic>/ pages.
+TOPIC_INTROS = {
+    "psychedelics": (
+        "Talks, integration circles, community nights and careful "
+        "conversations about plant medicine and psychedelic culture in London — "
+        "education and connection, in person.",
+        "A gentle way in if you're curious, and a place to land if you've "
+        "already been out there.",
+    ),
+    "consciousness": (
+        "Explorations of mind, awareness and the odd miracle of being awake. "
+        "From contemplative evenings to lively salons — always with other "
+        "people in the room.",
+    ),
+    "connection & intimacy": (
+        "Spaces for relating with a bit more honesty. Circles, workshops and "
+        "gatherings about friendship, intimacy and the courage to be seen.",
+        "Come as you are. Leave a little less alone in the city.",
+    ),
+    "tech & ai": (
+        "Builders, thinkers and the quietly obsessed — in-person nights about "
+        "AI, tools and the future, without another Zoom grid.",
+    ),
+    "startups & work": (
+        "Founders, side projects and the people building things in London. "
+        "Meetups and evenings that feel human, not like a pitch deck.",
+    ),
+    "arts & creativity": (
+        "Making, looking, listening. Creative gatherings for anyone who "
+        "wants art in their week, not only on a gallery wall.",
+    ),
+    "music & sound": (
+        "Sound baths, live rooms, shared listening and the evenings where "
+        "music is the medicine. Ears open, phones down if you can.",
+    ),
+    "nature & outdoors": (
+        "Parks, walks and outdoor rituals — London still has green edges "
+        "if you know where to look. Come for the sky and the company.",
+    ),
+    "healing & wellbeing": (
+        "Gentle practices for nervous systems that live in a loud city. "
+        "Bodywork, breath, rest and care — in person, at a human pace.",
+    ),
+    "spirituality & ritual": (
+        "Ceremony, ritual and the sacred ordinary. Cacao, prayer, seasonal "
+        "gatherings and rooms held with intention.",
+        "You don't need a fixed belief — only a little openness.",
+    ),
+    "society & politics": (
+        "Civic conversation without the shouty timeline. Evenings about "
+        "how we live together, face to face.",
+    ),
+    "science & ideas": (
+        "Curiosity as a social sport. Talks and salons where science and "
+        "big ideas get a pint and a good audience.",
+    ),
+}
+
+# Nested static pages live at e/<id>/index.html → css/assets two levels up.
+NESTED_PREFIX = "../.."
 
 
 def read_config() -> tuple[str, str]:
@@ -169,24 +271,80 @@ def fetch_events() -> list[dict]:
         return json.load(resp)
 
 
-def slug(event: dict) -> str:
+def event_id(event: dict) -> str:
     sid = re.sub(r"[^A-Za-z0-9_-]", "", event["source_id"])[:48]
     return f"{event['source']}-{sid}"
+
+
+def event_url(event: dict) -> str:
+    return f"{BASE_URL}/e/{event_id(event)}/"
+
+
+def topic_url(slug_: str) -> str:
+    return f"{BASE_URL}/t/{slug_}/"
+
+
+def category_url(key: str) -> str:
+    return f"{BASE_URL}/c/{key}/"
 
 
 def esc(value) -> str:
     return html.escape(str(value or ""), quote=True)
 
 
-def fmt_when(event: dict) -> str:
+def _start_london(event: dict) -> datetime:
     start = datetime.fromisoformat(event["start_at"].replace("Z", "+00:00"))
+    return start.astimezone(LONDON)
+
+
+def fmt_when(event: dict) -> str:
+    start = _start_london(event)
     if event.get("is_all_day"):
         return start.strftime("%A %-d %B %Y")
-    return start.strftime("%A %-d %B %Y, %H:%M")
+    return start.strftime("%A %-d %B %Y · %H:%M")
 
 
-def page(title: str, description: str, canonical: str, og_image: str | None,
-         body: str, json_ld: dict | None = None, css_prefix: str = "..") -> str:
+def fmt_when_short(event: dict) -> str:
+    start = _start_london(event)
+    if event.get("is_all_day"):
+        return start.strftime("%a %-d %b")
+    return start.strftime("%a %-d %b · %H:%M")
+
+
+def write_index(path: Path, html_text: str) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "index.html").write_text(html_text)
+
+
+def write_html_redirect(old_file: Path, new_url: str) -> None:
+    """Keep old .html URLs alive for crawlers that already indexed them."""
+    old_file.parent.mkdir(parents=True, exist_ok=True)
+    old_file.write_text(
+        f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Moved</title>
+  <link rel="canonical" href="{esc(new_url)}">
+  <meta http-equiv="refresh" content="0;url={esc(new_url)}">
+</head>
+<body>
+  <p><a href="{esc(new_url)}">This page has moved</a>.</p>
+</body>
+</html>
+"""
+    )
+
+
+def page(
+    title: str,
+    description: str,
+    canonical: str,
+    og_image: str | None,
+    body: str,
+    json_ld: dict | None = None,
+    css_prefix: str = NESTED_PREFIX,
+) -> str:
     # "</" must not appear inside a <script> block: a scraped description
     # containing "</script>" would otherwise break out and execute (XSS)
     ld = (
@@ -211,6 +369,7 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
   <meta name="description" content="{esc(description)}">
   <link rel="canonical" href="{esc(canonical)}">
   <meta property="og:site_name" content="{esc(SITE["name"])}">
+  <meta property="og:type" content="website">
   <meta property="og:title" content="{esc(title)}">
   <meta property="og:description" content="{esc(description)}">
   <meta property="og:url" content="{esc(canonical)}">
@@ -226,13 +385,16 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
 </head>
 <body class="static-page">
   <div class="sky" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div><div class="grain"></div></div>
-  <header class="topbar"><h1><a href="{BASE_URL}/" style="text-decoration:none;color:inherit">{site_wordmark(css_prefix)}</a></h1></header>
-  <main style="max-width:720px;margin:0 auto;padding:1rem 1.5rem 4rem">
+  <header class="static-header">
+    <a class="static-brand" href="{BASE_URL}/">{site_wordmark(css_prefix)}</a>
+    <p class="static-tagline">{esc(SITE["tagline"])}</p>
+  </header>
+  <main class="static-main">
   {body}
   </main>
-  <footer>
+  <footer class="static-footer">
     {seo_nav_html()}
-    <p><a href="{BASE_URL}/">{esc(SITE["name"])}</a> — {esc(SITE["tagline"])}</p>
+    <p class="static-footer-home"><a href="{BASE_URL}/">{esc(SITE["name"])}</a> — {esc(SITE["tagline"])}</p>
   </footer>
 </body>
 </html>
@@ -242,11 +404,7 @@ def page(title: str, description: str, canonical: str, og_image: str | None,
 def seo_nav_html() -> str:
     """Topic links for static pages — same set the SPA footer renders."""
     site_topics = SITE_JSON.get("topics")
-    keys = [
-        k
-        for k in TOPICS
-        if site_topics is None or k in site_topics
-    ]
+    keys = [k for k in TOPICS if site_topics is None or k in site_topics]
     if not keys:
         return ""
     parts = []
@@ -254,12 +412,8 @@ def seo_nav_html() -> str:
         slug_, _ = TOPICS[key]
         if i:
             parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
-        parts.append(
-            f'<a href="{BASE_URL}/t/{slug_}.html">{esc(key)}</a>'
-        )
-    return (
-        f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
-    )
+        parts.append(f'<a href="{topic_url(slug_)}">{esc(key)}</a>')
+    return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
 
 
 def site_wordmark(css_prefix: str) -> str:
@@ -268,7 +422,7 @@ def site_wordmark(css_prefix: str) -> str:
         return esc(SITE["name"])
     return (
         f'<img src="{css_prefix}/{esc(logo)}" alt="{esc(SITE["name"])}" '
-        'style="display:block;height:2.4rem;width:auto;max-width:100%">'
+        'class="static-logo">'
     )
 
 
@@ -280,96 +434,182 @@ def extra_css(css_prefix: str) -> str:
     )
 
 
+def fmt_price(event: dict) -> str:
+    if event.get("is_free"):
+        return "Free"
+    if event.get("price_min") is None:
+        return ""
+    low = event["price_min"]
+    high = event.get("price_max")
+    if high is not None and high != low:
+        return f"£{low:g}–£{high:g}"
+    return f"£{low:g}"
+
+
+def topic_chips(event: dict) -> str:
+    site_topics = SITE_JSON.get("topics")
+    chips = []
+    for t in event.get("topics") or []:
+        if t not in TOPICS:
+            continue
+        if site_topics is not None and t not in site_topics:
+            continue
+        slug_, _ = TOPICS[t]
+        chips.append(
+            f'<a class="static-chip" href="{topic_url(slug_)}">{esc(t)}</a>'
+        )
+    cat = event.get("category")
+    if cat and cat in CATEGORIES and not SITE_JSON.get("filter"):
+        chips.insert(
+            0,
+            f'<a class="static-chip" href="{category_url(cat)}">{esc(cat)}</a>',
+        )
+    if not chips:
+        return ""
+    return f'<p class="static-chips">{"".join(chips)}</p>'
+
+
 def event_page(event: dict) -> str:
-    canonical = f"{BASE_URL}/e/{slug(event)}.html"
+    canonical = event_url(event)
     when = fmt_when(event)
-    where = ", ".join(
-        p for p in (event.get("venue_name"), event.get("address")) if p
-    )
+    venue = event.get("venue_name") or ""
+    address = event.get("address") or ""
+    where = ", ".join(p for p in (venue, address) if p) or "London"
+    price = fmt_price(event)
+    org = event.get("organizer_name") or ""
     description = (
         event.get("hook")
         or re.sub(r"\s+", " ", event.get("description") or "")[:200]
-        or f"{when} at {where or 'London'}"
+        or f"{when} at {where}"
     )
-    price = (
-        "Free"
-        if event.get("is_free")
-        else (
-            f"£{event['price_min']}"
-            + (
-                f"–£{event['price_max']}"
-                if event.get("price_max") not in (None, event.get("price_min"))
-                else ""
-            )
-            if event.get("price_min") is not None
-            else ""
-        )
-    )
+    if len(description) > 160:
+        description = description[:157].rsplit(" ", 1)[0] + "…"
 
-    json_ld = {
+    json_ld: dict = {
         "@context": "https://schema.org",
         "@type": "Event",
         "name": event["title"],
         "startDate": event["start_at"],
         "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+        "eventStatus": "https://schema.org/EventScheduled",
         "location": {
             "@type": "Place",
-            "name": event.get("venue_name") or "London",
-            "address": event.get("address") or "London, UK",
+            "name": venue or "London",
+            "address": {
+                "@type": "PostalAddress",
+                "streetAddress": address or None,
+                "addressLocality": "London",
+                "addressCountry": "GB",
+            },
         },
         "url": canonical,
+        "inLanguage": "en-GB",
     }
+    # strip nulls from nested address
+    addr = json_ld["location"]["address"]
+    json_ld["location"]["address"] = {k: v for k, v in addr.items() if v}
     if event.get("end_at"):
         json_ld["endDate"] = event["end_at"]
     if event.get("image_url"):
         json_ld["image"] = [event["image_url"]]
     if event.get("description"):
         json_ld["description"] = re.sub(r"\s+", " ", event["description"])[:500]
-    if event.get("organizer_name"):
-        json_ld["organizer"] = {
-            "@type": "Organization",
-            "name": event["organizer_name"],
+    elif event.get("hook"):
+        json_ld["description"] = event["hook"]
+    if org:
+        json_ld["organizer"] = {"@type": "Organization", "name": org}
+    if event.get("is_free"):
+        json_ld["isAccessibleForFree"] = True
+        json_ld["offers"] = {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "GBP",
+            "url": event["source_url"],
+            "availability": "https://schema.org/InStock",
         }
-    if event.get("price_min") is not None:
+    elif event.get("price_min") is not None:
         json_ld["offers"] = {
             "@type": "Offer",
             "price": str(event["price_min"]),
             "priceCurrency": "GBP",
             "url": event["source_url"],
+            "availability": "https://schema.org/InStock",
         }
 
+    facts = []
+    facts.append(
+        f'<div class="static-fact"><dt>When</dt><dd>{esc(when)}</dd></div>'
+    )
+    facts.append(
+        f'<div class="static-fact"><dt>Where</dt><dd>{esc(where)}</dd></div>'
+    )
+    if price:
+        facts.append(
+            f'<div class="static-fact"><dt>Price</dt><dd>{esc(price)}</dd></div>'
+        )
+    if org:
+        facts.append(
+            f'<div class="static-fact"><dt>Host</dt><dd>{esc(org)}</dd></div>'
+        )
+
     hook = (
-        f'<p style="font-family:Bricolage Grotesque,sans-serif;'
-        f'font-size:1.15rem;color:var(--gold)">{esc(event.get("hook"))}</p>'
+        f'<p class="static-hook">{esc(event["hook"])}</p>'
         if event.get("hook")
         else ""
     )
     img = (
-        f'<img src="{esc(event["image_url"])}" alt="" '
-        'style="width:100%;border-radius:18px;margin:1rem 0">'
+        f'<figure class="static-figure"><img src="{esc(event["image_url"])}" '
+        f'alt="{esc(event["title"])}" loading="lazy"></figure>'
         if event.get("image_url")
         else ""
     )
-    desc_html = "".join(
-        f"<p>{esc(p)}</p>"
-        for p in re.split(r"\n\n+", event.get("description") or "")[:8]
+    paragraphs = [
+        p.strip()
+        for p in re.split(r"\n\n+", event.get("description") or "")
         if p.strip()
-    )
-    meta_bits = " · ".join(
-        b for b in (when, where, price, event.get("organizer_name")) if b
-    )
+    ][:12]
+    if paragraphs:
+        desc_html = (
+            '<div class="static-prose">'
+            + "".join(f"<p>{esc(p)}</p>" for p in paragraphs)
+            + "</div>"
+        )
+    else:
+        desc_html = (
+            '<div class="static-prose">'
+            f"<p>{esc(event.get('hook') or 'An in-person gathering in London.')}</p>"
+            "</div>"
+        )
+
+    area = event.get("area")
+    kicker_bits = ["in person", "London"]
+    if area:
+        kicker_bits.append(f"{area} London")
+    if event.get("category") and not SITE_JSON.get("filter"):
+        kicker_bits.append(event["category"])
 
     body = f"""
-  <article>
-    <h2 style="font-family:Bricolage Grotesque,sans-serif;font-weight:480;font-size:1.9rem;margin:1.2rem 0 0.4rem">{esc(event["title"])}</h2>
+  <nav class="static-crumbs" aria-label="breadcrumb">
+    <a href="{BASE_URL}/">{esc(SITE["name"])}</a>
+    <span aria-hidden="true">/</span>
+    <span>event</span>
+  </nav>
+  <article class="static-event">
+    <p class="static-kicker">{esc(" · ".join(kicker_bits))}</p>
+    <h1 class="static-title">{esc(event["title"])}</h1>
     {hook}
-    <p style="color:var(--ink-dim)">{esc(meta_bits)}</p>
+    <dl class="static-facts">{"".join(facts)}</dl>
+    {topic_chips(event)}
     {img}
     {desc_html}
-    <p style="margin-top:2rem"><a href="{esc(event["source_url"])}" rel="noopener"
-       style="display:inline-block;padding:0.7rem 1.6rem;border-radius:999px;border:1px solid var(--peach);color:var(--peach);text-decoration:none">
-       tickets &amp; details ↗</a></p>
-    <p style="margin-top:1.5rem"><a href="{BASE_URL}/" style="color:var(--mauve)">← everything else on in london this week</a></p>
+    <p class="static-cta-wrap">
+      <a class="static-cta" href="{esc(event["source_url"])}" rel="noopener">
+        tickets &amp; details ↗
+      </a>
+    </p>
+    <p class="static-back">
+      <a href="{BASE_URL}/">← more in-person gatherings on {esc(SITE["name"])}</a>
+    </p>
   </article>"""
     return page(
         f"{event['title']} — {SITE['name']}",
@@ -381,25 +621,87 @@ def event_page(event: dict) -> str:
     )
 
 
-def listing_page(label: str, seo_title: str, canonical: str,
-                 events: list[dict]) -> str:
-    items = "".join(
-        f"""
-    <li style="margin:1.1rem 0;list-style:none">
-      <a href="{BASE_URL}/e/{slug(e)}.html" style="color:var(--ink);text-decoration:none;font-family:Bricolage Grotesque,sans-serif;font-size:1.15rem">{esc(e["title"])}</a>
-      <p style="margin:0.15rem 0 0;color:var(--ink-dim);font-size:0.9rem">{esc(fmt_when(e))} · {esc(e.get("venue_name") or e.get("address") or "London")}</p>
-      {f'<p style="margin:0.15rem 0 0;font-style:italic;color:var(--gold);font-size:0.92rem">{esc(e["hook"])}</p>' if e.get("hook") else ""}
-    </li>"""
-        for e in events[:60]
+def listing_intro_paragraphs(key: str, kind: str, label: str, count: int) -> list[str]:
+    """Warm prose for listing pages, plus a light freshness line."""
+    if kind == "category":
+        paras = list(CATEGORY_INTROS.get(key) or ())
+    else:
+        paras = list(TOPIC_INTROS.get(key) or ())
+    if not paras:
+        paras = [
+            f"In-person {label} gatherings in London, collected on {SITE['name']} "
+            f"so you can find the good rooms without scrolling forever."
+        ]
+    n = count
+    freshness = (
+        f"{n} upcoming right now — times, venues and tickets, "
+        f"refreshed several times a day."
+        if n != 1
+        else "One upcoming right now — times, venue and tickets below."
     )
+    return [*paras, freshness]
+
+
+def listing_page(
+    key: str,
+    label: str,
+    seo_title: str,
+    canonical: str,
+    events: list[dict],
+    kind: str = "topic",
+) -> str:
+    paras = listing_intro_paragraphs(key, kind, label, len(events))
+    lead_html = "".join(f'<p class="static-lead">{esc(p)}</p>' for p in paras)
+    # meta description: first paragraph, kept short
+    meta_desc = paras[0]
+    if len(meta_desc) > 160:
+        meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
+
+    items = []
+    for e in events[:60]:
+        when = fmt_when_short(e)
+        place = e.get("venue_name") or e.get("address") or "London"
+        hook = (
+            f'<p class="static-list-hook">{esc(e["hook"])}</p>'
+            if e.get("hook")
+            else ""
+        )
+        org = (
+            f'<span class="static-list-org">{esc(e["organizer_name"])}</span>'
+            if e.get("organizer_name")
+            else ""
+        )
+        items.append(
+            f"""
+    <li class="static-list-item">
+      <a class="static-list-title" href="{event_url(e)}">{esc(e["title"])}</a>
+      <p class="static-list-meta">{esc(when)} · {esc(place)}{(' · ' + org) if org else ''}</p>
+      {hook}
+    </li>"""
+        )
+
     body = f"""
-  <h2 style="font-family:Bricolage Grotesque,sans-serif;font-weight:480;font-size:1.8rem;margin:1.2rem 0 0.3rem">{esc(label)} — {esc(seo_title.lower())}</h2>
-  <p style="color:var(--ink-dim)">{len(events)} upcoming · updated several times a day</p>
-  <ul style="padding:0">{items}</ul>
-  <p style="margin-top:2rem"><a href="{BASE_URL}/" style="color:var(--mauve)">← all of {esc(SITE["name"])}</a></p>"""
+  <nav class="static-crumbs" aria-label="breadcrumb">
+    <a href="{BASE_URL}/">{esc(SITE["name"])}</a>
+    <span aria-hidden="true">/</span>
+    <span>{esc(kind)}</span>
+  </nav>
+  <header class="static-list-head">
+    <p class="static-kicker">in person · London</p>
+    <h1 class="static-title">{esc(seo_title)}</h1>
+    <div class="static-intro">
+      {lead_html}
+    </div>
+  </header>
+  <ol class="static-list">
+    {"".join(items)}
+  </ol>
+  <p class="static-back">
+    <a href="{BASE_URL}/">← all of {esc(SITE["name"])}</a>
+  </p>"""
     return page(
         f"{seo_title} — {SITE['name']}",
-        f"{seo_title}: {len(events)} upcoming events, updated several times a day.",
+        meta_desc,
         canonical,
         None,
         body,
@@ -416,38 +718,47 @@ def build(outdir: Path) -> None:
     if SITE["overlay"]:
         shutil.copytree(SITE["overlay"], outdir, dirs_exist_ok=True)
 
-    (outdir / "e").mkdir()
     urls = [f"{BASE_URL}/"]
+
     for event in events:
-        (outdir / "e" / f"{slug(event)}.html").write_text(event_page(event))
-        urls.append(f"{BASE_URL}/e/{slug(event)}.html")
+        eid = event_id(event)
+        canonical = event_url(event)
+        write_index(outdir / "e" / eid, event_page(event))
+        write_html_redirect(outdir / "e" / f"{eid}.html", canonical)
+        urls.append(canonical)
 
     # category pages only make sense when the site spans all categories;
     # on a filtered site one of them would just mirror the homepage
     if not SITE_JSON.get("filter"):
-        (outdir / "c").mkdir()
         for key, (label, seo_title) in CATEGORIES.items():
             cat_events = [e for e in events if e.get("category") == key]
             if not cat_events:
                 continue
-            canonical = f"{BASE_URL}/c/{key}.html"
-            (outdir / "c" / f"{key}.html").write_text(
-                listing_page(label, seo_title, canonical, cat_events)
+            canonical = category_url(key)
+            write_index(
+                outdir / "c" / key,
+                listing_page(
+                    key, label, seo_title, canonical, cat_events, kind="category"
+                ),
             )
+            write_html_redirect(outdir / "c" / f"{key}.html", canonical)
             urls.append(canonical)
 
     site_topics = SITE_JSON.get("topics")
-    (outdir / "t").mkdir()
     for key, (slug_, seo_title) in TOPICS.items():
         if site_topics is not None and key not in site_topics:
             continue
         topic_events = [e for e in events if key in (e.get("topics") or [])]
         if not topic_events:
             continue
-        canonical = f"{BASE_URL}/t/{slug_}.html"
-        (outdir / "t" / f"{slug_}.html").write_text(
-            listing_page(key, seo_title, canonical, topic_events)
+        canonical = topic_url(slug_)
+        write_index(
+            outdir / "t" / slug_,
+            listing_page(
+                key, key, seo_title, canonical, topic_events, kind="topic"
+            ),
         )
+        write_html_redirect(outdir / "t" / f"{slug_}.html", canonical)
         urls.append(canonical)
 
     today = datetime.now(timezone.utc).date().isoformat()

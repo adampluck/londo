@@ -1201,7 +1201,7 @@
       }
       first = false;
       const a = document.createElement("a");
-      a.href = `t/${slug}.html`;
+      a.href = `t/${slug}/`;
       a.textContent = topic;
       frag.appendChild(a);
     }
