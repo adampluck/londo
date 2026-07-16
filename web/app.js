@@ -1407,15 +1407,27 @@
     const el = document.getElementById("loading-msg");
     if (!el) return;
     let i = 0;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
     return setInterval(() => {
       i = (i + 1) % LOADING_LINES.length;
-      el.textContent = LOADING_LINES[i];
+      if (reduceMotion) {
+        el.textContent = LOADING_LINES[i];
+        return;
+      }
+      el.classList.add("is-fading");
+      window.setTimeout(() => {
+        el.textContent = LOADING_LINES[i];
+        el.classList.remove("is-fading");
+      }, 280);
     }, 2200);
   }
 
-  // Footer topic links → static /t/*.html pages (sitemap alone is weak for
-  // crawl; this gives the SPA an internal link graph without cluttering
-  // the main chrome).
+  // Footer topic links → SPA landings (?topic=), same as the header tagline.
+  // Static /t/<slug>/ pages stay in the sitemap and on static-page footers for
+  // crawl; in-app links must not depend on directory-index hosting (which can
+  // show a raw folder listing instead of a page).
   function renderSeoNav() {
     const nav = document.getElementById("seo-nav");
     if (!nav) return;
@@ -1433,7 +1445,7 @@
       }
       first = false;
       const a = document.createElement("a");
-      a.href = `t/${slug}/`;
+      a.href = `?topic=${encodeURIComponent(slug)}`;
       a.textContent = topic;
       frag.appendChild(a);
     }

@@ -212,6 +212,50 @@ body {
   .featured-blurb { display: none; }
 }
 
+/* loading radar: core matches logo plum #724661; rings/sparks stay warm
+   so the dial still reads on cream parchment */
+.loader-core {
+  background:
+    radial-gradient(circle at 35% 30%, #c9a0b4 0%, #724661 42%, #5a3550 78%, transparent 100%);
+  box-shadow:
+    0 0 12px rgba(114, 70, 97, 0.55),
+    0 0 26px rgba(114, 70, 97, 0.35);
+}
+
+.loader-ring {
+  border-top-color: rgba(176, 125, 36, 0.7);
+  border-right-color: rgba(184, 90, 51, 0.2);
+}
+.loader-ring.r2 {
+  border-top-color: rgba(125, 138, 106, 0.75);
+  border-right-color: rgba(125, 138, 106, 0.18);
+}
+.loader-ring.r3 {
+  border-top-color: rgba(184, 90, 51, 0.6);
+  border-right-color: rgba(176, 125, 36, 0.15);
+}
+
+.loader-spark {
+  background: var(--gold);
+  box-shadow: 0 0 7px rgba(176, 125, 36, 0.75);
+}
+.loader-spark.s2 {
+  background: var(--peach);
+  box-shadow: 0 0 7px rgba(184, 90, 51, 0.7);
+}
+.loader-spark.s3 {
+  background: var(--mauve);
+  box-shadow: 0 0 6px rgba(125, 138, 106, 0.75);
+}
+.loader-spark.s4 {
+  background: #c46a3a;
+  box-shadow: 0 0 6px rgba(196, 106, 58, 0.65);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-ring { border-color: rgba(176, 125, 36, 0.35); }
+}
+
 /* re-lit time-of-day: same mechanism, daytime-friendly warm light */
 body.theme-dawn {
   background: linear-gradient(175deg, #fbeedd 0%, #f7e6cd 40%, #f2d9b8 75%, #eccfa8 100%);

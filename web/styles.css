@@ -539,6 +539,145 @@ main {
   transition: opacity 0.4s ease;
 }
 
+/* loading: radar rings + orbiting sparks over cycling copy */
+.status-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.35rem;
+  padding: 4rem 0 3.5rem;
+  animation: none;
+}
+
+.loading-msg {
+  margin: 0;
+  min-height: 1.5em;
+  color: var(--ink-dim);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.1rem;
+  letter-spacing: 0.01em;
+  animation: breathe 2.2s ease-in-out infinite;
+  transition: opacity 0.35s ease;
+}
+
+.loading-msg.is-fading {
+  /* kill breathe so it can't fight the crossfade opacity */
+  animation: none;
+  opacity: 0;
+}
+
+.loader {
+  position: relative;
+  width: 4.5rem;
+  height: 4.5rem;
+  flex: none;
+}
+
+.loader-core {
+  position: absolute;
+  inset: 36%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, #fff6e8 0%, var(--gold) 35%, var(--peach) 70%, transparent 100%);
+  box-shadow:
+    0 0 12px rgba(227, 192, 141, 0.75),
+    0 0 28px rgba(232, 169, 140, 0.4);
+  animation: core-pulse 1.8s ease-in-out infinite;
+}
+
+.loader-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  border-top-color: rgba(227, 192, 141, 0.55);
+  border-right-color: rgba(232, 169, 140, 0.2);
+  animation: ring-spin 2.4s linear infinite;
+}
+
+.loader-ring.r2 {
+  inset: 12%;
+  border-top-color: rgba(142, 122, 168, 0.65);
+  border-right-color: rgba(142, 122, 168, 0.15);
+  animation-duration: 3.2s;
+  animation-direction: reverse;
+}
+
+.loader-ring.r3 {
+  inset: 24%;
+  border-top-color: rgba(232, 169, 140, 0.5);
+  border-right-color: rgba(227, 192, 141, 0.12);
+  animation-duration: 1.8s;
+}
+
+.loader-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.38rem;
+  height: 0.38rem;
+  margin: -0.19rem;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(227, 192, 141, 0.9);
+  animation: spark-orbit 2.8s linear infinite;
+}
+
+.loader-spark.s1 { animation-duration: 2.8s; }
+.loader-spark.s2 {
+  width: 0.28rem;
+  height: 0.28rem;
+  margin: -0.14rem;
+  background: var(--peach);
+  box-shadow: 0 0 7px rgba(232, 169, 140, 0.85);
+  animation-duration: 3.6s;
+  animation-direction: reverse;
+  animation-delay: -0.7s;
+}
+.loader-spark.s3 {
+  width: 0.22rem;
+  height: 0.22rem;
+  margin: -0.11rem;
+  background: var(--mauve);
+  box-shadow: 0 0 6px rgba(142, 122, 168, 0.9);
+  animation-duration: 4.2s;
+  animation-delay: -1.4s;
+}
+.loader-spark.s4 {
+  width: 0.18rem;
+  height: 0.18rem;
+  margin: -0.09rem;
+  background: #fff6e8;
+  box-shadow: 0 0 6px rgba(255, 246, 232, 0.8);
+  animation-duration: 2.2s;
+  animation-delay: -0.3s;
+}
+
+@keyframes core-pulse {
+  0%, 100% { transform: scale(0.88); opacity: 0.85; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spark-orbit {
+  0% {
+    transform: rotate(0deg) translateX(1.85rem) scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: rotate(180deg) translateX(1.85rem) scale(0.75);
+    opacity: 0.55;
+  }
+  100% {
+    transform: rotate(360deg) translateX(1.85rem) scale(1);
+    opacity: 0.95;
+  }
+}
+
 /* expand default 7-day browse to the full 30-day horizon */
 .show-more {
   display: flex;
@@ -854,7 +993,6 @@ main {
 /* ---------- header-link landings (?topic= / ?category=) ---------- */
 
 .landing-intro {
-  max-width: 38rem;
   margin: 0.4rem 0 1.6rem;
   padding: 0 0 0.4rem;
 }
@@ -1410,6 +1548,20 @@ body.theme-night .blob { opacity: 0.35; }
   .card { animation-duration: 0.01s; }
   .card:hover { transform: none; }
   .card:hover .banner img { transform: none; }
-  .status { animation: none; }
+  .status,
+  .loading-msg,
+  .loader-core,
+  .loader-ring,
+  .loader-spark { animation: none; }
+  .loader-ring { border-color: rgba(227, 192, 141, 0.25); }
+  .loader-spark {
+    /* park sparks at fixed points on the dial */
+    opacity: 0.7;
+  }
+  .loader-spark.s1 { transform: rotate(20deg) translateX(1.85rem); }
+  .loader-spark.s2 { transform: rotate(110deg) translateX(1.85rem); }
+  .loader-spark.s3 { transform: rotate(200deg) translateX(1.85rem); }
+  .loader-spark.s4 { transform: rotate(290deg) translateX(1.85rem); }
+  .loading-msg { transition: none; opacity: 0.8; }
   .lens-stop, .slider::before { transition: none; }
 }

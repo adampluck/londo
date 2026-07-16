@@ -126,7 +126,21 @@
   <!-- our own next event, populated only on sites with SITE.featured -->
   <section id="featured" hidden></section>
 
-  <main id="events"><p class="status" id="loading-msg">gathering events…</p></main>
+  <main id="events">
+    <div class="status status-loading" id="loading-state" aria-live="polite" aria-busy="true">
+      <div class="loader" aria-hidden="true">
+        <span class="loader-ring r1"></span>
+        <span class="loader-ring r2"></span>
+        <span class="loader-ring r3"></span>
+        <span class="loader-core"></span>
+        <span class="loader-spark s1"></span>
+        <span class="loader-spark s2"></span>
+        <span class="loader-spark s3"></span>
+        <span class="loader-spark s4"></span>
+      </div>
+      <p class="loading-msg" id="loading-msg">gathering events…</p>
+    </div>
+  </main>
 
   <section id="map-view" hidden>
     <div id="map"></div>
