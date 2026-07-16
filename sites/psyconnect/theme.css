@@ -25,12 +25,31 @@ body {
   background: linear-gradient(175deg, #faf4e8 0%, var(--dusk-0) 38%, var(--dusk-1) 72%, #e5d3b8 100%);
 }
 
-/* cross-stitch wordmark instead of the gradient-text h1 */
+/* cross-stitch wordmark — full-colour PNG, always a real click target */
+.topbar h1 a.home {
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  color: inherit !important;
+  -webkit-text-fill-color: inherit;
+}
+.topbar h1 a.home:any-link,
+.topbar h1 a.home:link,
+.topbar h1 a.home:visited,
+.topbar h1 a.home:hover,
+.topbar h1 a.home:active,
+.topbar h1 a.home:focus {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit;
+  text-decoration: none;
+}
+.topbar h1 a.home img,
 .topbar h1 img {
   display: block;
   height: clamp(2.2rem, 4.5vw, 3rem);
   width: auto;
   max-width: 100%;
+  pointer-events: none;
 }
 
 /* force tagline crawl-links to match body tagline colour (no blue/purple) */

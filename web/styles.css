@@ -83,15 +83,61 @@ body {
 
 .topbar h1 {
   margin: 0;
-  font-family: var(--display);
-  font-weight: 640;
   font-size: clamp(2.5rem, 6vw, 3.4rem);
   line-height: 1;
+}
+
+/* wordmark → homepage / default browse view.
+   Gradient clip is text-only: applying it to an <a> that wraps a logo
+   <img> (psyconnect) makes the hit-target dead in WebKit. */
+.topbar h1 a.home {
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+  font-family: var(--display);
+  font-weight: 640;
   letter-spacing: -0.01em;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.topbar h1 a.home:any-link,
+.topbar h1 a.home:link,
+.topbar h1 a.home:visited,
+.topbar h1 a.home:hover,
+.topbar h1 a.home:active,
+.topbar h1 a.home:focus {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* text wordmark (londo) — gradient fill; skip when the link holds an img */
+.topbar h1 a.home:not(:has(img)) {
   background: linear-gradient(100deg, var(--ink) 30%, var(--peach) 75%, var(--gold));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+.topbar h1 a.home:not(:has(img)):any-link,
+.topbar h1 a.home:not(:has(img)):link,
+.topbar h1 a.home:not(:has(img)):visited,
+.topbar h1 a.home:not(:has(img)):hover,
+.topbar h1 a.home:not(:has(img)):active,
+.topbar h1 a.home:not(:has(img)):focus {
+  color: transparent;
+}
+
+.topbar h1 a.home img {
+  display: block;
+  pointer-events: none; /* clicks go to the <a>, not the image */
+}
+
+.topbar h1 a.home:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
 .tagline {
