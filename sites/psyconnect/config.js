@@ -28,7 +28,8 @@ self.LONDO_CONFIG = {
         "rugby", "cricket", "softball", "badminton", "kickabout",
         "startup", "founder",
         "hackathon", "openai", "emed", "ai engine", "demo day",
-        "pitch night", "pitch competition", "y combinator"
+        "pitch night", "pitch competition", "y combinator",
+        "alo regent", "alo runners"
       ]
     },
     "topics": [
