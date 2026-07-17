@@ -887,7 +887,16 @@
         h2.appendChild(when);
       }
       const name = document.createElement("span");
-      name.textContent = day;
+      // relative already says which day it is ("today —"/"tomorrow —"),
+      // so drop the weekday here — "Friday 17 July" was long enough to
+      // wrap the heading onto two lines on mobile.
+      name.textContent = relative
+        ? new Date(dayEvents[0].start_at).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "long",
+            timeZone: "Europe/London",
+          })
+        : day;
       h2.appendChild(name);
 
       const count = document.createElement("span");
