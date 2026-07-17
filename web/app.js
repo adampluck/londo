@@ -1219,10 +1219,12 @@
 
   // ---------- spotlight: our next event + this week's picks ----------
   //
-  // Two labelled groups ("Our next event" / "Our top picks this week"),
-  // each headed like a day-heading so they read as distinct sections, but
-  // built from the same compact card style (not a full-width hero) to stay
-  // out of the way of the actual browse grid below.
+  // One 3-column row on desktop: "Our next event" heads column 1 (if a
+  // featured event is live) and "Our top picks this week" heads the
+  // remaining columns (2 picks alongside a featured event, or all 3 if
+  // there's no featured event). Mobile hides the picks entirely and shows
+  // only the featured card, if any — a swipeable picks strip on top of a
+  // hero card was too much scroll before the browse grid.
 
   // Selects up to `limit` events from SITE.curated.organizers/titleMatches,
   // within the next windowDays, dropping SITE.curated.exclude title matches
@@ -1319,21 +1321,14 @@
     return card;
   }
 
-  // Builds a day-heading-styled group: <h2 class="day-heading"> + a row of
-  // cards. Mirrors the .day-group/.day-heading structure used for the
-  // dated browse sections below, so it reads as the same kind of heading.
-  function spotlightGroup(label, cards) {
-    const section = document.createElement("section");
-    section.className = "spotlight-group";
+  // Day-heading-styled <h2> placed at a given grid column span, so it
+  // heads exactly the columns its cards occupy below it.
+  function spotlightHeading(label, className, colStart, colEnd) {
     const h2 = document.createElement("h2");
-    h2.className = "day-heading spotlight-heading";
+    h2.className = "day-heading spotlight-heading " + className;
     h2.textContent = label;
-    section.appendChild(h2);
-    const row = document.createElement("div");
-    row.className = "spotlight-row";
-    cards.forEach((el) => row.appendChild(el));
-    section.appendChild(row);
-    return section;
+    h2.style.gridColumn = colStart + " / " + colEnd;
+    return h2;
   }
 
   function renderSpotlight() {
@@ -1344,32 +1339,62 @@
       state.events.find(
         (ev) => isOurs(ev) && new Date(ev.start_at).getTime() > Date.now()
       );
-    const picks = SITE.curated
-      ? pickCurated(featured && featured.source_url)
+    // With a featured event, only 2 picks share the row with it; without
+    // one, picks get the full row (SITE.curated.maxTotal, default 3).
+    const pickLimit = SITE.curated
+      ? featured
+        ? 2
+        : SITE.curated.maxTotal || 3
+      : 0;
+    const picks = pickLimit
+      ? pickCurated(featured && featured.source_url, pickLimit)
       : [];
 
-    const groups = [];
+    if (!featured && !picks.length) {
+      section.hidden = true;
+      return;
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "spotlight-grid";
+    section.classList.toggle("no-featured", !featured);
+
+    const pickStart = featured ? 2 : 1;
+    const pickEnd = pickStart + Math.max(picks.length, featured ? 0 : 1);
+
     if (featured) {
-      groups.push(
-        spotlightGroup(SITE.featured.label || "Our next event", [
-          spotlightCard(featured, "featured"),
-        ])
+      grid.appendChild(
+        spotlightHeading(
+          SITE.featured.label || "Our next event",
+          "spotlight-heading-featured",
+          1,
+          2
+        )
       );
     }
     if (picks.length) {
-      groups.push(
-        spotlightGroup(
-          SITE.curated.label || "Our top picks this week",
-          picks.map((e) => spotlightCard(e, "pick"))
+      grid.appendChild(
+        spotlightHeading(
+          (SITE.curated && SITE.curated.label) || "Our top picks this week",
+          "spotlight-heading-picks",
+          pickStart,
+          pickEnd
         )
       );
     }
 
-    if (!groups.length) {
-      section.hidden = true;
-      return;
+    if (featured) {
+      const card = spotlightCard(featured, "featured");
+      card.style.gridColumn = "1";
+      grid.appendChild(card);
     }
-    section.replaceChildren(...groups);
+    picks.forEach((e, i) => {
+      const card = spotlightCard(e, "pick");
+      card.style.gridColumn = String(pickStart + i);
+      grid.appendChild(card);
+    });
+
+    section.replaceChildren(grid);
     section.hidden = false;
   }
 

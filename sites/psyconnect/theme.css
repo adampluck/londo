@@ -146,11 +146,13 @@ body {
 }
 
 /* ---------- spotlight: our next event + this week's picks ----------
-   Two day-heading-styled groups ("Our next event" / "Our top picks this
-   week"), each a row of compact cards (not a full-width hero), so the
-   section reads clearly without pushing the browse grid too far below
-   the fold. "our next event" (peach edge) and curated picks (sage edge)
-   share the same card shape; only the border/eyebrow tell them apart. */
+   One 3-column grid row on desktop: heading row, then card row. "Our next
+   event" heads column 1 when a featured event is live; "Our top picks
+   this week" heads whatever's left (2 columns alongside a featured event,
+   or all 3 without one). Column spans are set inline per render since the
+   count of picks varies. "our next event" (peach edge) and curated picks
+   (sage edge) share the same card shape; only the border tells them
+   apart. */
 
 #spotlight {
   max-width: 1100px;
@@ -158,25 +160,21 @@ body {
   padding: 0 1.5rem;
 }
 
+.spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.7rem 1rem;
+}
+
 .spotlight-heading {
   margin: 0.6rem 0 0.9rem;
-}
-
-#spotlight .spotlight-group:first-child .spotlight-heading {
-  margin-top: 0;
-}
-
-.spotlight-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+  grid-row: 1;
 }
 
 .spotlight-card {
   display: flex;
   flex-direction: column;
-  flex: 1 1 260px;
-  max-width: 340px;
+  grid-row: 2;
   text-decoration: none;
   color: var(--ink);
   background: rgba(255, 252, 245, 0.75);
@@ -244,24 +242,21 @@ body {
   line-height: 1.42;
 }
 
-/* mobile: horizontal swipe strips instead of stacked cards, so each
-   group stays one card tall */
+/* mobile: picks are desktop-only — show just the featured card (if any),
+   full width, single column. No featured event means nothing to show. */
 @media (max-width: 640px) {
-  .spotlight-row {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 0.8rem;
-    scroll-snap-type: x mandatory;
-    padding-bottom: 0.15rem;
-    -webkit-overflow-scrolling: touch;
+  #spotlight.no-featured {
+    display: none;
   }
-  .spotlight-card {
-    flex: 0 0 82vw;
-    max-width: none;
-    scroll-snap-align: start;
+  .spotlight-heading-picks,
+  .spotlight-card.spotlight-pick {
+    display: none;
   }
-  .spotlight-media {
-    height: 110px;
+  .spotlight-grid {
+    grid-template-columns: 1fr;
+  }
+  .spotlight-card.spotlight-featured {
+    grid-column: 1;
   }
 }
 
