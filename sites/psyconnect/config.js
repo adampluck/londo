@@ -54,7 +54,7 @@ self.LONDO_CONFIG = {
       "label": "Our next event"
     },
     "curated": {
-      "organizers": ["The Psychedelic Society", "Numinity", "Adventures in Awareness"],
+      "organizers": ["The Psychedelic Society", "Numinity", "Adventures in Awareness", "Unseen", "Unseen London"],
       "titleMatches": ["bohm"],
       "exclude": ["running club"],
       "maxTotal": 3,
