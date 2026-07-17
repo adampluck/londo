@@ -54,8 +54,8 @@ self.LONDO_CONFIG = {
       "label": "Our next event"
     },
     "curated": {
-      "organizers": ["The Psychedelic Society", "Numinity"],
-      "titleMatches": ["bohm dialogue"],
+      "organizers": ["The Psychedelic Society", "Numinity", "Adventures in Awareness"],
+      "titleMatches": ["bohm"],
       "exclude": ["running club"],
       "maxTotal": 3,
       "priorityOrganizer": "The Psychedelic Society",

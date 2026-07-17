@@ -1228,9 +1228,11 @@
 
   // Selects up to `limit` events from SITE.curated.organizers/titleMatches,
   // within the next windowDays, dropping SITE.curated.exclude title matches
-  // (e.g. Numinity's weekly running club). Prefers a mix over repeats of
-  // priorityOrganizer, but backfills with more of it if there aren't enough
-  // other candidates in the window to reach `limit`.
+  // (e.g. Numinity's weekly running club). Spreads picks across distinct
+  // organisers (round-robin, earliest event each) rather than stacking
+  // repeats of one — priorityOrganizer is only ever the first pick when
+  // there's just one candidate slot, and only contributes a 2nd/3rd pick
+  // once every other organiser in the window has already had a turn.
   function pickCurated(excludeSourceUrl, limit) {
     const cfg = SITE.curated;
     if (!cfg) return [];
@@ -1248,16 +1250,43 @@
       const title = (e.title || "").toLowerCase();
       return !excludeTerms.some((term) => title.includes(term));
     });
+    if (!candidates.length) return [];
 
     const priority = (cfg.priorityOrganizer || "").toLowerCase();
-    const isPriority = (e) => (e.organizer_name || "").toLowerCase() === priority;
-    const nonPriority = candidates.filter((e) => !isPriority(e)).slice(0, maxTotal);
-    if (nonPriority.length >= maxTotal) return nonPriority;
-    const priorityPicks = candidates.filter(isPriority);
-    if (nonPriority.length === 0) return priorityPicks.slice(0, maxTotal);
-    return nonPriority.concat(
-      priorityPicks.slice(0, maxTotal - nonPriority.length)
-    );
+    const orgKey = (e) => (e.organizer_name || "").toLowerCase();
+    const byOrg = new Map();
+    for (const e of candidates) {
+      if (!byOrg.has(orgKey(e))) byOrg.set(orgKey(e), []);
+      byOrg.get(orgKey(e)).push(e);
+    }
+    // organisers in date-of-earliest-event order, priority pushed last so
+    // it's the last to get a look-in during the round-robin pass
+    const orgOrder = [...byOrg.keys()].sort((a, b) => {
+      if (a === priority && b !== priority) return 1;
+      if (b === priority && a !== priority) return -1;
+      return (
+        new Date(byOrg.get(a)[0].start_at) - new Date(byOrg.get(b)[0].start_at)
+      );
+    });
+
+    const picks = [];
+    const used = new Set();
+    for (const org of orgOrder) {
+      if (picks.length >= maxTotal) break;
+      const e = byOrg.get(org)[0];
+      picks.push(e);
+      used.add(e);
+    }
+    // still short (fewer distinct organisers than maxTotal) — backfill
+    // from remaining candidates, in date order, repeats allowed
+    for (const e of candidates) {
+      if (picks.length >= maxTotal) break;
+      if (used.has(e)) continue;
+      picks.push(e);
+      used.add(e);
+    }
+
+    return picks.sort((a, b) => new Date(a.start_at) - new Date(b.start_at));
   }
 
   // kind: "featured" (our own event) or "pick" (curated third party) —
