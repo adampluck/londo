@@ -250,6 +250,13 @@
     return (e.topics || []).some((t) => TECH_TOPICS.includes(t));
   }
 
+  // All-day events stay visible all day (no single "start" to have
+  // passed); everything else disappears once its start time is behind us.
+  function hasStarted(e) {
+    if (e.is_all_day) return false;
+    return new Date(e.start_at).getTime() < Date.now();
+  }
+
   // Our own events (SITE.featured.organizers) are always in, whatever
   // the filter or enrichment says — it's our site.
   function isOurs(e) {
@@ -339,14 +346,14 @@
   function browseEvents() {
     // when searching, scan all loaded events (up to 30 days) — day filter hides too much
     if (state.query.trim()) {
-      return state.events.filter((e) => baseFilter(e));
+      return state.events.filter((e) => baseFilter(e) && !hasStarted(e));
     }
     const until =
       state.day === "7" || state.day === "30"
         ? Date.now() + Number(state.day) * 864e5
         : null;
     return state.events.filter((e) => {
-      if (!baseFilter(e)) return false;
+      if (!baseFilter(e) || hasStarted(e)) return false;
       if (until) return new Date(e.start_at).getTime() <= until;
       return londonDate(e.start_at) === state.day;
     });
