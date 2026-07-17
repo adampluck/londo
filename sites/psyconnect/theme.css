@@ -167,8 +167,19 @@ body {
 }
 
 .spotlight-heading {
-  margin: 0.6rem 0 0.9rem;
   grid-row: 1;
+}
+
+/* desktop-only override of .day-heading's default margin (2.6rem top is
+   meant for mid-page section breaks, too much as the very first thing on
+   the page). Left unscoped below 641px so styles.css's mobile .day-heading
+   rule (full-bleed background, sticky) applies to this heading exactly as
+   it does to the browse day headings — an earlier unscoped margin here
+   was overriding that bleed and cutting the header off short. */
+@media (min-width: 641px) {
+  .spotlight-heading {
+    margin: 0.6rem 0 0.9rem;
+  }
 }
 
 .spotlight-card {
