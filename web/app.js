@@ -1219,12 +1219,10 @@
 
   // ---------- spotlight: our next event + this week's picks ----------
   //
-  // One row, up to 3 same-size cards: our own next event (SITE.featured)
-  // plus enough curated picks (SITE.curated) to fill the rest. Deliberately
-  // kept to a single row's height — an earlier version stacked a full-width
-  // featured banner above a separate picks row, which pushed the actual
-  // browse results below the fold and made search/filter changes look like
-  // nothing had happened.
+  // Two labelled groups ("Our next event" / "Our top picks this week"),
+  // each headed like a day-heading so they read as distinct sections, but
+  // built from the same compact card style (not a full-width hero) to stay
+  // out of the way of the actual browse grid below.
 
   // Selects up to `limit` events from SITE.curated.organizers/titleMatches,
   // within the next windowDays, dropping SITE.curated.exclude title matches
@@ -1260,8 +1258,9 @@
     );
   }
 
-  // kind: "featured" (our own event) or "pick" (curated third party).
-  // eyebrow doubles as the heading that makes each card's kind obvious.
+  // kind: "featured" (our own event) or "pick" (curated third party) —
+  // only used for the card's border colour now; the group heading carries
+  // the "what is this" label.
   function spotlightCard(e, kind) {
     const card = document.createElement("a");
     card.className = "spotlight-card spotlight-" + kind;
@@ -1283,14 +1282,12 @@
     const body = document.createElement("div");
     body.className = "spotlight-body";
 
-    const eyebrow = document.createElement("p");
-    eyebrow.className = "spotlight-eyebrow";
-    eyebrow.textContent =
-      kind === "featured"
-        ? "✦ " + ((SITE.featured || {}).label || "our next event")
-        : ((SITE.curated || {}).label || "this week") +
-          (e.organizer_name ? " · " + e.organizer_name : "");
-    body.appendChild(eyebrow);
+    if (kind === "pick" && e.organizer_name) {
+      const eyebrow = document.createElement("p");
+      eyebrow.className = "spotlight-eyebrow";
+      eyebrow.textContent = e.organizer_name;
+      body.appendChild(eyebrow);
+    }
 
     const title = document.createElement("h3");
     title.textContent = e.title;
@@ -1322,6 +1319,23 @@
     return card;
   }
 
+  // Builds a day-heading-styled group: <h2 class="day-heading"> + a row of
+  // cards. Mirrors the .day-group/.day-heading structure used for the
+  // dated browse sections below, so it reads as the same kind of heading.
+  function spotlightGroup(label, cards) {
+    const section = document.createElement("section");
+    section.className = "spotlight-group";
+    const h2 = document.createElement("h2");
+    h2.className = "day-heading spotlight-heading";
+    h2.textContent = label;
+    section.appendChild(h2);
+    const row = document.createElement("div");
+    row.className = "spotlight-row";
+    cards.forEach((el) => row.appendChild(el));
+    section.appendChild(row);
+    return section;
+  }
+
   function renderSpotlight() {
     const section = document.getElementById("spotlight");
     // state.events is start_at-sorted, so the first match is the next one
@@ -1330,25 +1344,32 @@
       state.events.find(
         (ev) => isOurs(ev) && new Date(ev.start_at).getTime() > Date.now()
       );
+    const picks = SITE.curated
+      ? pickCurated(featured && featured.source_url)
+      : [];
 
-    const pickLimit = SITE.curated
-      ? (SITE.curated.maxTotal || 3) - (featured ? 1 : 0)
-      : 0;
-    const picks = pickCurated(featured && featured.source_url, pickLimit);
+    const groups = [];
+    if (featured) {
+      groups.push(
+        spotlightGroup(SITE.featured.label || "Our next event", [
+          spotlightCard(featured, "featured"),
+        ])
+      );
+    }
+    if (picks.length) {
+      groups.push(
+        spotlightGroup(
+          SITE.curated.label || "Our top picks this week",
+          picks.map((e) => spotlightCard(e, "pick"))
+        )
+      );
+    }
 
-    const items = [];
-    if (featured) items.push(spotlightCard(featured, "featured"));
-    picks.forEach((e) => items.push(spotlightCard(e, "pick")));
-
-    if (!items.length) {
+    if (!groups.length) {
       section.hidden = true;
       return;
     }
-
-    const row = document.createElement("div");
-    row.className = "spotlight-row";
-    items.forEach((el) => row.appendChild(el));
-    section.replaceChildren(row);
+    section.replaceChildren(...groups);
     section.hidden = false;
   }
 

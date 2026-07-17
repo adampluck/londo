@@ -146,10 +146,11 @@ body {
 }
 
 /* ---------- spotlight: our next event + this week's picks ----------
-   One row, up to 3 same-size cards, so it never pushes the browse grid
-   below the fold. "our next event" (peach edge) and curated picks (sage
-   edge) share the same card shape; only the eyebrow/border tell them
-   apart. */
+   Two day-heading-styled groups ("Our next event" / "Our top picks this
+   week"), each a row of compact cards (not a full-width hero), so the
+   section reads clearly without pushing the browse grid too far below
+   the fold. "our next event" (peach edge) and curated picks (sage edge)
+   share the same card shape; only the border/eyebrow tell them apart. */
 
 #spotlight {
   max-width: 1100px;
@@ -157,15 +158,25 @@ body {
   padding: 0 1.5rem;
 }
 
+.spotlight-heading {
+  margin: 0.6rem 0 0.9rem;
+}
+
+#spotlight .spotlight-group:first-child .spotlight-heading {
+  margin-top: 0;
+}
+
 .spotlight-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 
 .spotlight-card {
   display: flex;
   flex-direction: column;
+  flex: 1 1 260px;
+  max-width: 340px;
   text-decoration: none;
   color: var(--ink);
   background: rgba(255, 252, 245, 0.75);
@@ -233,12 +244,11 @@ body {
   line-height: 1.42;
 }
 
-/* mobile: a horizontal swipe strip instead of 3 stacked cards, so the
-   spotlight row stays one card tall and the browse grid below it is
-   still in view after a search/filter change */
+/* mobile: horizontal swipe strips instead of stacked cards, so each
+   group stays one card tall */
 @media (max-width: 640px) {
   .spotlight-row {
-    display: flex;
+    flex-wrap: nowrap;
     overflow-x: auto;
     gap: 0.8rem;
     scroll-snap-type: x mandatory;
@@ -247,6 +257,7 @@ body {
   }
   .spotlight-card {
     flex: 0 0 82vw;
+    max-width: none;
     scroll-snap-align: start;
   }
   .spotlight-media {

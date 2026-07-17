@@ -51,7 +51,7 @@ self.LONDO_CONFIG = {
     "mapTiles": "light_all",
     "featured": {
       "organizers": ["PsyConnect London", "PsyConnect"],
-      "label": "our next event"
+      "label": "Our next event"
     },
     "curated": {
       "organizers": ["The Psychedelic Society", "Numinity"],
@@ -60,7 +60,7 @@ self.LONDO_CONFIG = {
       "maxTotal": 3,
       "priorityOrganizer": "The Psychedelic Society",
       "windowDays": 7,
-      "label": "this week"
+      "label": "Our top picks this week"
     },
     "logo": "logo.png",
     "shellExtras": ["theme.css", "bg.jpg", "logo.png"]
