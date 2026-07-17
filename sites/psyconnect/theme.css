@@ -118,7 +118,7 @@ body {
     align-items: center;
   }
   #controls > .controls-row:first-child {
-    flex: 1 1 380px;
+    flex: 0 0 auto;
     min-width: 0;
   }
   #controls > .controls-row.bench {
@@ -128,6 +128,11 @@ body {
   #controls > .controls-row.keys,
   #controls > .controls-row.unit {
     flex-basis: 100%;
+  }
+  /* half its previous width — it no longer needs to fill the whole row
+     now the date picker sits alongside it */
+  #search {
+    flex: 0 1 200px;
   }
 }
 
