@@ -259,6 +259,23 @@
     );
   }
 
+  // Hand-picked trusted third-party organisers/series (SITE.curated) —
+  // like isOurs(), these bypass SITE.filter entirely: they're chosen by
+  // source, not by topic/category heuristics.
+  function isCurated(e) {
+    if (!SITE.curated) return false;
+    const org = (e.organizer_name || "").toLowerCase();
+    const title = (e.title || "").toLowerCase();
+    if (
+      (SITE.curated.organizers || []).some((o) => org === o.toLowerCase())
+    ) {
+      return true;
+    }
+    return (SITE.curated.titleMatches || []).some((t) =>
+      title.includes(t.toLowerCase())
+    );
+  }
+
   // A filtered site (SITE.filter) only ever sees its slice of the table:
   // category in the list, or any topic overlapping — minus anything whose
   // title/organizer/hook/description hits an exclude term (sports mis-tags,
@@ -267,6 +284,7 @@
   // topic is also present (or category is expand).
   function siteMatch(e) {
     if (isOurs(e)) return true;
+    if (isCurated(e)) return true;
     if (!SITE.filter) return true;
     const hay = [
       e.title,
@@ -1199,25 +1217,61 @@
     return `${start} – ${end}`;
   }
 
-  // ---------- featured: our own next event ----------
+  // ---------- spotlight: our next event + this week's picks ----------
+  //
+  // One row, up to 3 same-size cards: our own next event (SITE.featured)
+  // plus enough curated picks (SITE.curated) to fill the rest. Deliberately
+  // kept to a single row's height — an earlier version stacked a full-width
+  // featured banner above a separate picks row, which pushed the actual
+  // browse results below the fold and made search/filter changes look like
+  // nothing had happened.
 
-  function renderFeatured() {
-    if (!SITE.featured) return;
-    // state.events is start_at-sorted, so the first match is the next one
-    const e = state.events.find(
-      (ev) => isOurs(ev) && new Date(ev.start_at).getTime() > Date.now()
+  // Selects up to `limit` events from SITE.curated.organizers/titleMatches,
+  // within the next windowDays, dropping SITE.curated.exclude title matches
+  // (e.g. Numinity's weekly running club). Prefers a mix over repeats of
+  // priorityOrganizer, but backfills with more of it if there aren't enough
+  // other candidates in the window to reach `limit`.
+  function pickCurated(excludeSourceUrl, limit) {
+    const cfg = SITE.curated;
+    if (!cfg) return [];
+    const maxTotal = limit != null ? limit : cfg.maxTotal || 3;
+    if (maxTotal <= 0) return [];
+    const now = Date.now();
+    const horizon = now + (cfg.windowDays || 7) * 86400000;
+    const excludeTerms = (cfg.exclude || []).map((t) => t.toLowerCase());
+    // state.events is start_at-ascending, so candidates stay in date order.
+    const candidates = state.events.filter((e) => {
+      if (!isCurated(e)) return false;
+      if (excludeSourceUrl && e.source_url === excludeSourceUrl) return false;
+      const t = new Date(e.start_at).getTime();
+      if (!(t > now && t <= horizon)) return false;
+      const title = (e.title || "").toLowerCase();
+      return !excludeTerms.some((term) => title.includes(term));
+    });
+
+    const priority = (cfg.priorityOrganizer || "").toLowerCase();
+    const isPriority = (e) => (e.organizer_name || "").toLowerCase() === priority;
+    const nonPriority = candidates.filter((e) => !isPriority(e)).slice(0, maxTotal);
+    if (nonPriority.length >= maxTotal) return nonPriority;
+    const priorityPicks = candidates.filter(isPriority);
+    if (nonPriority.length === 0) return priorityPicks.slice(0, maxTotal);
+    return nonPriority.concat(
+      priorityPicks.slice(0, maxTotal - nonPriority.length)
     );
-    if (!e) return;
+  }
 
+  // kind: "featured" (our own event) or "pick" (curated third party).
+  // eyebrow doubles as the heading that makes each card's kind obvious.
+  function spotlightCard(e, kind) {
     const card = document.createElement("a");
-    card.className = "featured-card";
+    card.className = "spotlight-card spotlight-" + kind;
     card.href = e.source_url;
     card.target = "_blank";
     card.rel = "noopener";
 
     if (e.image_url) {
       const media = document.createElement("div");
-      media.className = "featured-media";
+      media.className = "spotlight-media";
       const img = document.createElement("img");
       img.src = e.image_url;
       img.alt = "";
@@ -1227,23 +1281,27 @@
     }
 
     const body = document.createElement("div");
-    body.className = "featured-body";
+    body.className = "spotlight-body";
 
     const eyebrow = document.createElement("p");
-    eyebrow.className = "featured-eyebrow";
-    eyebrow.textContent = "✦ " + (SITE.featured.label || "our next event");
+    eyebrow.className = "spotlight-eyebrow";
+    eyebrow.textContent =
+      kind === "featured"
+        ? "✦ " + ((SITE.featured || {}).label || "our next event")
+        : ((SITE.curated || {}).label || "this week") +
+          (e.organizer_name ? " · " + e.organizer_name : "");
     body.appendChild(eyebrow);
 
-    const title = document.createElement("h2");
+    const title = document.createElement("h3");
     title.textContent = e.title;
     body.appendChild(title);
 
     const when = document.createElement("p");
-    when.className = "featured-when";
+    when.className = "spotlight-when";
     const day = new Date(e.start_at).toLocaleDateString("en-GB", {
-      weekday: "long",
+      weekday: "short",
       day: "numeric",
-      month: "long",
+      month: "short",
       timeZone: "Europe/London",
     });
     when.textContent = [day, formatTime(e), e.venue_name]
@@ -1254,20 +1312,43 @@
     const blurb = (e.hook || e.description || "").trim();
     if (blurb) {
       const p = document.createElement("p");
-      p.className = "featured-blurb";
+      p.className = "spotlight-blurb";
       p.textContent =
-        blurb.length > 160 ? blurb.slice(0, 157).trimEnd() + "…" : blurb;
+        blurb.length > 200 ? blurb.slice(0, 197).trimEnd() + "…" : blurb;
       body.appendChild(p);
     }
 
-    const cta = document.createElement("span");
-    cta.className = "key featured-cta";
-    cta.textContent = "join us";
-    body.appendChild(cta);
-
     card.appendChild(body);
-    const section = document.getElementById("featured");
-    section.replaceChildren(card);
+    return card;
+  }
+
+  function renderSpotlight() {
+    const section = document.getElementById("spotlight");
+    // state.events is start_at-sorted, so the first match is the next one
+    const featured =
+      SITE.featured &&
+      state.events.find(
+        (ev) => isOurs(ev) && new Date(ev.start_at).getTime() > Date.now()
+      );
+
+    const pickLimit = SITE.curated
+      ? (SITE.curated.maxTotal || 3) - (featured ? 1 : 0)
+      : 0;
+    const picks = pickCurated(featured && featured.source_url, pickLimit);
+
+    const items = [];
+    if (featured) items.push(spotlightCard(featured, "featured"));
+    picks.forEach((e) => items.push(spotlightCard(e, "pick")));
+
+    if (!items.length) {
+      section.hidden = true;
+      return;
+    }
+
+    const row = document.createElement("div");
+    row.className = "spotlight-row";
+    items.forEach((el) => row.appendChild(el));
+    section.replaceChildren(row);
     section.hidden = false;
   }
 
@@ -1492,7 +1573,7 @@
           k.classList.toggle("lit", k.dataset.category === state.category)
         );
       syncDayTicks();
-      renderFeatured();
+      renderSpotlight();
       maybeShowEnrichedControls();
       // topic chips only exist after maybeShowEnrichedControls
       syncTopicTokens();

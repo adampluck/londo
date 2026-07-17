@@ -29,7 +29,11 @@ self.LONDO_CONFIG = {
         "startup", "founder",
         "hackathon", "openai", "emed", "ai engine", "demo day",
         "pitch night", "pitch competition", "y combinator",
-        "alo regent", "alo runners"
+        "alo regent", "alo runners",
+        "watkins bookshop",
+        "wonder workshop - for little ones",
+        "lfg summer party",
+        "live music:"
       ]
     },
     "topics": [
@@ -48,6 +52,15 @@ self.LONDO_CONFIG = {
     "featured": {
       "organizers": ["PsyConnect London", "PsyConnect"],
       "label": "our next event"
+    },
+    "curated": {
+      "organizers": ["The Psychedelic Society", "Numinity"],
+      "titleMatches": ["bohm dialogue"],
+      "exclude": ["running club"],
+      "maxTotal": 3,
+      "priorityOrganizer": "The Psychedelic Society",
+      "windowDays": 7,
+      "label": "this week"
     },
     "logo": "logo.png",
     "shellExtras": ["theme.css", "bg.jpg", "logo.png"]
