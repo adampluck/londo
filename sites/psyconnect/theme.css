@@ -107,6 +107,30 @@ body {
   box-shadow: none !important;
 }
 
+/* desktop: fold the date picker onto the search row to save vertical
+   space. Safe to do here because psyconnect hides the lens toggle and
+   compass (SITE.features.lens/compass false), so .bench holds nothing but
+   the ticker — plenty of room for it alongside search/free/reset. */
+@media (min-width: 641px) {
+  #controls {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  #controls > .controls-row:first-child {
+    flex: 1 1 380px;
+    min-width: 0;
+  }
+  #controls > .controls-row.bench {
+    flex: 1 1 260px;
+    min-width: 0;
+  }
+  #controls > .controls-row.keys,
+  #controls > .controls-row.unit {
+    flex-basis: 100%;
+  }
+}
+
 .slider { background: rgba(122, 90, 60, 0.25); }
 .slider::before {
   background: linear-gradient(180deg, #fdf6e9, var(--key-face));
