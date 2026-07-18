@@ -51,7 +51,8 @@ self.LONDO_CONFIG = {
     "mapTiles": "light_all",
     "featured": {
       "organizers": ["PsyConnect London", "PsyConnect"],
-      "label": "Our next event"
+      "label": "Our next event",
+      "accent": "next event"
     },
     "curated": {
       "organizers": ["The Psychedelic Society", "Numinity", "Adventures in Awareness", "Unseen", "Unseen London"],
@@ -60,7 +61,8 @@ self.LONDO_CONFIG = {
       "maxTotal": 3,
       "priorityOrganizer": "The Psychedelic Society",
       "windowDays": 7,
-      "label": "Our top picks this week"
+      "label": "Our top picks this week",
+      "accent": "top picks"
     },
     "logo": "logo.png",
     "shellExtras": ["theme.css", "bg.jpg", "logo.png"]

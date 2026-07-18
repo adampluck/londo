@@ -1367,23 +1367,28 @@
   }
 
   // Day-heading-styled <h2> placed at a given grid column span, so it
-  // heads exactly the columns its cards occupy below it. First word gets
-  // the same accent colour as a day-heading's "today —" (class "when"
-  // reuses that rule); the rest stays plain ink, same two-tone split.
-  function spotlightHeading(label, className, colStart, colEnd) {
+  // heads exactly the columns its cards occupy below it. `accentPhrase`
+  // (from SITE.featured.accent/SITE.curated.accent) gets the same accent
+  // colour as a day-heading's "today —" (class "when" reuses that rule);
+  // the rest of the label stays plain ink.
+  function spotlightHeading(label, accentPhrase, className, colStart, colEnd) {
     const h2 = document.createElement("h2");
     h2.className = "day-heading spotlight-heading " + className;
     h2.style.gridColumn = colStart + " / " + colEnd;
 
-    const spaceIdx = label.indexOf(" ");
-    const accent = spaceIdx === -1 ? label : label.slice(0, spaceIdx);
-    const rest = spaceIdx === -1 ? "" : label.slice(spaceIdx);
-
+    const idx = accentPhrase ? label.indexOf(accentPhrase) : -1;
+    if (idx === -1) {
+      h2.textContent = label;
+      return h2;
+    }
+    const before = label.slice(0, idx);
+    const after = label.slice(idx + accentPhrase.length);
+    if (before) h2.appendChild(document.createTextNode(before));
     const when = document.createElement("span");
     when.className = "when";
-    when.textContent = accent;
+    when.textContent = accentPhrase;
     h2.appendChild(when);
-    if (rest) h2.appendChild(document.createTextNode(rest));
+    if (after) h2.appendChild(document.createTextNode(after));
 
     return h2;
   }
@@ -1423,6 +1428,7 @@
       grid.appendChild(
         spotlightHeading(
           SITE.featured.label || "Our next event",
+          SITE.featured.accent || "next event",
           "spotlight-heading-featured",
           1,
           2
@@ -1433,6 +1439,7 @@
       grid.appendChild(
         spotlightHeading(
           (SITE.curated && SITE.curated.label) || "Our top picks this week",
+          (SITE.curated && SITE.curated.accent) || "top picks",
           "spotlight-heading-picks",
           pickStart,
           pickEnd
