@@ -197,6 +197,8 @@ body {
 
 .spotlight-heading {
   grid-row: 1;
+  /* same warm ochre as .day-heading .when — friendlier than plain ink */
+  color: var(--gold);
 }
 
 /* desktop-only override of .day-heading's default margin (2.6rem top is
