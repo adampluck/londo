@@ -1367,12 +1367,24 @@
   }
 
   // Day-heading-styled <h2> placed at a given grid column span, so it
-  // heads exactly the columns its cards occupy below it.
+  // heads exactly the columns its cards occupy below it. First word gets
+  // the same accent colour as a day-heading's "today —" (class "when"
+  // reuses that rule); the rest stays plain ink, same two-tone split.
   function spotlightHeading(label, className, colStart, colEnd) {
     const h2 = document.createElement("h2");
     h2.className = "day-heading spotlight-heading " + className;
-    h2.textContent = label;
     h2.style.gridColumn = colStart + " / " + colEnd;
+
+    const spaceIdx = label.indexOf(" ");
+    const accent = spaceIdx === -1 ? label : label.slice(0, spaceIdx);
+    const rest = spaceIdx === -1 ? "" : label.slice(spaceIdx);
+
+    const when = document.createElement("span");
+    when.className = "when";
+    when.textContent = accent;
+    h2.appendChild(when);
+    if (rest) h2.appendChild(document.createTextNode(rest));
+
     return h2;
   }
 
