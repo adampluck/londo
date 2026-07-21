@@ -8,6 +8,21 @@
   const SITE = window.LONDO_CONFIG.SITE || {};
   const FEATURES = SITE.features || {};
 
+  // Tag outbound event links with UTM params so organisers can see
+  // psyconnect referral traffic in their own analytics — londo has no
+  // SITE.id and stays unchanged.
+  function withUtm(url) {
+    if (SITE.id !== "psyconnect" || !url) return url;
+    try {
+      const u = new URL(url);
+      u.searchParams.set("utm_source", "psyconnect.london");
+      u.searchParams.set("utm_medium", "referral");
+      return u.toString();
+    } catch {
+      return url;
+    }
+  }
+
   const state = {
     events: [],
     view: "browse", // browse | tonight | map
@@ -1068,7 +1083,7 @@
         `<strong>${escapeHtml(e.title)}</strong><br>` +
           `${when} · ${escapeHtml(formatTime(e))}<br>` +
           `${escapeHtml(e.venue_name || e.address || "")}<br>` +
-          `<a href="${escapeHtml(e.source_url)}" target="_blank" rel="noopener">open ↗</a>`
+          `<a href="${escapeHtml(withUtm(e.source_url))}" target="_blank" rel="noopener">open ↗</a>`
       );
       state.markerLayer.addLayer(marker);
     }
@@ -1089,7 +1104,7 @@
   function card(e, index) {
     const a = document.createElement("a");
     a.className = "card";
-    a.href = e.source_url;
+    a.href = withUtm(e.source_url);
     a.target = "_blank";
     a.rel = "noopener";
     a.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
@@ -1311,7 +1326,7 @@
   function spotlightCard(e, kind) {
     const card = document.createElement("a");
     card.className = "spotlight-card spotlight-" + kind;
-    card.href = e.source_url;
+    card.href = withUtm(e.source_url);
     card.target = "_blank";
     card.rel = "noopener";
 

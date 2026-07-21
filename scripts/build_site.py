@@ -48,6 +48,7 @@ SITES = {
         "overlay": ROOT / "sites" / "psyconnect",
         "config": ROOT / "sites" / "psyconnect" / "config.js",
         "outdir": ROOT / "build-psyconnect",
+        "utm": True,
     },
 }
 
@@ -347,6 +348,17 @@ def category_url(key: str) -> str:
 
 def esc(value) -> str:
     return html.escape(str(value or ""), quote=True)
+
+
+def with_utm(url: str) -> str:
+    """Tag an outbound event link so organisers can see referral traffic
+    from this site in their own analytics — only sites with utm=True."""
+    if not SITE.get("utm") or not url:
+        return url
+    parts = urllib.parse.urlsplit(url)
+    query = [(k, v) for k, v in urllib.parse.parse_qsl(parts.query) if not k.startswith("utm_")]
+    query += [("utm_source", "psyconnect.london"), ("utm_medium", "referral")]
+    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query)))
 
 
 def _start_london(event: dict) -> datetime:
@@ -660,7 +672,7 @@ def event_page(event: dict) -> str:
     {img}
     {desc_html}
     <p class="static-cta-wrap">
-      <a class="static-cta" href="{esc(event["source_url"])}" rel="noopener">
+      <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener">
         tickets &amp; details ↗
       </a>
     </p>
