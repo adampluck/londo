@@ -33,6 +33,12 @@ class BaseScraper(ABC):
         response = self.session.get(url, timeout=30)
         self._last_request_time = time.time()
         response.raise_for_status()
+        # Sources here (iCal feeds, HTML pages, JSON APIs) all serve UTF-8 in
+        # practice but often omit an explicit charset on Content-Type, so
+        # requests falls back to guessing — and its guess (header default or
+        # chardet sniffing) mis-detects short text as Latin-1/Windows-1252,
+        # mangling curly quotes/em-dashes into "â€™"-style mojibake. Force it.
+        response.encoding = "utf-8"
         return response
 
     @abstractmethod
