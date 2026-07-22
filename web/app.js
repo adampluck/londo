@@ -1815,7 +1815,7 @@
 
   function renderInstallHint(mode) {
     if (!mode || document.getElementById("install-hint")) return;
-    const name = SITE.name || "londo";
+    const name = SITE.displayName || SITE.name || "londo";
 
     const wrap = document.createElement("div");
     wrap.id = "install-hint";
@@ -1826,7 +1826,8 @@
     const icon = document.createElement("div");
     icon.className = "install-hint-icon";
     icon.setAttribute("aria-hidden", "true");
-    icon.innerHTML = `<img src="${SITE.logo || "icons/icon-192.png"}" alt="">`;
+    // square app icon, not the wide wordmark logo (which squashes in a box)
+    icon.innerHTML = '<img src="icons/apple-touch-icon.png" alt="">';
 
     const body = document.createElement("div");
     body.className = "install-hint-body";
@@ -1837,6 +1838,10 @@
     text.className = "install-hint-text";
     if (mode === "ios") {
       text.innerHTML = `Tap ${SHARE_SVG} then <b>Add to Home Screen</b>.`;
+    } else if (mode === "ios-other") {
+      // iOS can only install from Safari; other iOS browsers can't
+      text.innerHTML =
+        `Open in <b>Safari</b>, then Share ${SHARE_SVG} → <b>Add to Home Screen</b>.`;
     } else {
       text.textContent = "Add it to your home screen for full-screen access.";
     }
@@ -1888,13 +1893,18 @@
   function maybeShowInstallHint() {
     if (FEATURES.installHint === false) return;
     if (isStandalone() || installHintDismissed()) return;
-    if (!deferredPrompt && !isIOSSafari()) return;
+    if (!deferredPrompt && !isIOS()) return;
     window.setTimeout(() => {
       if (isStandalone() || installHintDismissed()) return;
+      // Android/Chromium: real one-tap install. iOS Safari: Share -> Add to
+      // Home Screen. Other iOS browsers: can't install, so tell them to open
+      // in Safari first.
       const mode = deferredPrompt
         ? "android"
         : isIOSSafari()
         ? "ios"
+        : isIOS()
+        ? "ios-other"
         : null;
       renderInstallHint(mode);
     }, INSTALL_HINT_DELAY_MS);

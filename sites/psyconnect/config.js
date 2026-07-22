@@ -15,6 +15,7 @@ self.LONDO_CONFIG = {
   SITE: /*SITE-JSON*/ {
     "id": "psyconnect",
     "name": "psyconnect",
+    "displayName": "PsyConnect",
     "tagline": "consciousness, connection, ceremony & psychedelics — in person in london",
     "filter": {
       "categories": ["expand"],

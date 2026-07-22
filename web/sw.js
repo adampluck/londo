@@ -7,7 +7,7 @@
 importScripts("config.js");
 
 const SITE = (self.LONDO_CONFIG && self.LONDO_CONFIG.SITE) || {};
-const CACHE = (SITE.id || "londo") + "-v14";
+const CACHE = (SITE.id || "londo") + "-v15";
 const SHELL = [
   "./",
   "index.html",
