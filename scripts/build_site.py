@@ -52,6 +52,53 @@ SITES = {
     },
 }
 
+# iOS launch screens. The PNGs are pre-generated (scripts/gen_splash.py,
+# needs Pillow) and committed under each site's splash/ dir; here we only
+# emit the matching <link> tags — pure string work, so the CI build stays
+# stdlib-only. Keep (pt_w, pt_h, dpr) in sync with gen_splash.py DEVICES.
+STARTUP_DEVICES = [
+    (375, 667, 2),
+    (414, 736, 3),
+    (375, 812, 3),
+    (414, 896, 2),
+    (414, 896, 3),
+    (390, 844, 3),
+    (428, 926, 3),
+    (393, 852, 3),
+    (430, 932, 3),
+    (402, 874, 3),
+    (440, 956, 3),
+]
+STARTUP_MARKER = "<!-- APPLE-STARTUP-IMAGES:"
+
+
+def inject_startup_images(outdir: Path) -> None:
+    """Replace the APPLE-STARTUP-IMAGES marker comment in index.html with
+    per-device apple-touch-startup-image links, one per committed splash PNG."""
+    index = outdir / "index.html"
+    text = index.read_text()
+    start = text.find(STARTUP_MARKER)
+    if start == -1:
+        return  # no marker (e.g. a site without the splash treatment)
+    end = text.find("-->", start)
+    if end == -1:
+        return
+    end += len("-->")
+    links = []
+    for pt_w, pt_h, dpr in STARTUP_DEVICES:
+        px = f"{pt_w * dpr}x{pt_h * dpr}"
+        media = (
+            f"(device-width: {pt_w}px) and (device-height: {pt_h}px) "
+            f"and (-webkit-device-pixel-ratio: {dpr}) "
+            f"and (orientation: portrait)"
+        )
+        links.append(
+            f'<link rel="apple-touch-startup-image" '
+            f'media="{media}" href="splash/splash-{px}.png">'
+        )
+    index.write_text(text[:start] + "\n  ".join(links) + text[end:])
+
+
 # set from SITES by main(); the script builds one site per invocation
 BASE_URL = SITES["londo"]["base_url"]
 SITE = SITES["londo"]
@@ -787,6 +834,7 @@ def build(outdir: Path) -> None:
     shutil.copytree(ROOT / "web", outdir)
     if SITE["overlay"]:
         shutil.copytree(SITE["overlay"], outdir, dirs_exist_ok=True)
+    inject_startup_images(outdir)
 
     _EVENT_SLUGS = assign_event_slugs(events)
     urls = [f"{BASE_URL}/"]

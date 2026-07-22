@@ -19,6 +19,11 @@
   --radius: 18px;
   --display: "Bricolage Grotesque", Georgia, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* PWA launch splash + install-hint banner (psyconnect overrides in theme.css).
+     Solid, opaque values on purpose — the glassy --card is too transparent for
+     a free-floating banner. */
+  --splash-bg: #14101f;
+  --hint-bg: #201a30;
   font-size: 16px;
 }
 
@@ -1610,4 +1615,117 @@ body.theme-night .blob { opacity: 0.35; }
   .loader-spark.s4 { transform: rotate(290deg) translateX(1.85rem); }
   .loading-msg { transition: none; opacity: 0.8; }
   .lens-stop, .slider::before { transition: none; }
+}
+
+/* ---- PWA launch splash (installed app only) ---- */
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6rem;
+  background: var(--splash-bg);
+  opacity: 1;
+  transition: opacity 0.45s ease;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#splash.is-hiding {
+  opacity: 0;
+  pointer-events: none;
+}
+.splash-logo {
+  width: min(58%, 19rem);
+  height: auto;
+  display: block;
+}
+
+/* ---- Install hint banner ---- */
+.install-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  transform: translate(-50%, calc(100% + 2rem));
+  width: min(29rem, calc(100vw - 1.5rem));
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.8rem 0.85rem;
+  background: var(--hint-bg);
+  border: 1px solid var(--card-edge);
+  border-radius: var(--radius);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.34);
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: var(--display);
+}
+.install-hint.is-in {
+  transform: translate(-50%, 0);
+}
+.install-hint-icon {
+  flex: none;
+}
+.install-hint-icon img {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.65rem;
+  display: block;
+  background: #fff;
+}
+.install-hint-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.install-hint-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.98rem;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.install-hint-text {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  color: var(--ink-dim);
+}
+.install-hint-share {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  vertical-align: -0.14em;
+}
+.install-hint-install {
+  flex: none;
+  font: 600 0.85rem/1 var(--display);
+  padding: 0.55rem 0.95rem;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  color: #fff;
+  background: var(--peach);
+}
+.install-hint-close {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.install-hint-close:hover {
+  color: var(--ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  #splash,
+  .install-hint {
+    transition: none;
+  }
 }

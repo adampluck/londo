@@ -8,6 +8,38 @@
   const SITE = window.LONDO_CONFIG.SITE || {};
   const FEATURES = SITE.features || {};
 
+  // --- PWA install / launch helpers -------------------------------------
+  const UA = navigator.userAgent || "";
+  function isStandalone() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true // iOS Safari home-screen apps
+    );
+  }
+  function isIOS() {
+    return (
+      /iphone|ipad|ipod/i.test(UA) ||
+      // iPadOS 13+ masquerades as desktop Safari; touch points give it away
+      (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1)
+    );
+  }
+  // iOS install must go through Safari's Share sheet; other iOS browsers and
+  // in-app webviews (FB/IG/etc.) can't add to the home screen, so don't nudge.
+  function isIOSSafari() {
+    return (
+      isIOS() &&
+      !/CriOS|FxiOS|EdgiOS|GSA|FBAN|FBAV|Instagram|Line\//.test(UA)
+    );
+  }
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+  // londo and psyconnect share the github.io origin, so localStorage keys
+  // must be site-prefixed (same reasoning as the SW cache name in sw.js).
+  function storeKey(suffix) {
+    return `${SITE.id || "londo"}:${suffix}`;
+  }
+
   // Tag outbound event links with UTM params so organisers can see
   // psyconnect referral traffic in their own analytics — londo has no
   // SITE.id and stays unchanged.
@@ -1685,7 +1717,192 @@
     nav.replaceChildren(frag);
   }
 
+  // --- Launch splash (installed app only) -------------------------------
+  // A full-screen branded launch screen — the loader orb + site logo — shown
+  // only when opened standalone (the installed app), so ordinary web visits
+  // don't gain an extra splash step. Reuses the existing .loader markup/CSS.
+  let splashEl = null;
+  function showSplash() {
+    if (!isStandalone() || document.getElementById("splash")) return;
+    const el = document.createElement("div");
+    el.id = "splash";
+    el.setAttribute("aria-hidden", "true");
+    el.innerHTML =
+      (SITE.logo ? `<img class="splash-logo" src="${SITE.logo}" alt="">` : "") +
+      '<div class="loader">' +
+      '<span class="loader-ring r1"></span>' +
+      '<span class="loader-ring r2"></span>' +
+      '<span class="loader-ring r3"></span>' +
+      '<span class="loader-core"></span>' +
+      '<span class="loader-spark s1"></span>' +
+      '<span class="loader-spark s2"></span>' +
+      '<span class="loader-spark s3"></span>' +
+      '<span class="loader-spark s4"></span>' +
+      "</div>";
+    document.body.appendChild(el);
+    splashEl = el;
+  }
+  function hideSplash() {
+    if (!splashEl) return;
+    const el = splashEl;
+    splashEl = null;
+    if (prefersReducedMotion()) {
+      el.remove();
+      return;
+    }
+    el.classList.add("is-hiding");
+    el.addEventListener("transitionend", () => el.remove(), { once: true });
+    // belt-and-braces: if transitionend never fires, still clean up
+    window.setTimeout(() => el.remove(), 700);
+  }
+
+  // --- Install hint banner ----------------------------------------------
+  // Non-invasive, dismissible nudge. Platform-split: Android/Chromium gets a
+  // real one-tap install (beforeinstallprompt); iOS Safari gets the manual
+  // "Share -> Add to Home Screen" hint (iOS exposes no install API).
+  const INSTALL_HINT_KEY = "install-hint-dismissed";
+  const INSTALL_HINT_REDISPLAY_MS = 60 * 24 * 60 * 60 * 1000; // ~60 days
+  const INSTALL_HINT_DELAY_MS = 4000;
+  let deferredPrompt = null;
+
+  function installHintDismissed() {
+    try {
+      const t = Number(localStorage.getItem(storeKey(INSTALL_HINT_KEY)));
+      return t && Date.now() - t < INSTALL_HINT_REDISPLAY_MS;
+    } catch (_) {
+      return false;
+    }
+  }
+  function markInstallHintDismissed() {
+    try {
+      localStorage.setItem(storeKey(INSTALL_HINT_KEY), String(Date.now()));
+    } catch (_) {
+      /* private mode / storage disabled — just skip persistence */
+    }
+  }
+
+  // Register listeners early: beforeinstallprompt can fire before the banner's
+  // delayed appearance, and appinstalled can arrive from the browser UI.
+  function initInstallHint() {
+    if (FEATURES.installHint === false || isStandalone()) return;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+    window.addEventListener("appinstalled", () => {
+      markInstallHintDismissed();
+      removeInstallHint();
+    });
+  }
+
+  function removeInstallHint() {
+    const el = document.getElementById("install-hint");
+    if (!el) return;
+    if (prefersReducedMotion()) {
+      el.remove();
+      return;
+    }
+    el.classList.remove("is-in");
+    el.addEventListener("transitionend", () => el.remove(), { once: true });
+    window.setTimeout(() => el.remove(), 500);
+  }
+
+  const SHARE_SVG =
+    '<svg class="install-hint-share" viewBox="0 0 24 24" aria-hidden="true" ' +
+    'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+    'stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/>' +
+    '<path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+
+  function renderInstallHint(mode) {
+    if (!mode || document.getElementById("install-hint")) return;
+    const name = SITE.name || "londo";
+
+    const wrap = document.createElement("div");
+    wrap.id = "install-hint";
+    wrap.className = "install-hint";
+    wrap.setAttribute("role", "dialog");
+    wrap.setAttribute("aria-label", `install ${name}`);
+
+    const icon = document.createElement("div");
+    icon.className = "install-hint-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML = `<img src="${SITE.logo || "icons/icon-192.png"}" alt="">`;
+
+    const body = document.createElement("div");
+    body.className = "install-hint-body";
+    const title = document.createElement("p");
+    title.className = "install-hint-title";
+    title.textContent = `Install ${name}`;
+    const text = document.createElement("p");
+    text.className = "install-hint-text";
+    if (mode === "ios") {
+      text.innerHTML = `Tap ${SHARE_SVG} then <b>Add to Home Screen</b>.`;
+    } else {
+      text.textContent = "Add it to your home screen for full-screen access.";
+    }
+    body.append(title, text);
+
+    wrap.append(icon, body);
+
+    if (mode === "android") {
+      const install = document.createElement("button");
+      install.className = "install-hint-install";
+      install.type = "button";
+      install.textContent = "Install";
+      install.addEventListener("click", async () => {
+        if (!deferredPrompt) {
+          removeInstallHint();
+          return;
+        }
+        deferredPrompt.prompt();
+        try {
+          await deferredPrompt.userChoice;
+        } catch (_) {
+          /* ignore */
+        }
+        deferredPrompt = null;
+        markInstallHintDismissed();
+        removeInstallHint();
+      });
+      wrap.append(install);
+    }
+
+    const close = document.createElement("button");
+    close.className = "install-hint-close";
+    close.type = "button";
+    close.setAttribute("aria-label", "dismiss");
+    close.innerHTML = "&times;";
+    close.addEventListener("click", () => {
+      markInstallHintDismissed();
+      removeInstallHint();
+    });
+    wrap.append(close);
+
+    document.body.appendChild(wrap);
+    // next frame so the slide-up transition runs
+    requestAnimationFrame(() => wrap.classList.add("is-in"));
+  }
+
+  // Called after the first successful render: wait a beat (non-invasive),
+  // then show the hint if we can actually guide an install on this platform.
+  function maybeShowInstallHint() {
+    if (FEATURES.installHint === false) return;
+    if (isStandalone() || installHintDismissed()) return;
+    if (!deferredPrompt && !isIOSSafari()) return;
+    window.setTimeout(() => {
+      if (isStandalone() || installHintDismissed()) return;
+      const mode = deferredPrompt
+        ? "android"
+        : isIOSSafari()
+        ? "ios"
+        : null;
+      renderInstallHint(mode);
+    }, INSTALL_HINT_DELAY_MS);
+  }
+
   async function init() {
+    showSplash();
+    initInstallHint();
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js").catch(() => {});
     }
@@ -1731,8 +1948,11 @@
       syncTopicTokens();
       renderLastUpdated();
       render();
+      hideSplash();
+      maybeShowInstallHint();
     } catch (err) {
       clearInterval(loadingTimer);
+      hideSplash();
       document.getElementById("events").innerHTML =
         `<p class="status">the window is fogged up — events wouldn't load (${err.message})</p>`;
     }

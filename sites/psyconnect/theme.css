@@ -19,6 +19,9 @@
   --key-side: #d3bd9c;
   --key-lit: #f9f1e2;
   --radius: 24px;
+  /* launch splash matches the manifest background_color; banner is warm ivory */
+  --splash-bg: #f6efe4;
+  --hint-bg: #fbf7ee;
 }
 
 body {
