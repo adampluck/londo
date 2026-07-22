@@ -28,6 +28,15 @@ body {
   background: linear-gradient(175deg, #faf4e8 0%, var(--dusk-0) 38%, var(--dusk-1) 72%, #e5d3b8 100%);
 }
 
+/* Reserve the launch-splash wordmark's box up-front. The logo is a wide PNG
+   (2971x508) sized to width:52% with height:auto, so until it decodes its
+   height is 0 and it pops/jumps into place on load. Pinning the intrinsic
+   aspect ratio makes the box the right height before a single pixel arrives,
+   so the logo sits still and the iOS launch-image handoff stays seamless. */
+.splash-logo {
+  aspect-ratio: 2971 / 508;
+}
+
 /* cross-stitch wordmark — full-colour PNG, always a real click target */
 .topbar h1 a.home {
   background: none !important;
