@@ -18,7 +18,11 @@
   <!-- APPLE-STARTUP-IMAGES: build_site.py replaces this with per-device
        apple-touch-startup-image links (iOS launch screens, from splash/) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- black-translucent: the web view runs edge-to-edge under the status bar
+       so the cream textured background fills the top strip (viewport-fit=cover
+       + body's safe-area-inset padding keep content clear of the clock). Note:
+       iOS forces the status-bar icons white in this mode. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="psyconnect">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
