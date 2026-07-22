@@ -1624,7 +1624,17 @@ body.theme-night .blob { opacity: 0.35; }
    jump. */
 #splash {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* Height is pinned to the LARGE viewport, not `inset: 0`/`%`/`vh`. On an iOS
+     standalone cold launch the layout viewport is briefly short and then grows
+     to full height; a splash sized to that viewport made the 50%-centred logo
+     render low and then slide up to meet the native launch-image logo (a
+     visible jump). `lvh` is a fixed full-screen value that ignores that
+     transient, so the logo lands on the native position and stays put. */
+  height: 100vh;
+  height: 100lvh;
   z-index: 9999;
   background-color: var(--splash-bg);
   opacity: 1;
