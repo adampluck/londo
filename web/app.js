@@ -1770,15 +1770,52 @@
     if (!splashEl) return;
     const el = splashEl;
     splashEl = null;
+    const simpleFade = () => {
+      el.classList.add("is-hiding");
+      el.addEventListener("transitionend", () => el.remove(), { once: true });
+      // belt-and-braces: if transitionend never fires, still clean up
+      window.setTimeout(() => el.remove(), 700);
+    };
     const fadeOut = () => {
       if (prefersReducedMotion()) {
         el.remove();
         return;
       }
-      el.classList.add("is-hiding");
-      el.addEventListener("transitionend", () => el.remove(), { once: true });
-      // belt-and-braces: if transitionend never fires, still clean up
-      window.setTimeout(() => el.remove(), 700);
+      const logo = el.querySelector(".splash-logo");
+      const headerLogo = document.querySelector(".topbar h1 img");
+      const orb = el.querySelector(".loader");
+      const hRect = headerLogo && headerLogo.getBoundingClientRect();
+      const sRect = logo && logo.getBoundingClientRect();
+      // FLIP: glide the centred splash logo up into the header logo's exact
+      // spot, then swap to the real one — so there's no positional "jump".
+      // Pin the logo at its current pixel rect with a top-left origin, then
+      // translate+scale to the header rect (clean, origin-safe math).
+      if (logo && headerLogo && hRect.width > 0 && sRect.width > 0) {
+        headerLogo.style.visibility = "hidden"; // avoid a doubled logo mid-flight
+        if (orb) orb.style.opacity = "0";
+        el.style.backgroundColor = "transparent"; // reveal the app underneath
+        el.style.pointerEvents = "none"; // don't swallow taps during the flight
+        logo.style.left = sRect.left + "px";
+        logo.style.top = sRect.top + "px";
+        logo.style.transform = "none";
+        logo.style.transformOrigin = "top left";
+        void logo.offsetWidth; // flush the pinned start state before animating
+        requestAnimationFrame(() => {
+          const dx = hRect.left - sRect.left;
+          const dy = hRect.top - sRect.top;
+          const scale = hRect.width / sRect.width;
+          logo.style.transform =
+            `translate(${dx}px, ${dy}px) scale(${scale})`;
+        });
+        const done = () => {
+          el.remove();
+          headerLogo.style.visibility = "";
+        };
+        logo.addEventListener("transitionend", done, { once: true });
+        window.setTimeout(done, 900);
+        return;
+      }
+      simpleFade();
     };
     // hold for the minimum linger, then fade — even if the data loaded instantly
     const remaining = SPLASH_MIN_MS - (performance.now() - splashShownAt);

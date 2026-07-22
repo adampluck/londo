@@ -1622,9 +1622,9 @@ body.theme-night .blob { opacity: 0.35; }
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: var(--splash-bg);
+  background-color: var(--splash-bg);
   opacity: 1;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.35s ease, background-color 0.4s ease;
 }
 #splash.is-hiding {
   opacity: 0;
@@ -1632,29 +1632,32 @@ body.theme-night .blob { opacity: 0.35; }
 }
 /* logo true-centered at the SAME size as the iOS static launch image (52% of
    width — see gen_splash.py logo_frac), so the launch-image → JS-splash handoff
-   is seamless and the logo never jumps. */
+   is seamless. On hide it FLIPs up into the header logo's spot (app.js), hence
+   the transform transition + centre origin. */
 .splash-logo {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  transform-origin: center center;
+  transition: transform 0.55s cubic-bezier(0.45, 0, 0.15, 1);
+  will-change: transform;
   width: 52%;
   max-width: 20rem;
   height: auto;
   display: block;
 }
-/* orb: centered when there's no logo (londo); parked near the bottom when a
-   logo is present so it can't shove the centered logo off-centre. */
+/* orb sits just below the centred logo (centred entirely when there's no logo,
+   e.g. londo). Absolute so it never displaces the logo. */
 #splash .loader {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  transition: opacity 0.3s ease;
 }
 #splash.has-logo .loader {
-  top: auto;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 15%);
-  transform: translateX(-50%);
+  top: 63%;
 }
 
 /* ---- Install hint banner ---- */
