@@ -1363,9 +1363,14 @@
       month: "short",
       timeZone: "Europe/London",
     });
-    when.textContent = [day, formatTime(e), e.venue_name]
-      .filter(Boolean)
-      .join(" · ");
+    when.append([day, formatTime(e)].filter(Boolean).join(" · "));
+    // venue is its own span so mobile can drop it (see .spotlight-venue)
+    if (e.venue_name) {
+      const venue = document.createElement("span");
+      venue.className = "spotlight-venue";
+      venue.textContent = " · " + e.venue_name;
+      when.appendChild(venue);
+    }
     body.appendChild(when);
 
     const blurb = (e.hook || e.description || "").trim();
@@ -1416,13 +1421,11 @@
       state.events.find(
         (ev) => isOurs(ev) && new Date(ev.start_at).getTime() > Date.now()
       );
-    // With a featured event, only 2 picks share the row with it; without
-    // one, picks get the full row (SITE.curated.maxTotal, default 3).
-    const pickLimit = SITE.curated
-      ? featured
-        ? 2
-        : SITE.curated.maxTotal || 3
-      : 0;
+    // Always fetch up to maxTotal (default 3). Desktop shows featured + 2
+    // picks in one 3-column row (the 3rd pick is hidden with CSS); the mobile
+    // swipe strip shows all three. Without a featured event, picks get the
+    // full row on both.
+    const pickLimit = SITE.curated ? SITE.curated.maxTotal || 3 : 0;
     const picks = pickLimit
       ? pickCurated(featured && featured.source_url, pickLimit)
       : [];
@@ -1437,7 +1440,10 @@
     section.classList.toggle("no-featured", !featured);
 
     const pickStart = featured ? 2 : 1;
-    const pickEnd = pickStart + Math.max(picks.length, featured ? 0 : 1);
+    // Heading spans only the desktop-visible picks (featured caps the row at
+    // 2) so the extra 3rd pick can't force an implicit 4th grid column.
+    const desktopPicks = featured ? Math.min(picks.length, 2) : picks.length;
+    const pickEnd = pickStart + Math.max(desktopPicks, featured ? 0 : 1);
 
     if (featured) {
       grid.appendChild(
@@ -1467,11 +1473,32 @@
       card.style.gridColumn = "1";
       grid.appendChild(card);
     }
-    picks.forEach((e, i) => {
-      const card = spotlightCard(e, "pick");
-      card.style.gridColumn = String(pickStart + i);
-      grid.appendChild(card);
-    });
+    // Picks live in their own wrapper so mobile can turn them into a
+    // horizontal swipe strip; on desktop the wrapper is display:contents, so
+    // the cards rejoin the grid and their inline grid-column places them.
+    if (picks.length) {
+      const picksWrap = document.createElement("div");
+      picksWrap.className = "spotlight-picks";
+      // Desktop shows exactly the picks it showed before (2 alongside a
+      // featured event); pickCurated date-sorts, so the 2-of-3 to keep is the
+      // limit-2 selection, not "the first two by date". The extra pick is
+      // strip-only. Non-extra picks take contiguous columns; the extra is
+      // display:none on desktop so its column never matters.
+      const desktopSet = featured
+        ? new Set(pickCurated(featured.source_url, 2))
+        : new Set(picks);
+      let col = pickStart;
+      picks.forEach((e) => {
+        const card = spotlightCard(e, "pick");
+        if (desktopSet.has(e)) {
+          card.style.gridColumn = String(col++);
+        } else {
+          card.classList.add("spotlight-pick-extra");
+        }
+        picksWrap.appendChild(card);
+      });
+      grid.appendChild(picksWrap);
+    }
 
     section.replaceChildren(grid);
     section.hidden = false;
