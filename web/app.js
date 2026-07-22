@@ -1749,6 +1749,7 @@
     splashShownAt = performance.now();
     const el = document.createElement("div");
     el.id = "splash";
+    if (SITE.logo) el.classList.add("has-logo");
     el.setAttribute("aria-hidden", "true");
     el.innerHTML =
       (SITE.logo ? `<img class="splash-logo" src="${SITE.logo}" alt="">` : "") +

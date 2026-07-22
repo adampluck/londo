@@ -1622,25 +1622,39 @@ body.theme-night .blob { opacity: 0.35; }
   position: fixed;
   inset: 0;
   z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.6rem;
   background: var(--splash-bg);
   opacity: 1;
-  transition: opacity 0.45s ease;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  transition: opacity 0.35s ease;
 }
 #splash.is-hiding {
   opacity: 0;
   pointer-events: none;
 }
+/* logo true-centered at the SAME size as the iOS static launch image (52% of
+   width — see gen_splash.py logo_frac), so the launch-image → JS-splash handoff
+   is seamless and the logo never jumps. */
 .splash-logo {
-  width: min(58%, 19rem);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 52%;
+  max-width: 20rem;
   height: auto;
   display: block;
+}
+/* orb: centered when there's no logo (londo); parked near the bottom when a
+   logo is present so it can't shove the centered logo off-centre. */
+#splash .loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+#splash.has-logo .loader {
+  top: auto;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 15%);
+  transform: translateX(-50%);
 }
 
 /* ---- Install hint banner ---- */
