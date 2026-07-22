@@ -1660,9 +1660,23 @@ body.theme-night .blob { opacity: 0.35; }
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  /* Hold the spinner invisible for the first ~120ms, then fade it in. On an iOS
+     standalone cold launch the spinner drops ~a few % into its resting spot in
+     the first frames after the splash paints (the logo, pinned to lvh and
+     backed by the native launch image, doesn't). Keeping it hidden through that
+     brief settle and fading it in at rest hides the drop entirely. */
+  animation: splash-loader-in 0.45s ease 0.12s both;
 }
 #splash.has-logo .loader {
   top: 62%;
+}
+@keyframes splash-loader-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ---- Install hint banner ---- */
@@ -1749,5 +1763,8 @@ body.theme-night .blob { opacity: 0.35; }
   #splash,
   .install-hint {
     transition: none;
+  }
+  #splash .loader {
+    animation: none;
   }
 }
