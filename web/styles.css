@@ -1618,46 +1618,41 @@ body.theme-night .blob { opacity: 0.35; }
 }
 
 /* ---- PWA launch splash (installed app only) ---- */
+/* Simple, clean launch splash: logo centred, spinner just below it, plain
+   fade-out. The logo is centred at the SAME 52% width as the iOS static launch
+   image (gen_splash.py logo_frac) so the launch-image → splash handoff doesn't
+   jump. */
 #splash {
   position: fixed;
   inset: 0;
   z-index: 9999;
   background-color: var(--splash-bg);
   opacity: 1;
-  transition: opacity 0.35s ease, background-color 0.4s ease;
+  transition: opacity 0.4s ease;
 }
 #splash.is-hiding {
   opacity: 0;
   pointer-events: none;
 }
-/* logo true-centered at the SAME size as the iOS static launch image (52% of
-   width — see gen_splash.py logo_frac), so the launch-image → JS-splash handoff
-   is seamless. On hide it FLIPs up into the header logo's spot (app.js), hence
-   the transform transition + centre origin. */
 .splash-logo {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  transform-origin: center center;
-  transition: transform 0.55s cubic-bezier(0.45, 0, 0.15, 1);
-  will-change: transform;
   width: 52%;
   max-width: 20rem;
   height: auto;
   display: block;
 }
-/* orb sits just below the centred logo (centred entirely when there's no logo,
-   e.g. londo). Absolute so it never displaces the logo. */
+/* spinner just below the centred logo (fully centred when there's no logo). */
 #splash .loader {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  transition: opacity 0.3s ease;
 }
 #splash.has-logo .loader {
-  top: 63%;
+  top: 62%;
 }
 
 /* ---- Install hint banner ---- */
