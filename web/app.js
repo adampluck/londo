@@ -1740,8 +1740,13 @@
   // only when opened standalone (the installed app), so ordinary web visits
   // don't gain an extra splash step. Reuses the existing .loader markup/CSS.
   let splashEl = null;
+  let splashShownAt = 0;
+  // minimum time the splash stays up before fading, so a fast (cached) load
+  // still gets the full branded moment instead of a flash
+  const SPLASH_MIN_MS = 1000;
   function showSplash() {
     if (!isStandalone() || document.getElementById("splash")) return;
+    splashShownAt = performance.now();
     const el = document.createElement("div");
     el.id = "splash";
     el.setAttribute("aria-hidden", "true");
@@ -1764,14 +1769,20 @@
     if (!splashEl) return;
     const el = splashEl;
     splashEl = null;
-    if (prefersReducedMotion()) {
-      el.remove();
-      return;
-    }
-    el.classList.add("is-hiding");
-    el.addEventListener("transitionend", () => el.remove(), { once: true });
-    // belt-and-braces: if transitionend never fires, still clean up
-    window.setTimeout(() => el.remove(), 700);
+    const fadeOut = () => {
+      if (prefersReducedMotion()) {
+        el.remove();
+        return;
+      }
+      el.classList.add("is-hiding");
+      el.addEventListener("transitionend", () => el.remove(), { once: true });
+      // belt-and-braces: if transitionend never fires, still clean up
+      window.setTimeout(() => el.remove(), 700);
+    };
+    // hold for the minimum linger, then fade — even if the data loaded instantly
+    const remaining = SPLASH_MIN_MS - (performance.now() - splashShownAt);
+    if (remaining > 0) window.setTimeout(fadeOut, remaining);
+    else fadeOut();
   }
 
   // --- Install hint banner ----------------------------------------------
