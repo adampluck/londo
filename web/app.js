@@ -274,6 +274,24 @@
     return res.json();
   }
 
+  // Installed iOS PWAs often launch/resume before the network stack is ready,
+  // so the very first fetch throws "Load failed". Don't surrender on attempt
+  // one — retry a few times with growing backoff before showing an error.
+  async function fetchEventsWithRetry(attempts = 4) {
+    let lastErr;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await fetchEvents();
+      } catch (err) {
+        lastErr = err;
+        if (i < attempts - 1) {
+          await new Promise((r) => window.setTimeout(r, 500 * (i + 1)));
+        }
+      }
+    }
+    throw lastErr;
+  }
+
   // ---------- time helpers ----------
 
   function londonDate(d) {
@@ -1941,8 +1959,18 @@
         '<p class="status">set SUPABASE_URL and SUPABASE_ANON_KEY in web/config.js</p>';
       return;
     }
+    await attemptLoad(loadingTimer);
+    // if the first load failed (e.g. iOS PWA woke before the network did),
+    // heal automatically when the app next becomes visible or comes online,
+    // so the user doesn't have to force-quit and relaunch.
+    if (!eventsLoaded) armLoadRetry();
+  }
+
+  let eventsLoaded = false;
+
+  async function attemptLoad(loadingTimer) {
     try {
-      state.events = (await fetchEvents()).filter(siteMatch);
+      state.events = (await fetchEventsWithRetry()).filter(siteMatch);
       clearInterval(loadingTimer);
       applyLandingFromUrl();
       // sync chrome to any landing filter (topic chips / category / day)
@@ -1960,12 +1988,41 @@
       render();
       hideSplash();
       maybeShowInstallHint();
+      eventsLoaded = true;
     } catch (err) {
       clearInterval(loadingTimer);
       hideSplash();
-      document.getElementById("events").innerHTML =
-        `<p class="status">the window is fogged up — events wouldn't load (${err.message})</p>`;
+      const events = document.getElementById("events");
+      if (events) {
+        events.innerHTML =
+          `<p class="status">the window is fogged up — events wouldn't load ` +
+          `(${err.message}). ` +
+          `<button class="key" id="retry-load" type="button">try again</button></p>`;
+        const btn = document.getElementById("retry-load");
+        if (btn) btn.addEventListener("click", reloadEvents);
+      }
     }
+  }
+
+  async function reloadEvents() {
+    if (eventsLoaded) return;
+    const events = document.getElementById("events");
+    if (events) {
+      events.innerHTML =
+        '<p class="status" aria-live="polite">reconnecting…</p>';
+    }
+    await attemptLoad(startLoadingCycle());
+  }
+
+  function armLoadRetry() {
+    const onWake = () => {
+      if (!eventsLoaded && document.visibilityState === "visible") {
+        reloadEvents();
+      }
+    };
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("online", onWake);
+    window.addEventListener("pageshow", onWake);
   }
 
   init();
