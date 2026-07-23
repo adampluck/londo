@@ -103,6 +103,10 @@ def inject_startup_images(outdir: Path) -> None:
 BASE_URL = SITES["londo"]["base_url"]
 SITE = SITES["londo"]
 SITE_JSON: dict = {}
+# set by build() once the site's files are copied into outdir; used as the
+# og:image fallback for pages (events without their own image, listings)
+# when the site ships an og-image.jpg
+DEFAULT_OG_IMAGE: str | None = None
 
 CATEGORIES = {
     "move": ("move", "Ecstatic dance, movement & embodiment events in London"),
@@ -731,7 +735,7 @@ def event_page(event: dict) -> str:
         f"{event['title']} — {SITE['name']}",
         description,
         canonical,
-        event.get("image_url"),
+        event.get("image_url") or DEFAULT_OG_IMAGE,
         body,
         json_ld,
     )
@@ -819,13 +823,13 @@ def listing_page(
         f"{seo_title} — {SITE['name']}",
         meta_desc,
         canonical,
-        None,
+        DEFAULT_OG_IMAGE,
         body,
     )
 
 
 def build(outdir: Path) -> None:
-    global _EVENT_SLUGS
+    global _EVENT_SLUGS, DEFAULT_OG_IMAGE
     events = [e for e in fetch_events() if site_match(e)]
     print(f"Building {SITE['name']} with {len(events)} events")
 
@@ -835,6 +839,10 @@ def build(outdir: Path) -> None:
     if SITE["overlay"]:
         shutil.copytree(SITE["overlay"], outdir, dirs_exist_ok=True)
     inject_startup_images(outdir)
+
+    DEFAULT_OG_IMAGE = (
+        f"{BASE_URL}/og-image.jpg" if (outdir / "og-image.jpg").exists() else None
+    )
 
     _EVENT_SLUGS = assign_event_slugs(events)
     urls = [f"{BASE_URL}/"]
