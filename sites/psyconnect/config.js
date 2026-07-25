@@ -34,7 +34,13 @@ self.LONDO_CONFIG = {
         "watkins bookshop",
         "wonder workshop - for little ones",
         "lfg summer party",
-        "live music:"
+        "live music:",
+        "run club", "parkrun", "5km", "10km", "bootcamp", "hyrox",
+        "crossfit", "spin class", "pilates", "reformer", "kettlebell",
+        "personal training", "strength training", "fitness class",
+        "red light therapy", "high performers", "performance studio",
+        "biohacking", "bon charge", "ydun",
+        "aperitivo", "bottomless brunch", "coworking", "investor"
       ]
     },
     "topics": [
