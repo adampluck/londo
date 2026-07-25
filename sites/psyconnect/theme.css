@@ -4,28 +4,124 @@
    voices; soft round corners. This file is the visual-iteration
    sandbox — everything psyconnect-looking belongs here. */
 
+/* ---------- palette: one set of tokens, two schemes ----------
+   Every value is light-dark(light, dark), so the whole skin follows the
+   root's used color-scheme and there is no second copy of the palette to
+   keep in step. theme-boot.js sets data-theme on <html> when the reader
+   picks a side; with nothing set we follow the system.
+
+   Dark is warm — soaked umber and ember, not neutral grey — because the
+   ground is a hand-drawn cream pattern and a cold dark makes it look like
+   an unfinished sketch. Accents keep their ≥4.5:1 footing on both grounds:
+   the light inks are too dark to read on umber, so dark mode lifts them
+   rather than reusing them. */
+
 :root {
-  --dusk-0: #f6efe4; /* cream */
-  --dusk-1: #f0e5d3; /* parchment */
-  --dusk-2: #e8d9c2; /* warm sand */
-  --mauve: #7d8a6a;  /* sage — labels, legends, small voices */
-  --peach: #b85a33;  /* terracotta */
-  --gold: #b07d24;   /* ochre */
-  --ink: #3a2b20;    /* dark umber */
-  --ink-dim: #8a7360;
-  --card: rgba(122, 90, 60, 0.07);
-  --card-edge: rgba(184, 90, 51, 0.22);
-  --key-face: #efe2cb;
-  --key-side: #d3bd9c;
-  --key-lit: #f9f1e2;
+  color-scheme: light dark;
+
+  --dusk-0: light-dark(#f6efe4, #191310); /* cream / soaked umber */
+  --dusk-1: light-dark(#f0e5d3, #211a15); /* parchment */
+  --dusk-2: light-dark(#e8d9c2, #2c2119); /* warm sand */
+  /* Accent and secondary inks are all ≥4.5:1 on their ground — the first
+     pass inherited londo's values, which were mixed for a near-black panel
+     and washed out to 3:1-ish on cream. --mono is Inter, not IBM Plex
+     Mono: mono set wide and thin at the 0.6–0.7rem sizes this UI uses it
+     at, and the site now speaks in two voices — Bricolage for headings and
+     hooks, Inter for everything else. */
+  --mauve: light-dark(#5f6b4e, #a3b389);  /* sage — labels, small voices */
+  --peach: light-dark(#a94b26, #e58a5c);  /* terracotta */
+  --gold: light-dark(#8a5f14, #dba84a);   /* ochre */
+  --ink: light-dark(#3a2b20, #f2e7d7);    /* dark umber / warm bone */
+  --ink-dim: light-dark(#6b5443, #b7a48d);
+  --mono: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  /* cards share the spotlight cards' ivory: londo's near-transparent card
+     let the background pattern read straight through the copy. Dark mode
+     cannot use an ivory wash, so it lifts off the ground instead. */
+  --card: light-dark(rgba(255, 252, 245, 0.75), rgba(255, 236, 210, 0.07));
+  --card-edge: light-dark(rgba(122, 90, 60, 0.2), rgba(255, 224, 190, 0.16));
+  --key-face: light-dark(#efe2cb, #2f251d);
+  --key-side: light-dark(#d3bd9c, #150f0b);
+  --key-lit: light-dark(#f9f1e2, #3b2e24);
   --radius: 24px;
-  /* launch splash matches the manifest background_color; banner is warm ivory */
+  /* launch splash stays cream in both schemes: it has to match the
+     manifest background_color and the baked iOS launch PNGs, which are
+     single files with no dark variant */
   --splash-bg: #f6efe4;
-  --hint-bg: #fbf7ee;
+  --hint-bg: light-dark(#fbf7ee, #241c16);
+
+  /* controls: the bench's own surfaces and labels */
+  --surface: light-dark(rgba(255, 252, 245, 0.8), rgba(255, 238, 214, 0.07));
+  --surface-solid: light-dark(#fff, rgba(255, 240, 220, 0.09));
+  --edge-soft: light-dark(rgba(90, 62, 40, 0.22), rgba(255, 224, 190, 0.2));
+  --ui-strong: light-dark(#4a3729, #f0e5d5);
+  --ui-label: light-dark(#5c4636, #cdbba6);
+  --ui-soft: light-dark(#6b5443, #b7a48d);
+  --accent-fill: light-dark(#9e4826, #c96a3c);
+  --accent-fill-ink: light-dark(#fff, #1a120c);
+  --topic-fill: light-dark(#8f6415, #dba84a);
+  --topic-fill-ink: light-dark(#fff, #241a0c);
 }
 
+/* an explicit choice pins the scheme; light-dark() resolves off the used
+   color-scheme, so without these the toggle would move everything except
+   the palette */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
 body {
-  background: linear-gradient(175deg, #faf4e8 0%, var(--dusk-0) 38%, var(--dusk-1) 72%, #e5d3b8 100%);
+  background: linear-gradient(
+    175deg,
+    light-dark(#faf4e8, #1c1512) 0%,
+    var(--dusk-0) 38%,
+    var(--dusk-1) 72%,
+    light-dark(#e5d3b8, #2b201a) 100%
+  );
+}
+
+/* the toggle: a quiet keycap in the header, moon in light, sun in dark */
+.theme-toggle {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 1px solid var(--edge-soft);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ui-label);
+  cursor: pointer;
+}
+
+.theme-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+.theme-toggle:hover {
+  color: var(--peach);
+  border-color: var(--peach);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+}
+
+/* static pages put the switch top-right of the header block */
+.static-header {
+  position: relative;
+}
+
+.static-header .theme-toggle {
+  position: absolute;
+  top: 1.4rem;
+  right: 1.5rem;
 }
 
 /* Reserve the launch-splash wordmark's box up-front. The logo is a wide PNG
@@ -93,7 +189,7 @@ body {
 
 /* keys sit on a light bench: warm edges, no white glow */
 .key {
-  border: 1px solid rgba(90, 62, 40, 0.18);
+  border: 1px solid var(--edge-soft);
   border-radius: 12px;
 }
 
@@ -108,7 +204,7 @@ body {
 }
 
 #search {
-  background: #fff;
+  background: var(--surface-solid);
   color: var(--ink);
 }
 
@@ -148,42 +244,299 @@ body {
   }
 }
 
-.slider { background: rgba(122, 90, 60, 0.25); }
+.slider { background: light-dark(rgba(122, 90, 60, 0.25), rgba(255, 232, 205, 0.16)); }
 .slider::before {
-  background: linear-gradient(180deg, #fdf6e9, var(--key-face));
-  border: 1px solid rgba(90, 62, 40, 0.25);
+  background: linear-gradient(180deg, light-dark(#fdf6e9, #4a3b2e), var(--key-face));
+  border: 1px solid var(--edge-soft);
 }
-.switch input:checked + .slider { background: rgba(176, 125, 36, 0.35); }
+.switch input:checked + .slider { background: light-dark(rgba(176, 125, 36, 0.35), rgba(219, 168, 74, 0.45)); }
+
+/* ---------- date picker + topic tags: legibility pass ----------
+   londo's bench is a dark instrument panel where hairline rules and tiny
+   mono type read fine. On cream they turned into a stripey, low-contrast
+   mess, so psyconnect drops every vertical rule (the shell's pinstripe
+   gradient and the per-tick borders), swaps IBM Plex Mono — wide and thin
+   at small sizes — for Inter, and sizes the type up. Selected states are
+   filled rather than tinted so the current day / topic is obvious at a
+   glance, and every control clears a ~44px touch target. */
 
 .ticker-shell {
-  background:
-    repeating-linear-gradient(90deg, rgba(90, 62, 40, 0.06) 0 1px, transparent 1px 9px),
-    rgba(255, 252, 245, 0.6);
+  background: var(--surface);
+  border-color: var(--edge-soft);
+  border-radius: 14px;
 }
-.tick { border-right: 1px solid rgba(90, 62, 40, 0.1); }
+
+.tick {
+  border-right: none;
+  font-family: var(--mono); /* Inter here — see :root */
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ui-strong);
+  padding: 0.5rem 0.8rem 0.45rem;
+  min-height: 2.75rem;
+}
+
+.tick small {
+  font-size: 0.74rem;
+  font-weight: 500;
+  opacity: 1;
+  color: var(--ui-soft);
+  margin-top: 0.1rem;
+}
+
+.tick.cursor,
+.tick.cursor small {
+  color: var(--accent-fill-ink);
+}
+.tick.cursor {
+  background: var(--accent-fill);
+  box-shadow: none !important; /* the flat-bench rule kills the inset underline */
+}
+
+@media (hover: hover) {
+  .tick:hover { background: light-dark(rgba(184, 90, 51, 0.09), rgba(255, 220, 190, 0.09)); }
+  .tick.cursor:hover { background: var(--accent-fill); }
+}
+
+/* the pinned 7/30 group: separated by a tint rather than a rule */
+.ticker-fixed {
+  border-left: none;
+  background: light-dark(rgba(122, 90, 60, 0.07), rgba(255, 232, 205, 0.06));
+}
+
+/* topic tags — pill-shaped, filled when active */
+.token {
+  font-family: var(--mono); /* Inter here — see :root */
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--ui-label);
+  background: var(--surface);
+  border: 1px solid var(--edge-soft);
+  border-radius: 999px;
+  padding: 0.42rem 0.8rem;
+}
+
+@media (hover: hover) {
+  .token:hover {
+    color: var(--ink);
+    border-color: var(--peach);
+  }
+}
+
+.token.lit,
+.token.lit:hover {
+  color: var(--topic-fill-ink);
+  background: var(--topic-fill);
+  border-color: var(--topic-fill);
+}
+
+/* visible keyboard focus — the filled states removed the old outline cue */
+.tick:focus-visible,
+.token:focus-visible,
+.key:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+}
+
+/* the "free" legend was 0.62rem mono in sage — too faint to read */
+.legend {
+  font-family: var(--mono); /* Inter here — see :root */
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--ui-label);
+}
+
+.reset-key {
+  font-family: var(--mono); /* Inter here — see :root */
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--ui-label);
+}
 
 .dial-face {
-  fill: rgba(255, 252, 245, 0.6);
+  fill: var(--surface);
   stroke: var(--card-edge);
 }
 .zone {
-  fill: rgba(122, 90, 60, 0.08);
-  stroke: rgba(90, 62, 40, 0.18);
+  fill: light-dark(rgba(122, 90, 60, 0.08), rgba(255, 232, 205, 0.08));
+  stroke: var(--edge-soft);
 }
 
-.token {
-  background: rgba(122, 90, 60, 0.08);
-  border: 1px solid rgba(90, 62, 40, 0.2);
+/* ---------- cards, headings, metadata ----------
+   The sizes londo picked suit IBM Plex Mono's tall-for-its-size figures on
+   a dark panel; the same numbers in Inter on cream read a touch small, so
+   the metadata voices come up 0.06–0.1rem. Nothing moves — this is type
+   and colour only. */
+
+.day-heading .count {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
 }
-.token.lit {
-  color: #8f6415;
-  border-color: rgba(176, 125, 36, 0.6);
-  background: rgba(176, 125, 36, 0.12);
+
+.time {
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+}
+
+.venue,
+.meta {
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+/* the hook is the card's voice — it was 0.92 opacity ochre, which on cream
+   landed under 3:1. Full strength, one notch larger. */
+.hook {
+  opacity: 1;
+  font-size: 0.9rem;
+}
+
+/* londo's hover cues were pastel peach + a black drop shadow, both of which
+   vanish on cream */
+.card:hover {
+  border-color: var(--peach);
+  box-shadow: 0 14px 30px -18px light-dark(rgba(90, 62, 40, 0.5), rgba(0, 0, 0, 0.8));
+}
+
+/* imageless cards: londo painted near-white initials on --dusk-2, which is
+   dark plum there and warm sand here — the text was invisible. Sand
+   gradient, umber initials. */
+.banner {
+  background: linear-gradient(160deg, var(--dusk-1), var(--dusk-2));
+}
+
+.placeholder-initial {
+  font-family: var(--display);
+  font-weight: 600;
+  color: light-dark(rgba(58, 43, 32, 0.72), rgba(242, 231, 215, 0.8));
+}
+
+.banner:not(:has(img))::after {
+  background: none;
+}
+
+.badge {
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+}
+
+/* "pick" sits on photography, so it stays light — the darker ochre would
+   disappear into a dark banner */
+.pick-mark {
+  font-size: 0.7rem;
+  color: #ffdf9e;
+}
+
+.spotlight-eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+
+.spotlight-when {
+  font-size: 0.78rem;
+}
+
+.spotlight-blurb {
+  font-size: 0.88rem;
+}
+
+/* loading / empty states: londo's breathe dipped to 0.5 opacity, which on
+   cream reads as a fault rather than a pulse */
+@keyframes breathe {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+
+.status,
+.loading-msg {
+  color: var(--ink-dim);
+}
+
+/* ---------- static pages (/e/, /t/, /c/) ---------- */
+
+.static-crumbs {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.static-kicker,
+.landing-kicker,
+.static-fact dt {
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+}
+
+.static-list-meta {
+  font-size: 0.92rem;
+}
+
+/* card hooks and list hooks are the same voice — say it the same way
+   (Bricolage, upright, ochre) instead of italic Inter here and not there */
+.static-list-hook {
+  font-family: var(--display);
+  font-style: normal;
+  font-size: 0.96rem;
+}
+
+/* the static pages' topic chips are the same object as the SPA's topic
+   tokens — same size, same pill, same hover */
+.static-chip {
+  font-size: 0.86rem;
+  padding: 0.42rem 0.8rem;
+  background: var(--surface);
+  border-color: var(--edge-soft);
+}
+
+.static-chip:hover {
+  border-color: var(--peach);
+}
+
+.static-cta:hover {
+  background: light-dark(rgba(169, 75, 38, 0.1), rgba(229, 138, 92, 0.16));
+}
+
+.static-footer-home a,
+footer a {
+  border-bottom-color: light-dark(rgba(169, 75, 38, 0.45), rgba(229, 138, 92, 0.5));
+}
+
+.seo-nav {
+  font-size: 0.8rem;
+}
+
+#last-updated {
+  font-size: 0.8rem;
+}
+
+.tonight-sub {
+  font-size: 0.82rem;
 }
 
 /* mobile sticky day header: parchment, not londo's dark plum */
 @media (max-width: 640px) {
-  .day-heading { background: rgba(246, 239, 228, 0.92); }
+  .day-heading { background: light-dark(rgba(246, 239, 228, 0.92), rgba(25, 19, 16, 0.92)); }
+
+  /* styles.css shrinks ticks to 0.66rem and tokens to 0.64rem on phones —
+     the widths where legibility matters most. Hold the type size and trim
+     the padding instead; the ticker scrolls, so it costs nothing. */
+  .tick {
+    font-size: 0.88rem;
+    padding: 0.45rem 0.62rem 0.4rem;
+    min-height: 2.6rem;
+  }
+  .tick small { font-size: 0.7rem; }
+  .token {
+    font-size: 0.82rem;
+    padding: 0.38rem 0.7rem;
+  }
+  .legend { font-size: 0.76rem; }
+  .reset-key { font-size: 0.76rem; padding: 0.4rem 0.7rem; }
 }
 
 /* ---------- spotlight: our next event + this week's picks ----------
@@ -243,7 +596,7 @@ body {
   grid-row: 2;
   text-decoration: none;
   color: var(--ink);
-  background: rgba(255, 252, 245, 0.75);
+  background: var(--card);
   border: 1.5px solid var(--card-edge);
   border-radius: var(--radius);
   overflow: hidden;
@@ -458,33 +811,89 @@ body {
   .loader-ring { border-color: rgba(176, 125, 36, 0.35); }
 }
 
-/* re-lit time-of-day: same mechanism, daytime-friendly warm light */
+/* re-lit time-of-day: same mechanism, warm light by day, embers by night.
+   The site at 8am is not the site at 11pm — that holds in both schemes, so
+   each stop carries its own pair. */
 body.theme-dawn {
-  background: linear-gradient(175deg, #fbeedd 0%, #f7e6cd 40%, #f2d9b8 75%, #eccfa8 100%);
+  background: linear-gradient(175deg,
+    light-dark(#fbeedd, #241a19) 0%,
+    light-dark(#f7e6cd, #2c1f1a) 40%,
+    light-dark(#f2d9b8, #34251c) 75%,
+    light-dark(#eccfa8, #3b2b1e) 100%);
 }
 body.theme-dawn .blob-a { background: radial-gradient(circle, rgba(200, 108, 62, 0.32), transparent 65%); }
 body.theme-dawn .blob-b { background: radial-gradient(circle, rgba(196, 148, 60, 0.28), transparent 65%); }
 
 body.theme-day {
-  background: linear-gradient(175deg, #fcf7ec 0%, #f6efe4 45%, #efe3cd 78%, #e8d7ba 100%);
+  background: linear-gradient(175deg,
+    light-dark(#fcf7ec, #1c1613) 0%,
+    light-dark(#f6efe4, #231b16) 45%,
+    light-dark(#efe3cd, #2b2119) 78%,
+    light-dark(#e8d7ba, #32261c) 100%);
 }
 
 body.theme-dusk {
-  background: linear-gradient(175deg, #f8ecd6 0%, #f2dfc0 45%, #e9cda2 78%, #ddba8c 100%);
+  background: linear-gradient(175deg,
+    light-dark(#f8ecd6, #201618) 0%,
+    light-dark(#f2dfc0, #2a1d1a) 45%,
+    light-dark(#e9cda2, #33231c) 78%,
+    light-dark(#ddba8c, #3b281f) 100%);
 }
 
 body.theme-night {
-  background: linear-gradient(175deg, #f0e2ca 0%, #e7d4b4 45%, #d9c09b 80%, #ccb089 100%);
+  background: linear-gradient(175deg,
+    light-dark(#f0e2ca, #14100e) 0%,
+    light-dark(#e7d4b4, #1a1512) 45%,
+    light-dark(#d9c09b, #221a15) 80%,
+    light-dark(#ccb089, #291f19) 100%);
 }
 body.theme-night .blob { opacity: 0.3; }
+
+/* ---------- the parts light-dark() can't carry ----------
+   It only takes colours, so opacity and the icon swap need the scheme pair
+   spelled out: the system query minus an explicit light choice, and the
+   explicit dark choice. Keep the two lists identical. */
+
+:root[data-theme="dark"] .sky::before { opacity: 0.18; }
+:root[data-theme="dark"] .blob { opacity: 0.3; }
+:root[data-theme="dark"] .grain { opacity: 0.055; }
+:root[data-theme="dark"] .banner img,
+:root[data-theme="dark"] .spotlight-media img,
+:root[data-theme="dark"] .static-figure img { filter: brightness(0.9); }
+:root[data-theme="dark"] .topbar h1 a.home img,
+:root[data-theme="dark"] .topbar h1 img,
+/* the plum wordmark PNG vanishes into the dark ground; alpha survives
+   brightness(0), so this repaints the stitches bone-white. The launch
+   splash is exempt — it stays cream in both schemes. */
+:root[data-theme="dark"] .static-logo { filter: brightness(0) invert(0.93); }
+:root[data-theme="dark"] .theme-moon { display: none; }
+:root[data-theme="dark"] .theme-sun { display: block; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sky::before { opacity: 0.18; }
+  :root:not([data-theme="light"]) .blob { opacity: 0.3; }
+  :root:not([data-theme="light"]) .grain { opacity: 0.055; }
+  :root:not([data-theme="light"]) .banner img,
+  :root:not([data-theme="light"]) .spotlight-media img,
+  :root:not([data-theme="light"]) .static-figure img { filter: brightness(0.9); }
+  :root:not([data-theme="light"]) .topbar h1 a.home img,
+  :root:not([data-theme="light"]) .topbar h1 img,
+  :root:not([data-theme="light"]) .static-logo { filter: brightness(0) invert(0.93); }
+  :root:not([data-theme="light"]) .theme-moon { display: none; }
+  :root:not([data-theme="light"]) .theme-sun { display: block; }
+}
+
+/* light is the default face of the switch */
+.theme-sun { display: none; }
+.theme-moon { display: block; }
 
 /* no category badges on cards — the whole site is one theme */
 .badge-cat { display: none; }
 
 /* lit category keys were pastel-on-dark; deepen for cream (kept for
    safety although the pills stay hidden here) */
-.key-move.lit    { color: #9c4526; }
-.key-connect.lit { color: #8f6415; }
-.key-expand.lit  { color: #7a4c2c; }
-.key-think.lit   { color: #5a684a; }
-.key-make.lit    { color: #8c4258; }
+.key-move.lit    { color: light-dark(#9c4526, #f0a18e); }
+.key-connect.lit { color: light-dark(#8f6415, #dba84a); }
+.key-expand.lit  { color: light-dark(#7a4c2c, #d8a684); }
+.key-think.lit   { color: light-dark(#5a684a, #a3b389); }
+.key-make.lit    { color: light-dark(#8c4258, #e493ab); }

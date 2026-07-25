@@ -70,6 +70,13 @@ STARTUP_DEVICES = [
     (440, 956, 3),
 ]
 STARTUP_MARKER = "<!-- APPLE-STARTUP-IMAGES:"
+THEME_MARKER = "<!-- THEME-BOOT:"
+THEME_BOOT_FILE = "theme-boot.js"
+# set by build() from the site's theme-boot.js, if it ships one; inlined into
+# every page's <head> so a saved light/dark choice paints on the first frame
+THEME_BOOT: str = ""
+# the shell's light-mode theme-color, mirrored onto the static pages
+THEME_COLOR: str = ""
 
 
 def inject_startup_images(outdir: Path) -> None:
@@ -97,6 +104,38 @@ def inject_startup_images(outdir: Path) -> None:
             f'media="{media}" href="splash/splash-{px}.png">'
         )
     index.write_text(text[:start] + "\n  ".join(links) + text[end:])
+
+
+def load_theme_boot(outdir: Path) -> str:
+    """Read the site's theme-boot.js and drop the standalone copy — it is
+    only ever used inlined, and shipping it too would just be a stale twin."""
+    src = outdir / THEME_BOOT_FILE
+    if not src.exists():
+        return ""
+    code = src.read_text()
+    src.unlink()
+    return code
+
+
+def theme_boot_tag() -> str:
+    """The boot script as an inline <script>, or "" for sites without one."""
+    if not THEME_BOOT:
+        return ""
+    # "</" cannot appear inside an inline script without closing it early
+    return "<script>" + THEME_BOOT.replace("</", "<\\/") + "</script>"
+
+
+def inject_theme_boot(outdir: Path) -> None:
+    """Replace the THEME-BOOT marker comment in index.html with the script."""
+    index = outdir / "index.html"
+    text = index.read_text()
+    start = text.find(THEME_MARKER)
+    if start == -1:
+        return
+    end = text.find("-->", start)
+    if end == -1:
+        return
+    index.write_text(text[:start] + theme_boot_tag() + text[end + len("-->") :])
 
 
 # set from SITES by main(); the script builds one site per invocation
@@ -485,6 +524,7 @@ def page(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {theme_meta()}{theme_boot_tag()}
   <title>{esc(title)}</title>
   <meta name="description" content="{esc(description)}">
   <link rel="canonical" href="{esc(canonical)}">
@@ -506,7 +546,7 @@ def page(
 <body class="static-page">
   <div class="sky" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div><div class="grain"></div></div>
   <header class="static-header">
-    <a class="static-brand" href="{BASE_URL}/">{site_wordmark(css_prefix)}</a>
+    {theme_toggle_html()}<a class="static-brand" href="{BASE_URL}/">{site_wordmark(css_prefix)}</a>
     <p class="static-tagline">{esc(SITE["tagline"])}</p>
   </header>
   <main class="static-main">
@@ -519,6 +559,34 @@ def page(
 </body>
 </html>
 """
+
+
+def theme_meta() -> str:
+    """theme-color for the browser chrome; theme-boot.js keeps it current."""
+    if not (THEME_BOOT and THEME_COLOR):
+        return ""
+    return f'<meta name="theme-color" content="{esc(THEME_COLOR)}">\n  '
+
+
+def theme_toggle_html() -> str:
+    """Light/dark switch. Sites without a theme-boot.js don't get one.
+
+    Keep this markup in step with the copy in the site's shell index.html —
+    theme-boot.js binds whatever it finds under the id, and the icon-swap
+    CSS keys off the two classes."""
+    if not THEME_BOOT:
+        return ""
+    return (
+        '<button class="theme-toggle" id="theme-toggle" type="button" '
+        'aria-label="Switch to dark theme" aria-pressed="false">'
+        '<svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true">'
+        '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>'
+        '<svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true">'
+        '<circle cx="12" cy="12" r="4.2"/>'
+        '<path d="M12 2.6v2.2M12 19.2v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6'
+        'M2.6 12h2.2M19.2 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>'
+        "</button>"
+    )
 
 
 def seo_nav_html() -> str:
@@ -838,7 +906,15 @@ def build(outdir: Path) -> None:
     shutil.copytree(ROOT / "web", outdir)
     if SITE["overlay"]:
         shutil.copytree(SITE["overlay"], outdir, dirs_exist_ok=True)
+    global THEME_BOOT, THEME_COLOR
+    THEME_BOOT = load_theme_boot(outdir)
+    shell_meta = re.search(
+        r'<meta name="theme-color" content="([^"]+)"',
+        (outdir / "index.html").read_text(),
+    )
+    THEME_COLOR = shell_meta.group(1) if shell_meta else ""
     inject_startup_images(outdir)
+    inject_theme_boot(outdir)
 
     DEFAULT_OG_IMAGE = (
         f"{BASE_URL}/og-image.jpg" if (outdir / "og-image.jpg").exists() else None
