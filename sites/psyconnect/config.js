@@ -56,7 +56,10 @@ self.LONDO_CONFIG = {
       "accent": "next event"
     },
     "curated": {
-      "organizers": ["The Psychedelic Society", "Numinity", "Adventures in Awareness", "Unseen", "Unseen London"],
+      "organizers": [
+        "The Psychedelic Society", "Numinity", "Adventures in Awareness",
+        "Unseen", "Unseen London", "Creating Meaning"
+      ],
       "titleMatches": ["bohm"],
       "exclude": ["running club"],
       "maxTotal": 3,
