@@ -1303,9 +1303,9 @@
   // One 3-column row on desktop: "Our next event" heads column 1 (if a
   // featured event is live) and "Our top picks this week" heads the
   // remaining columns (2 picks alongside a featured event, or all 3 if
-  // there's no featured event). Mobile hides the picks entirely and shows
-  // only the featured card, if any — a swipeable picks strip on top of a
-  // hero card was too much scroll before the browse grid.
+  // there's no featured event). Mobile turns the picks into a horizontal
+  // swipe strip, which is not column-bound, so it can show more of them —
+  // SITE.curated.maxMobile, defaulting to maxTotal.
 
   // Selects up to `limit` events from SITE.curated.organizers/titleMatches,
   // within the next windowDays, dropping SITE.curated.exclude title matches
@@ -1320,17 +1320,28 @@
     const maxTotal = limit != null ? limit : cfg.maxTotal || 3;
     if (maxTotal <= 0) return [];
     const now = Date.now();
-    const horizon = now + (cfg.windowDays || 7) * 86400000;
     const excludeTerms = (cfg.exclude || []).map((t) => t.toLowerCase());
     // state.events is start_at-ascending, so candidates stay in date order.
-    const candidates = state.events.filter((e) => {
-      if (!isCurated(e)) return false;
-      if (excludeSourceUrl && e.source_url === excludeSourceUrl) return false;
-      const t = new Date(e.start_at).getTime();
-      if (!(t > now && t <= horizon)) return false;
-      const title = (e.title || "").toLowerCase();
-      return !excludeTerms.some((term) => title.includes(term));
-    });
+    const within = (days) => {
+      const horizon = now + days * 86400000;
+      return state.events.filter((e) => {
+        if (!isCurated(e)) return false;
+        if (excludeSourceUrl && e.source_url === excludeSourceUrl) return false;
+        const t = new Date(e.start_at).getTime();
+        if (!(t > now && t <= horizon)) return false;
+        const title = (e.title || "").toLowerCase();
+        return !excludeTerms.some((term) => title.includes(term));
+      });
+    };
+
+    // The near window is the preference, not the rule: a quiet week from the
+    // trusted organisers would otherwise leave the row half empty, so when
+    // it can't fill the slots we reach further out (windowDaysMax). Sorting
+    // is by date throughout, so the near events still come first.
+    const near = cfg.windowDays || 7;
+    let candidates = within(near);
+    const far = cfg.windowDaysMax || 0;
+    if (candidates.length < maxTotal && far > near) candidates = within(far);
     if (!candidates.length) return [];
 
     const priority = (cfg.priorityOrganizer || "").toLowerCase();
@@ -1471,11 +1482,17 @@
       state.events.find(
         (ev) => isOurs(ev) && new Date(ev.start_at).getTime() > Date.now()
       );
-    // Always fetch up to maxTotal (default 3). Desktop shows featured + 2
-    // picks in one 3-column row (the 3rd pick is hidden with CSS); the mobile
-    // swipe strip shows all three. Without a featured event, picks get the
-    // full row on both.
-    const pickLimit = SITE.curated ? SITE.curated.maxTotal || 3 : 0;
+    // Desktop is column-bound: featured + 2 picks in one 3-column row, or
+    // maxTotal picks across the whole row without a featured event. The
+    // mobile strip just scrolls, so it can carry more (maxMobile, default
+    // maxTotal). Fetch the larger of the two; picks past the desktop set are
+    // marked strip-only and hidden by CSS above 640px.
+    const curated = SITE.curated || {};
+    const maxTotal = curated.maxTotal || 3;
+    const desktopLimit = featured ? Math.min(2, maxTotal) : maxTotal;
+    const pickLimit = SITE.curated
+      ? Math.max(maxTotal, curated.maxMobile || 0)
+      : 0;
     const picks = pickLimit
       ? pickCurated(featured && featured.source_url, pickLimit)
       : [];
@@ -1492,7 +1509,7 @@
     const pickStart = featured ? 2 : 1;
     // Heading spans only the desktop-visible picks (featured caps the row at
     // 2) so the extra 3rd pick can't force an implicit 4th grid column.
-    const desktopPicks = featured ? Math.min(picks.length, 2) : picks.length;
+    const desktopPicks = Math.min(picks.length, desktopLimit);
     const pickEnd = pickStart + Math.max(desktopPicks, featured ? 0 : 1);
 
     if (featured) {
@@ -1529,14 +1546,16 @@
     if (picks.length) {
       const picksWrap = document.createElement("div");
       picksWrap.className = "spotlight-picks";
-      // Desktop shows exactly the picks it showed before (2 alongside a
-      // featured event); pickCurated date-sorts, so the 2-of-3 to keep is the
-      // limit-2 selection, not "the first two by date". The extra pick is
-      // strip-only. Non-extra picks take contiguous columns; the extra is
-      // display:none on desktop so its column never matters.
-      const desktopSet = featured
-        ? new Set(pickCurated(featured.source_url, 2))
-        : new Set(picks);
+      // Desktop keeps the picks it would have chosen on its own; pickCurated
+      // spreads across organisers, so the desktop set is the limit-N
+      // selection, not "the first N by date". Everything else is strip-only:
+      // display:none on desktop, so its column never matters.
+      const desktopSet =
+        picks.length > desktopLimit
+          ? new Set(
+              pickCurated(featured && featured.source_url, desktopLimit)
+            )
+          : new Set(picks);
       let col = pickStart;
       picks.forEach((e) => {
         const card = spotlightCard(e, "pick");
