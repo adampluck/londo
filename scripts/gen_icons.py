@@ -41,6 +41,17 @@ FULL_BLEED = 0.46
 MASKABLE = 0.38
 FAVICON = 0.5  # renders at 16px, so the mark keeps a little extra room
 
+# Window of the 1024px background tile each icon crops. Smaller = more
+# zoomed, so the swirls read as swirls rather than texture. The Apple touch
+# icon is the largest any of these is ever drawn — a phone home screen — so
+# it takes the tightest crop.
+CROP = 620
+CROP_APPLE = 130
+
+# the mark: warm off-white rather than pure white, so it sits in the same
+# family as the site's cream ground instead of glaring out of the plum
+BONE = "#f4ece0"
+
 
 def mark() -> Image.Image:
     """White-on-black mask of the stitched P, cropped to its bounding box."""
@@ -48,11 +59,10 @@ def mark() -> Image.Image:
     return src.crop(src.getbbox())
 
 
-def ground(size: int) -> Image.Image:
+def ground(size: int, box: int = CROP) -> Image.Image:
     bg = Image.open(SITE / "bg.jpg").convert("RGB")
-    # a 620px window of the tile keeps individual strokes readable once
-    # scaled down; the whole tile turns to mush below ~192px
-    box = 620
+    # cropping a window rather than shrinking the whole tile keeps individual
+    # strokes readable; the full tile turns to mush below ~192px
     left = (bg.width - box) // 2
     top = (bg.height - box) // 2
     tile = bg.crop((left, top, left + box, top + box)).resize(
@@ -64,8 +74,10 @@ def ground(size: int) -> Image.Image:
     return ImageOps.colorize(lum, black=DARK, white=LIGHT)
 
 
-def compose(size: int, scale: float) -> Image.Image:
-    canvas = ground(size)
+def compose(
+    size: int, scale: float, box: int = CROP, ink: str = BONE
+) -> Image.Image:
+    canvas = ground(size, box)
     m = mark()
     width = int(size * scale)
     height = int(m.height * width / m.width)
@@ -83,12 +95,12 @@ def compose(size: int, scale: float) -> Image.Image:
 
     stamp = Image.new("L", (size, size), 0)
     stamp.paste(stitched, (x, y))
-    return Image.composite(Image.new("RGB", (size, size), "white"), canvas, stamp)
+    return Image.composite(Image.new("RGB", (size, size), ink), canvas, stamp)
 
 
 def save(image: Image.Image, name: str) -> None:
-    """Palette-quantised PNG. The ground is a two-colour ramp plus a white
-    mark, so 96 colours is indistinguishable from truecolour and roughly a
+    """Palette-quantised PNG. The ground is a two-colour ramp plus the
+    off-white mark, so 96 colours is indistinguishable from truecolour and roughly a
     fifth of the bytes — worth it for files every visitor fetches."""
     image.quantize(colors=96, method=Image.MEDIANCUT, dither=Image.FLOYDSTEINBERG).save(
         ICONS / name, optimize=True
@@ -98,7 +110,7 @@ def save(image: Image.Image, name: str) -> None:
 def main() -> None:
     save(compose(512, FULL_BLEED), "icon-512.png")
     save(compose(192, FULL_BLEED), "icon-192.png")
-    save(compose(180, FULL_BLEED), "apple-touch-icon.png")
+    save(compose(180, FULL_BLEED, box=CROP_APPLE), "apple-touch-icon.png")
     save(compose(512, MASKABLE), "maskable-512.png")
     save(compose(48, FAVICON), "favicon.png")
 
