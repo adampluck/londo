@@ -1,8 +1,9 @@
 /* psyconnect — warm organic skin over londo's bones.
    Loaded after styles.css, so plain re-declarations win. Cream and
-   parchment ground, terracotta and ochre accents, sage for the small
-   voices; soft round corners. This file is the visual-iteration
-   sandbox — everything psyconnect-looking belongs here. */
+   parchment ground; two accents only, both taken from the site's own
+   materials — the wordmark's plum and the paper's ochre; soft round
+   corners. This file is the visual-iteration sandbox — everything
+   psyconnect-looking belongs here. */
 
 /* ---------- palette: one set of tokens, two schemes ----------
    Every value is light-dark(light, dark), so the whole skin follows the
@@ -28,9 +29,16 @@
      Mono: mono set wide and thin at the 0.6–0.7rem sizes this UI uses it
      at, and the site now speaks in two voices — Bricolage for headings and
      hooks, Inter for everything else. */
-  --mauve: light-dark(#5f6b4e, #a3b389);  /* sage — labels, small voices */
-  --peach: light-dark(#a94b26, #e58a5c);  /* terracotta */
-  --gold: light-dark(#8a5f14, #dba84a);   /* ochre */
+  /* Two accents, both drawn from the site's own materials: plum is the
+     wordmark's colour (#724661) and the family the background's pencil
+     strokes sit in, ochre is the warm note in the paper itself. Everything
+     that used to be a third or fourth hue — terracotta, sage, the per-
+     category glows — now resolves to one of these. --peach and --mauve keep
+     their names because styles.css reaches for them by name; only their
+     values changed. */
+  --mauve: light-dark(#7a6553, #a3907c);  /* quiet label ink, no longer sage */
+  --peach: light-dark(#6d4160, #cb9dbf);  /* plum — brand, links, selection */
+  --gold: light-dark(#8a5f14, #dba84a);   /* ochre — hooks, times, headings */
   --ink: light-dark(#3a2b20, #f2e7d7);    /* dark umber / warm bone */
   --ink-dim: light-dark(#6b5443, #b7a48d);
   --mono: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -56,10 +64,12 @@
   --ui-strong: light-dark(#4a3729, #f0e5d5);
   --ui-label: light-dark(#5c4636, #cdbba6);
   --ui-soft: light-dark(#6b5443, #b7a48d);
-  --accent-fill: light-dark(#9e4826, #c96a3c);
-  --accent-fill-ink: light-dark(#fff, #1a120c);
-  --topic-fill: light-dark(#8f6415, #dba84a);
-  --topic-fill-ink: light-dark(#fff, #241a0c);
+  /* Selected day / topic. A solid dark slab with white type was the
+     loudest thing on the page; a plum wash with plum type and a plum rule
+     under it still reads as "this one" without shouting. */
+  --sel-wash: light-dark(rgba(109, 65, 96, 0.16), rgba(203, 157, 191, 0.2));
+  --sel-ink: light-dark(#5a3450, #f0d7e8);
+  --sel-line: light-dark(#6d4160, #cb9dbf);
 }
 
 /* an explicit choice pins the scheme; light-dark() resolves off the used
@@ -183,7 +193,7 @@ body {
 
 /* softer daylight in the sky */
 .blob { opacity: 0.4; }
-.blob-a { background: radial-gradient(circle, rgba(184, 90, 51, 0.28), transparent 65%); }
+.blob-a { background: radial-gradient(circle, rgba(109, 65, 96, 0.26), transparent 65%); }
 .blob-b { background: radial-gradient(circle, rgba(176, 125, 36, 0.25), transparent 65%); }
 .grain { opacity: 0.035; }
 
@@ -249,7 +259,7 @@ body {
   background: linear-gradient(180deg, light-dark(#fdf6e9, #4a3b2e), var(--key-face));
   border: 1px solid var(--edge-soft);
 }
-.switch input:checked + .slider { background: light-dark(rgba(176, 125, 36, 0.35), rgba(219, 168, 74, 0.45)); }
+.switch input:checked + .slider { background: light-dark(rgba(109, 65, 96, 0.4), rgba(203, 157, 191, 0.5)); }
 
 /* ---------- date picker + topic tags: legibility pass ----------
    londo's bench is a dark instrument panel where hairline rules and tiny
@@ -287,16 +297,23 @@ body {
 
 .tick.cursor,
 .tick.cursor small {
-  color: var(--accent-fill-ink);
+  color: var(--sel-ink);
 }
+/* the underline rides in as a background layer: .controls * kills every
+   box-shadow on the bench, which is where londo drew it */
 .tick.cursor {
-  background: var(--accent-fill);
-  box-shadow: none !important; /* the flat-bench rule kills the inset underline */
+  background:
+    linear-gradient(var(--sel-line), var(--sel-line)) bottom / 100% 2px no-repeat,
+    var(--sel-wash);
 }
 
 @media (hover: hover) {
-  .tick:hover { background: light-dark(rgba(184, 90, 51, 0.09), rgba(255, 220, 190, 0.09)); }
-  .tick.cursor:hover { background: var(--accent-fill); }
+  .tick:hover { background: light-dark(rgba(109, 65, 96, 0.09), rgba(203, 157, 191, 0.1)); }
+  .tick.cursor:hover {
+    background:
+      linear-gradient(var(--sel-line), var(--sel-line)) bottom / 100% 2px no-repeat,
+      var(--sel-wash);
+  }
 }
 
 /* the pinned 7/30 group: separated by a tint rather than a rule */
@@ -326,9 +343,9 @@ body {
 
 .token.lit,
 .token.lit:hover {
-  color: var(--topic-fill-ink);
-  background: var(--topic-fill);
-  border-color: var(--topic-fill);
+  color: var(--sel-ink);
+  background: var(--sel-wash);
+  border-color: var(--sel-line);
 }
 
 /* visible keyboard focus — the filled states removed the old outline cue */
@@ -498,12 +515,12 @@ body {
 }
 
 .static-cta:hover {
-  background: light-dark(rgba(169, 75, 38, 0.1), rgba(229, 138, 92, 0.16));
+  background: light-dark(rgba(109, 65, 96, 0.1), rgba(203, 157, 191, 0.16));
 }
 
 .static-footer-home a,
 footer a {
-  border-bottom-color: light-dark(rgba(169, 75, 38, 0.45), rgba(229, 138, 92, 0.5));
+  border-bottom-color: light-dark(rgba(109, 65, 96, 0.45), rgba(203, 157, 191, 0.5));
 }
 
 .seo-nav {
@@ -767,8 +784,8 @@ footer a {
   }
 }
 
-/* loading radar: core matches logo plum #724661; rings/sparks stay warm
-   so the dial still reads on cream parchment */
+/* loading radar: the logo's plum core, lit by the same two accents as the
+   rest of the site — it used to spin in four hues */
 .loader-core {
   background:
     radial-gradient(circle at 35% 30%, #c9a0b4 0%, #724661 42%, #5a3550 78%, transparent 100%);
@@ -779,15 +796,15 @@ footer a {
 
 .loader-ring {
   border-top-color: rgba(176, 125, 36, 0.7);
-  border-right-color: rgba(184, 90, 51, 0.2);
+  border-right-color: rgba(109, 65, 96, 0.2);
 }
 .loader-ring.r2 {
-  border-top-color: rgba(125, 138, 106, 0.75);
-  border-right-color: rgba(125, 138, 106, 0.18);
+  border-top-color: rgba(114, 70, 97, 0.7);
+  border-right-color: rgba(114, 70, 97, 0.18);
 }
 .loader-ring.r3 {
-  border-top-color: rgba(184, 90, 51, 0.6);
-  border-right-color: rgba(176, 125, 36, 0.15);
+  border-top-color: rgba(176, 125, 36, 0.5);
+  border-right-color: rgba(114, 70, 97, 0.15);
 }
 
 .loader-spark {
@@ -795,16 +812,16 @@ footer a {
   box-shadow: 0 0 7px rgba(176, 125, 36, 0.75);
 }
 .loader-spark.s2 {
-  background: var(--peach);
-  box-shadow: 0 0 7px rgba(184, 90, 51, 0.7);
+  background: #724661;
+  box-shadow: 0 0 7px rgba(114, 70, 97, 0.7);
 }
 .loader-spark.s3 {
-  background: var(--mauve);
-  box-shadow: 0 0 6px rgba(125, 138, 106, 0.75);
+  background: var(--gold);
+  box-shadow: 0 0 6px rgba(176, 125, 36, 0.6);
 }
 .loader-spark.s4 {
-  background: #c46a3a;
-  box-shadow: 0 0 6px rgba(196, 106, 58, 0.65);
+  background: #9a6c85;
+  box-shadow: 0 0 6px rgba(154, 108, 133, 0.65);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -821,7 +838,7 @@ body.theme-dawn {
     light-dark(#f2d9b8, #34251c) 75%,
     light-dark(#eccfa8, #3b2b1e) 100%);
 }
-body.theme-dawn .blob-a { background: radial-gradient(circle, rgba(200, 108, 62, 0.32), transparent 65%); }
+body.theme-dawn .blob-a { background: radial-gradient(circle, rgba(122, 74, 108, 0.3), transparent 65%); }
 body.theme-dawn .blob-b { background: radial-gradient(circle, rgba(196, 148, 60, 0.28), transparent 65%); }
 
 body.theme-day {
@@ -890,10 +907,11 @@ body.theme-night .blob { opacity: 0.3; }
 /* no category badges on cards — the whole site is one theme */
 .badge-cat { display: none; }
 
-/* lit category keys were pastel-on-dark; deepen for cream (kept for
-   safety although the pills stay hidden here) */
-.key-move.lit    { color: light-dark(#9c4526, #f0a18e); }
-.key-connect.lit { color: light-dark(#8f6415, #dba84a); }
-.key-expand.lit  { color: light-dark(#7a4c2c, #d8a684); }
-.key-think.lit   { color: light-dark(#5a684a, #a3b389); }
-.key-make.lit    { color: light-dark(#8c4258, #e493ab); }
+/* londo lights each category key in its own hue; psyconnect is one scene,
+   so they all light in the house ochre (kept for safety — the pills stay
+   hidden here) */
+.key-move.lit,
+.key-connect.lit,
+.key-expand.lit,
+.key-think.lit,
+.key-make.lit { color: var(--gold); }
