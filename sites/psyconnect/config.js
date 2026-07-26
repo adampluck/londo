@@ -12,6 +12,8 @@ self.LONDO_CONFIG = {
   // Everything between the SITE-JSON markers must stay strict JSON:
   // scripts/build_site.py extracts and json.loads it so the SPA and the
   // static pages share one filter definition.
+  // "channel": the footer's "follow us" link (SPA + static pages). Paste
+  // the WhatsApp channel invite URL to switch it on; empty = hidden.
   SITE: /*SITE-JSON*/ {
     "id": "psyconnect",
     "name": "psyconnect",
@@ -35,7 +37,7 @@ self.LONDO_CONFIG = {
         "wonder workshop - for little ones",
         "lfg summer party",
         "live music:",
-        "run club", "parkrun", "5km", "10km", "bootcamp", "hyrox",
+        "run club", "running club", "parkrun", "5km", "10km", "bootcamp", "hyrox",
         "crossfit", "spin class", "pilates", "reformer", "kettlebell",
         "personal training", "strength training", "fitness class",
         "red light therapy", "high performers", "performance studio",
@@ -76,6 +78,10 @@ self.LONDO_CONFIG = {
       "windowDaysMax": 45,
       "label": "Our upcoming top picks",
       "accent": "top picks"
+    },
+    "channel": {
+      "url": "https://chat.whatsapp.com/FK2A2Gp0cftB75AYkb4wpX",
+      "label": "follow psyconnect on WhatsApp"
     },
     "logo": "logo.png",
     "shellExtras": ["theme.css", "bg.jpg", "logo.png"]

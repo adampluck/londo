@@ -41,6 +41,11 @@ create table if not exists public.events (
   area          text,            -- central | east | north | south | west
   enriched_at   timestamptz,
 
+  -- manual moderation: set true in the Supabase dashboard to pull an event
+  -- from both sites. The scraper never writes it; both readers filter
+  -- hidden=is.false, so the column must exist or every read 400s.
+  hidden        boolean not null default false,
+
   first_seen_at timestamptz not null default now(),
   last_seen_at  timestamptz not null default now(),
 

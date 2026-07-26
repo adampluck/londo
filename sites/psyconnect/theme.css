@@ -74,6 +74,15 @@
      Deliberately under ~1161px: past that, .grid's minmax(265px, 1fr) reflows
      the browse grid to 4 columns and the cards below shrink to ~275px. */
   --page-max: 1150px;
+
+  /* On-ground inks. The body gradient darkens down the page — the night
+     theme bottoms out at #ccb089 — and the ochre/dim that clear 4.5:1 on
+     cream drop under 3:1 there. Text that sits straight on the ground
+     (day headings' accent and count, empty states, the footer) uses these
+     deeper pairs instead: both hold ≥4.5:1 on the darkest ground. Card
+     text keeps the lighter house inks — cards carry their own ivory. */
+  --ground-accent: light-dark(#5e400c, #dba84a);
+  --ground-dim: light-dark(#514031, #b7a48d);
 }
 
 /* an explicit choice pins the scheme; light-dark() resolves off the used
@@ -413,10 +422,13 @@ body {
    the metadata voices come up 0.06–0.1rem. Nothing moves — this is type
    and colour only. */
 
+/* day headings sit straight on the page gradient — see --ground-* */
+.day-heading .when { color: var(--ground-accent); }
 .day-heading .count {
   font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.04em;
+  color: var(--ground-dim);
 }
 
 .time {
@@ -495,7 +507,7 @@ body {
 
 .status,
 .loading-msg {
-  color: var(--ink-dim);
+  color: var(--ground-dim); /* sits on the bare gradient — see --ground-* */
 }
 
 /* ---------- static pages (/e/, /t/, /c/) ---------- */
@@ -543,15 +555,36 @@ body {
 
 .static-footer-home a,
 footer a {
+  /* deeper plum than --peach: footer links sit on the gradient's darkest
+     reach, where #6d4160 slips under 4.5:1 — see --ground-* */
+  color: light-dark(#5a3450, #cb9dbf);
   border-bottom-color: light-dark(rgba(109, 65, 96, 0.45), rgba(203, 157, 191, 0.5));
+}
+
+/* the footer sits at the very bottom of the gradient, its darkest reach —
+   see --ground-* */
+footer,
+.seo-nav,
+.seo-nav a,
+.seo-sep {
+  color: var(--ground-dim);
 }
 
 .seo-nav {
   font-size: 0.8rem;
 }
 
+.seo-nav a:hover { color: var(--ground-dim); }
+
 #last-updated {
   font-size: 0.8rem;
+  color: var(--ground-dim);
+}
+
+/* optional "follow us" line under the topic nav (SITE.channel) */
+#channel-link {
+  margin: 0 0 0.9rem;
+  font-size: 0.85rem;
 }
 
 .tonight-sub {
@@ -568,7 +601,7 @@ footer a {
   .tick {
     font-size: 0.88rem;
     padding: 0.45rem 0.62rem 0.4rem;
-    min-height: 2.6rem;
+    min-height: 2.75rem; /* keeps the full 44px touch target on phones */
   }
   .tick small { font-size: 0.7rem; }
   .token {
@@ -588,8 +621,8 @@ footer a {
    SITE.curated.maxTotal (config.js) — keep the two in step or renderSpotlight
    will place a card in an implicit extra column. Four columns land at ~265px
    each, narrower than the browse cards below, so the card interior below is
-   tuned tighter than a .card. "our next event" (peach edge) and curated picks
-   (sage edge) share the same card shape; only the border tells them
+   tuned tighter than a .card. "our next event" (plum edge) and curated picks
+   (default card edge) share the same card shape; only the border tells them
    apart. */
 
 #spotlight {

@@ -37,6 +37,19 @@
 
 [hidden] { display: none !important; }
 
+/* visually hidden, still read by screen readers (and crawlers) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 html { scroll-behavior: smooth; overflow-x: clip; }
 
 body {
@@ -319,6 +332,11 @@ body {
 #search::placeholder { color: var(--ink-dim); }
 
 #search:focus { outline: none; border-color: var(--peach); }
+/* keyboard focus keeps a real ring — the border tint alone is too quiet */
+#search:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+}
 
 /* --- free-only slide switch --- */
 

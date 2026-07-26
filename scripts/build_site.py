@@ -310,6 +310,23 @@ def _excluded(event: dict, flt: dict) -> bool:
     )
 
 
+def _curated(event: dict) -> bool:
+    """Mirror of isCurated() in web/app.js — keep the two in step.
+
+    Trusted third-party organisers/series (SITE.curated) pass the
+    topic/category filter on their name alone, minus curated.exclude title
+    matches (a trusted organiser's off-brand series, e.g. a running club).
+    """
+    cur = SITE_JSON.get("curated") or {}
+    title = (event.get("title") or "").lower()
+    if any(t.lower() in title for t in cur.get("exclude") or []):
+        return False
+    org = (event.get("organizer_name") or "").lower()
+    if any(org == o.lower() for o in cur.get("organizers") or []):
+        return True
+    return any(t.lower() in title for t in cur.get("titleMatches") or [])
+
+
 def site_match(event: dict) -> bool:
     """Mirror of siteMatch() in web/app.js — keep the two in step."""
     org = (event.get("organizer_name") or "").lower()
@@ -319,8 +336,11 @@ def site_match(event: dict) -> bool:
     flt = SITE_JSON.get("filter")
     if not flt:
         return True
+    # exclude terms outrank curation, same as the SPA
     if _excluded(event, flt):
         return False
+    if _curated(event):
+        return True
 
     topics = event.get("topics") or []
     techish = ("tech & ai", "startups & work")
@@ -584,7 +604,7 @@ def page(
   {body}
   </main>
   <footer class="static-footer">
-    {seo_nav_html()}
+    {seo_nav_html()}{channel_link_html()}
     <p class="static-footer-home"><a href="{BASE_URL}/">{esc(SITE["name"])}</a> — {esc(SITE["tagline"])}</p>
   </footer>
 </body>
@@ -633,6 +653,19 @@ def seo_nav_html() -> str:
             parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
         parts.append(f'<a href="{topic_url(slug_)}">{esc(key)}</a>')
     return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
+
+
+def channel_link_html() -> str:
+    """Optional "follow us" line (SITE.channel) — mirror of the SPA's
+    renderChannelLink(). Empty url means the slot stays invisible."""
+    channel = SITE_JSON.get("channel") or {}
+    if not channel.get("url"):
+        return ""
+    label = channel.get("label") or "follow us"
+    return (
+        f'\n    <p id="channel-link"><a href="{esc(channel["url"])}" '
+        f'target="_blank" rel="noopener">{esc(label)}</a></p>'
+    )
 
 
 def site_wordmark(css_prefix: str) -> str:

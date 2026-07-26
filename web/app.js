@@ -375,12 +375,20 @@
   }
 
   // Hand-picked trusted third-party organisers/series (SITE.curated) —
-  // like isOurs(), these bypass SITE.filter entirely: they're chosen by
-  // source, not by topic/category heuristics.
+  // like isOurs(), these bypass the topic/category filter: they're chosen
+  // by source, not by enrichment heuristics. They do NOT bypass the
+  // exclude lists — siteMatch runs isExcluded first, and curated.exclude
+  // drops known off-brand series from otherwise-trusted organisers
+  // (e.g. Numinity's weekly running club).
   function isCurated(e) {
     if (!SITE.curated) return false;
     const org = (e.organizer_name || "").toLowerCase();
     const title = (e.title || "").toLowerCase();
+    if (
+      (SITE.curated.exclude || []).some((t) => title.includes(t.toLowerCase()))
+    ) {
+      return false;
+    }
     if (
       (SITE.curated.organizers || []).some((o) => org === o.toLowerCase())
     ) {
@@ -418,9 +426,11 @@
   // topic is also present (or category is expand).
   function siteMatch(e) {
     if (isOurs(e)) return true;
-    if (isCurated(e)) return true;
     if (!SITE.filter) return true;
+    // exclude terms outrank curation: a trusted organiser's off-brand
+    // series (run clubs, socials) must not ride in on the organiser's name
     if (isExcluded(e)) return false;
+    if (isCurated(e)) return true;
 
     const topics = e.topics || [];
     const techish = ["tech & ai", "startups & work"];
@@ -588,14 +598,11 @@
   // list of results four weeks out just misreports what you're looking at.
   function syncDayTicks() {
     const searching = !!state.query.trim();
-    document
-      .querySelectorAll(".tick")
-      .forEach((t) =>
-        t.classList.toggle(
-          "cursor",
-          !searching && t.dataset.day === state.day
-        )
-      );
+    document.querySelectorAll(".tick").forEach((t) => {
+      const on = !searching && t.dataset.day === state.day;
+      t.classList.toggle("cursor", on);
+      t.setAttribute("aria-pressed", String(on));
+    });
     document
       .querySelector(".ticker-shell")
       .classList.toggle("standing-by", searching);
@@ -681,10 +688,9 @@
 
     document.querySelectorAll("#topic-unit .token").forEach((t) => {
       const k = t.dataset.topic;
-      t.classList.toggle(
-        "lit",
-        k === "all" ? state.topics.size === 0 : state.topics.has(k)
-      );
+      const lit = k === "all" ? state.topics.size === 0 : state.topics.has(k);
+      t.classList.toggle("lit", lit);
+      t.setAttribute("aria-pressed", String(lit));
       if (k === "all") return;
       const n = countHere(k);
       const label = t.querySelector(".token-count");
@@ -816,9 +822,14 @@
     }
   }
 
-  // Header tagline landings: /?topic=psychedelics or /?category=expand
+  // Header tagline landings: /?topic=psychedelics or /?category=expand.
+  // Only a bare single-topic/category URL is a landing (intro + 30 days);
+  // anything carrying day/q/free came from syncUrl — a shared filter state —
+  // and restores as a plain filter instead.
   function applyLandingFromUrl() {
     const params = new URLSearchParams(location.search);
+    if (params.has("day") || params.has("q") || params.has("free"))
+      return false;
     const topicSlug = params.get("topic");
     const cat = params.get("category");
     if (topicSlug) {
@@ -839,6 +850,65 @@
       return true;
     }
     return false;
+  }
+
+  // Restore any non-landing filter state a shared URL carries. Runs after
+  // applyLandingFromUrl so a landing's forced day=30 loses to an explicit
+  // day param.
+  function applyStateFromUrl() {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("q");
+    if (q) {
+      state.query = q;
+      document.getElementById("search").value = q;
+    }
+    if (params.get("free") === "1") {
+      state.freeOnly = true;
+      document.getElementById("free-toggle").checked = true;
+    }
+    const day = params.get("day");
+    if (day && (day === "7" || day === "30" || /^\d{4}-\d{2}-\d{2}$/.test(day)))
+      state.day = day;
+    // comma-separated multi-topic (single topics go the landing path)
+    if (!state.landing) {
+      const keys = (params.get("topic") || "")
+        .split(",")
+        .map(topicKeyFromSlug)
+        .filter((k) => k && TOPICS.includes(k));
+      if (keys.length) state.topics = new Set(keys);
+      const cat = params.get("category");
+      if (cat && CATEGORIES[cat]) state.category = cat;
+    }
+  }
+
+  // Mirror the current filters into the query string (replaceState — no
+  // history spam) so a filtered view can be shared or bookmarked. Landings
+  // own their URL (?topic= intro pages), and file:// previews can't
+  // replaceState a query string, so both are left alone.
+  function syncUrl() {
+    if (location.protocol === "file:" || state.landing) return;
+    const params = new URLSearchParams();
+    if (state.topics.size)
+      params.set(
+        "topic",
+        [...state.topics].map((t) => TOPIC_SLUGS[t] || t).join(",")
+      );
+    if (state.category !== "all") params.set("category", state.category);
+    if (state.day !== "7") params.set("day", state.day);
+    if (state.freeOnly) params.set("free", "1");
+    const q = state.query.trim();
+    if (q) params.set("q", q);
+    // a bare ?topic=/?category= URL is a landing (intro page) on load; pin
+    // the day so a chip-filtered view reloads as the same plain filter
+    if ((params.has("topic") || params.has("category")) && !params.has("day"))
+      params.set("day", state.day);
+    const qs = params.toString();
+    const url = location.pathname + (qs ? "?" + qs : "") + (location.hash || "");
+    try {
+      history.replaceState(null, "", url);
+    } catch (_) {
+      /* sandboxed contexts can refuse — the UI works without the URL */
+    }
   }
 
   function landingCopy() {
@@ -957,14 +1027,31 @@
     render();
   }
 
+  // Screen readers get told when the grid repaints — the visual swap is
+  // otherwise silent. Lazily created: it's plumbing, not shell markup.
+  function announceResults(count) {
+    let el = document.getElementById("results-status");
+    if (!el) {
+      el = document.createElement("p");
+      el.id = "results-status";
+      el.className = "sr-only";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      document.getElementById("events").before(el);
+    }
+    el.textContent =
+      count === 1 ? "one gathering shown" : `${count} gatherings shown`;
+  }
+
   function render() {
     const main = document.getElementById("events");
     const mapView = document.getElementById("map-view");
 
-    // chip counts and the day strip both describe the window we're about to
-    // draw, so they're refreshed from the one place that always runs
+    // chip counts, the day strip and the URL all describe the window we're
+    // about to draw, so they're refreshed from the one place that always runs
     syncTopicTokens();
     syncDayTicks();
+    syncUrl();
 
     mapView.hidden = state.view !== "map";
     main.hidden = state.view === "map";
@@ -1016,6 +1103,7 @@
 
   function renderBrowse(container) {
     const events = browseEvents();
+    announceResults(events.length);
     const frag = document.createDocumentFragment();
     const intro = renderLandingIntro();
     if (intro) frag.appendChild(intro);
@@ -1033,9 +1121,19 @@
       }
       const empty = document.createElement("p");
       empty.className = "status";
-      empty.textContent =
-        "nothing here — the city is resting. try a wider window.";
+      empty.textContent = "nothing here — the city is resting.";
       frag.appendChild(empty);
+      // always leave a way out: on the 30-day window the only move left
+      // is clearing the filters, so offer that instead of dead advice
+      const wrap = document.createElement("div");
+      wrap.className = "show-more";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "key show-more-btn";
+      btn.textContent = "reset filters";
+      btn.addEventListener("click", resetFilters);
+      wrap.appendChild(btn);
+      frag.appendChild(wrap);
       container.replaceChildren(frag);
       return;
     }
@@ -1099,6 +1197,7 @@
 
   function renderTonight(container) {
     const events = tonightEvents();
+    announceResults(events.length);
 
     const frag = document.createDocumentFragment();
     const head = document.createElement("div");
@@ -1363,8 +1462,18 @@
       body.appendChild(blurb);
     }
 
+    body.appendChild(newTabCue());
     a.append(banner, body);
     return a;
+  }
+
+  // target="_blank" gives sighted users a visual context switch; screen
+  // readers need it said out loud
+  function newTabCue() {
+    const cue = document.createElement("span");
+    cue.className = "sr-only";
+    cue.textContent = "(opens the ticket page in a new tab)";
+    return cue;
   }
 
   function timeOfDayClass(e) {
@@ -1557,6 +1666,7 @@
       body.appendChild(p);
     }
 
+    body.appendChild(newTabCue());
     card.appendChild(body);
     return card;
   }
@@ -1728,10 +1838,14 @@
   // ---------- wiring ----------
 
   function bindControls() {
+    // a short debounce: repainting ~200 cards on every keystroke makes
+    // fast typing stutter, and the live region would chatter per letter
+    let searchTimer;
     document.getElementById("search").addEventListener("input", (ev) => {
       state.query = ev.target.value;
       state.surprise = null;
-      render();
+      window.clearTimeout(searchTimer);
+      searchTimer = window.setTimeout(render, 150);
     });
 
     // lens toggle: pick a stop directly
@@ -1840,13 +1954,14 @@
     }, 2200);
   }
 
-  // Footer topic links → SPA landings (?topic=), same as the header tagline.
-  // Static /t/<slug>/ pages stay in the sitemap and on static-page footers for
-  // crawl; in-app links must not depend on directory-index hosting (which can
-  // show a raw folder listing instead of a page).
+  // Footer topic links → the static /t/<slug>/ pages, so the homepage's
+  // only internal links point at the canonical crawl surface instead of
+  // minting ?topic= near-duplicates of / for every topic. file:// previews
+  // can't serve directory indexes, so they keep the SPA landing links.
   function renderSeoNav() {
     const nav = document.getElementById("seo-nav");
     if (!nav) return;
+    const staticPages = location.protocol !== "file:";
     const frag = document.createDocumentFragment();
     let first = true;
     for (const topic of TOPICS) {
@@ -1861,11 +1976,32 @@
       }
       first = false;
       const a = document.createElement("a");
-      a.href = `?topic=${encodeURIComponent(slug)}`;
+      a.href = staticPages
+        ? `t/${encodeURIComponent(slug)}/`
+        : `?topic=${encodeURIComponent(slug)}`;
       a.textContent = topic;
       frag.appendChild(a);
     }
     nav.replaceChildren(frag);
+    renderChannelLink();
+  }
+
+  // Optional "follow us" line under the topic nav (SITE.channel in
+  // config.js) — empty url means the slot stays invisible.
+  function renderChannelLink() {
+    const channel = SITE.channel || {};
+    if (!channel.url) return;
+    const nav = document.getElementById("seo-nav");
+    if (!nav || document.getElementById("channel-link")) return;
+    const p = document.createElement("p");
+    p.id = "channel-link";
+    const a = document.createElement("a");
+    a.href = channel.url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = channel.label || "follow us";
+    p.appendChild(a);
+    nav.after(p);
   }
 
   // --- Launch splash (installed app only) -------------------------------
@@ -2118,6 +2254,7 @@
       state.events = (await fetchEventsWithRetry()).filter(siteMatch);
       clearInterval(loadingTimer);
       applyLandingFromUrl();
+      applyStateFromUrl();
       // sync chrome to any landing filter (topic chips / category / day)
       document
         .querySelectorAll("#category-pills .key")
