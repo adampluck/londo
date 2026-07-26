@@ -1391,6 +1391,9 @@
     a.target = "_blank";
     a.rel = "noopener";
     a.dataset.goatcounterClick = "out/" + organizerSlug(e.organizer_name);
+    // without this, count.js falls back to the link's innerHTML (the
+    // whole card's markup) as the click's title
+    a.dataset.goatcounterTitle = e.title || "";
     if (!skipCardAnim)
       a.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
 
@@ -1643,6 +1646,7 @@
     card.rel = "noopener";
     card.dataset.goatcounterClick =
       "out/" + kind + "/" + organizerSlug(e.organizer_name);
+    card.dataset.goatcounterTitle = e.title || "";
 
     if (e.image_url) {
       const media = document.createElement("div");

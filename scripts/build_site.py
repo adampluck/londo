@@ -898,7 +898,8 @@ def event_page(event: dict) -> str:
     {desc_html}
     <p class="static-cta-wrap">
       <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
-         data-goatcounter-click="out/{esc(organizer_slug(org))}">
+         data-goatcounter-click="out/{esc(organizer_slug(org))}"
+         data-goatcounter-title="{esc(event["title"])}">
         tickets &amp; details ↗
       </a>
     </p>
