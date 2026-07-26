@@ -551,6 +551,16 @@
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  // count.js's bind_events() only ever scans the DOM once, right when the
+  // script finishes loading — long before Supabase data arrives and cards
+  // exist. Re-running it after every card render is how a SPA is meant to
+  // pick up new [data-goatcounter-click] elements; it's a no-op for
+  // already-bound ones (checks dataset.goatcounterBound itself).
+  function rebindClickTracking() {
+    if (window.goatcounter && window.goatcounter.bind_events)
+      window.goatcounter.bind_events();
+  }
+
   // GoatCounter click path for an outbound ticket link, grouped by
   // organiser so the dashboard shows what actually converts. Mirror of
   // build_site.py's about_page-adjacent organiser slugging — kept
@@ -1206,6 +1216,7 @@
     }
     if (canExpandTo30()) frag.appendChild(showMoreButton());
     container.replaceChildren(frag);
+    rebindClickTracking();
   }
 
   function renderTonight(container) {
@@ -1257,6 +1268,7 @@
       });
       frag.appendChild(back);
       container.replaceChildren(frag);
+      rebindClickTracking();
       return;
     }
 
@@ -1275,6 +1287,7 @@
     events.forEach((e, i) => grid.appendChild(card(e, i)));
     frag.appendChild(grid);
     container.replaceChildren(frag);
+    rebindClickTracking();
   }
 
   function weekPool() {
@@ -1811,6 +1824,7 @@
 
     section.replaceChildren(grid);
     section.hidden = false;
+    rebindClickTracking();
   }
 
   // ---------- analytics (GoatCounter: open source, cookieless) ----------
