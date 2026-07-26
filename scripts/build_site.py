@@ -284,6 +284,32 @@ def read_site_block() -> dict:
     return json.loads(m.group(1)) if m else {}
 
 
+def _excluded(event: dict, flt: dict) -> bool:
+    """Mirror of isExcluded() in web/app.js — keep the two in step.
+
+    Title/organizer/tags only, matched at the start of a word. Descriptions
+    are long prose, so a bare substring over them deletes on-brand events by
+    accident ("founder of Om Being" in a cacao ceremony blurb was hitting the
+    "founder" term meant for startup nights). Left boundary only: plural forms
+    ("founders meet up") still match, "remedy" no longer trips "emed".
+    """
+    terms = flt.get("exclude") or []
+    if not terms:
+        return False
+    hay = " ".join(
+        p
+        for p in (
+            event.get("title") or "",
+            event.get("organizer_name") or "",
+            " ".join(event.get("tags") or []),
+        )
+        if p
+    ).lower()
+    return any(
+        re.search(r"(^|[^a-z0-9])" + re.escape(term), hay) for term in terms
+    )
+
+
 def site_match(event: dict) -> bool:
     """Mirror of siteMatch() in web/app.js — keep the two in step."""
     org = (event.get("organizer_name") or "").lower()
@@ -293,18 +319,7 @@ def site_match(event: dict) -> bool:
     flt = SITE_JSON.get("filter")
     if not flt:
         return True
-    hay = " ".join(
-        p
-        for p in (
-            event.get("title") or "",
-            event.get("organizer_name") or "",
-            event.get("hook") or "",
-            event.get("description") or "",
-            " ".join(event.get("tags") or []),
-        )
-        if p
-    ).lower()
-    if any(term in hay for term in flt.get("exclude") or []):
+    if _excluded(event, flt):
         return False
 
     topics = event.get("topics") or []
@@ -438,6 +453,22 @@ def category_url(key: str) -> str:
 
 def esc(value) -> str:
     return html.escape(str(value or ""), quote=True)
+
+
+def thumb(url: str, width: int) -> str:
+    """Mirror of thumb() in web/app.js — keep the two in step.
+
+    Organisers upload art at whatever size they like (routinely 300KB-1.7MB);
+    wsrv.nl re-encodes to webp at the size we actually render. og:image keeps
+    the original — social scrapers are fussier than browsers.
+    """
+    if not url:
+        return url
+    return (
+        "https://wsrv.nl/?url="
+        + urllib.parse.quote(url, safe="")
+        + f"&w={width}&output=webp&q=75"
+    )
 
 
 def with_utm(url: str) -> str:
@@ -745,12 +776,21 @@ def event_page(event: dict) -> str:
         if event.get("hook")
         else ""
     )
-    img = (
-        f'<figure class="static-figure"><img src="{esc(event["image_url"])}" '
-        f'alt="{esc(event["title"])}" loading="lazy"></figure>'
-        if event.get("image_url")
-        else ""
-    )
+    img = ""
+    if event.get("image_url"):
+        art = event["image_url"]
+        # the proxy is a single point of failure for every image on the site,
+        # so fall back to the organiser's own CDN. %27 rather than a bare
+        # quote: esc() emits &#x27;, which the parser turns back into ' and
+        # closes the JS string early.
+        fallback = esc(art.replace("'", "%27"))
+        img = (
+            f'<figure class="static-figure">'
+            f'<img src="{esc(thumb(art, 1200))}" alt="{esc(event["title"])}" '
+            f'loading="lazy" '
+            f"onerror=\"this.onerror=null;this.src='{fallback}'\">"
+            f"</figure>"
+        )
     paragraphs = [
         p.strip()
         for p in re.split(r"\n\n+", event.get("description") or "")

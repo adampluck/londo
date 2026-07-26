@@ -53,6 +53,36 @@
     return `${SITE.id || "londo"}:${suffix}`;
   }
 
+  // Event art comes straight from the organiser's ticketing CDN at whatever
+  // size they uploaded — routinely 300KB-1.7MB PNGs painted into a 265px
+  // card, so a week's browse pulled ~15MB. wsrv.nl re-encodes to webp at the
+  // size we actually render. Callers keep the original as the onerror
+  // fallback, so a proxy outage costs sharpness, not the image.
+  function thumb(url, width) {
+    if (!url) return url;
+    return (
+      "https://wsrv.nl/?url=" +
+      encodeURIComponent(url) +
+      `&w=${width}&output=webp&q=75`
+    );
+  }
+
+  // Point an <img> at the proxied art, falling back to the original once
+  // before handing over to the caller's give-up path (gradient placeholder,
+  // drop the figure, …).
+  function setThumb(img, url, width, onGiveUp) {
+    // an explicit flag, not an img.src comparison: the DOM hands back a
+    // resolved URL, so a mismatch there would retry the same dead image
+    // forever
+    let fellBack = false;
+    img.onerror = () => {
+      if (fellBack) return onGiveUp();
+      fellBack = true;
+      img.src = url; // proxy missed — try the organiser's CDN directly
+    };
+    img.src = thumb(url, width);
+  }
+
   // Tag outbound event links with UTM params so organisers can see
   // psyconnect referral traffic in their own analytics — londo has no
   // SITE.id and stays unchanged.
@@ -361,28 +391,36 @@
     );
   }
 
+  // Exclude terms match the title/organizer/tags only, and only at the start
+  // of a word. Descriptions are long prose, so a bare substring over them
+  // deletes on-brand events by accident — "founder of Om Being" in a cacao
+  // ceremony blurb was hitting the "founder" term meant for startup nights.
+  // Left boundary only: it still catches plural forms ("founders meet up",
+  // "london startups") while sparing "remedy" from the "emed" term.
+  const excludeRes = ((SITE.filter && SITE.filter.exclude) || []).map(
+    (term) => new RegExp("(^|[^a-z0-9])" + escapeRe(term))
+  );
+
+  function isExcluded(e) {
+    if (!excludeRes.length) return false;
+    const hay = [e.title, e.organizer_name, (e.tags || []).join(" ")]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return excludeRes.some((re) => re.test(hay));
+  }
+
   // A filtered site (SITE.filter) only ever sees its slice of the table:
-  // category in the list, or any topic overlapping — minus anything whose
-  // title/organizer/hook/description hits an exclude term (sports mis-tags,
-  // tech hackathons that pick up "healing & wellbeing", etc.).
+  // category in the list, or any topic overlapping — minus anything the
+  // exclude terms catch (sports mis-tags, tech hackathons that pick up
+  // "healing & wellbeing", etc.).
   // Tech/startup topics alone never admit an event unless a stronger scene
   // topic is also present (or category is expand).
   function siteMatch(e) {
     if (isOurs(e)) return true;
     if (isCurated(e)) return true;
     if (!SITE.filter) return true;
-    const hay = [
-      e.title,
-      e.organizer_name,
-      e.hook,
-      e.description,
-      (e.tags || []).join(" "),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    if ((SITE.filter.exclude || []).some((term) => hay.includes(term)))
-      return false;
+    if (isExcluded(e)) return false;
 
     const topics = e.topics || [];
     const techish = ["tech & ai", "startups & work"];
@@ -405,13 +443,12 @@
     return topics.some((t) => (SITE.filter.topics || []).includes(t));
   }
 
-  function baseFilter(e) {
+  // Every filter except the topic tokens. Split out so a chip can count what
+  // it would yield against the rest of the bench as it currently stands —
+  // counting past an active search or a lit "free" would be the same lie the
+  // chips used to tell about the date.
+  function filtersBesidesTopics(e) {
     if (state.category !== "all" && e.category !== state.category) return false;
-    if (
-      state.topics.size &&
-      !(e.topics || []).some((t) => state.topics.has(t))
-    )
-      return false;
     if (state.lens === "tech" && !isTech(e)) return false;
     if (state.lens === "beyond" && isTech(e)) return false;
     if (state.area !== "all" && e.area !== state.area) return false;
@@ -421,19 +458,36 @@
     return true;
   }
 
+  function baseFilter(e) {
+    if (
+      state.topics.size &&
+      !(e.topics || []).some((t) => state.topics.has(t))
+    )
+      return false;
+    return filtersBesidesTopics(e);
+  }
+
+  // The day window on its own, so the topic chips can count against exactly
+  // the window the grid is about to draw. A live search deliberately ignores
+  // the day (see browseEvents), and so do the counts.
+  function inDayWindow(e) {
+    if (state.query.trim()) return true;
+    const until =
+      state.day === "7" || state.day === "30"
+        ? Date.now() + Number(state.day) * 864e5
+        : null;
+    if (until) return new Date(e.start_at).getTime() <= until;
+    return londonDate(e.start_at) === state.day;
+  }
+
   function browseEvents() {
     // when searching, scan all loaded events (up to 30 days) — day filter hides too much
     if (state.query.trim()) {
       return state.events.filter((e) => baseFilter(e) && !hasStarted(e));
     }
-    const until =
-      state.day === "7" || state.day === "30"
-        ? Date.now() + Number(state.day) * 864e5
-        : null;
     return state.events.filter((e) => {
       if (!baseFilter(e) || hasStarted(e)) return false;
-      if (until) return new Date(e.start_at).getTime() <= until;
-      return londonDate(e.start_at) === state.day;
+      return inDayWindow(e);
     });
   }
 
@@ -529,10 +583,22 @@
     }
   }
 
+  // A live search reaches past the chosen day (see browseEvents), so nothing
+  // in the strip is selected while one is running — leaving "tue" lit over a
+  // list of results four weeks out just misreports what you're looking at.
   function syncDayTicks() {
+    const searching = !!state.query.trim();
     document
       .querySelectorAll(".tick")
-      .forEach((t) => t.classList.toggle("cursor", t.dataset.day === state.day));
+      .forEach((t) =>
+        t.classList.toggle(
+          "cursor",
+          !searching && t.dataset.day === state.day
+        )
+      );
+    document
+      .querySelector(".ticker-shell")
+      .classList.toggle("standing-by", searching);
   }
 
   function maybeShowEnrichedControls() {
@@ -557,9 +623,12 @@
     }
   }
 
+  // Tape membership is decided once, over everything loaded — a chip that
+  // came and went as the date moved would be worse than a quiet one. The
+  // number on the chip is the live count for the current day window.
   function renderTopicTokens() {
     const tape = document.getElementById("topic-chips");
-    const countFor = (topic) =>
+    const countOverall = (topic) =>
       state.events.filter((e) => (e.topics || []).includes(topic)).length;
 
     // "anything" sits still beside the tape so it's always in reach
@@ -568,11 +637,8 @@
       .replaceChildren(token("anything", "all"));
     const tokens = [];
     for (const topic of TOPICS) {
-      const n = countFor(topic);
-      if (n < 2) continue; // don't offer near-empty doorways
-      const btn = token(topic, topic);
-      btn.title = `${n} events`;
-      tokens.push(btn);
+      if (countOverall(topic) < 2) continue; // don't offer near-empty doorways
+      tokens.push(token(topic, topic));
     }
     tape.replaceChildren(...tokens);
     syncTopicTokens();
@@ -581,7 +647,13 @@
       const btn = document.createElement("button");
       btn.className = "token";
       btn.dataset.topic = key;
-      btn.textContent = label;
+      btn.appendChild(document.createTextNode(label));
+      if (key !== "all") {
+        const n = document.createElement("small");
+        n.className = "token-count";
+        // a real space, so it isn't announced as "psychedelics4"
+        btn.append(" ", n);
+      }
       btn.addEventListener("click", () => {
         clearLanding();
         if (key === "all") state.topics.clear();
@@ -596,12 +668,30 @@
   }
 
   function syncTopicTokens() {
+    // What this chip would actually yield if it were the only topic picked —
+    // every other filter still applies, so the number matches the grid.
+    const countHere = (topic) =>
+      state.events.filter(
+        (e) =>
+          (e.topics || []).includes(topic) &&
+          !hasStarted(e) &&
+          inDayWindow(e) &&
+          filtersBesidesTopics(e)
+      ).length;
+
     document.querySelectorAll("#topic-unit .token").forEach((t) => {
       const k = t.dataset.topic;
       t.classList.toggle(
         "lit",
         k === "all" ? state.topics.size === 0 : state.topics.has(k)
       );
+      if (k === "all") return;
+      const n = countHere(k);
+      const label = t.querySelector(".token-count");
+      if (label) label.textContent = String(n);
+      // dimmed, not hidden — a chip that vanished mid-scan would be worse
+      t.classList.toggle("spent", n === 0);
+      t.title = n ? `${n} in this window` : "nothing in this window";
     });
   }
 
@@ -870,6 +960,11 @@
   function render() {
     const main = document.getElementById("events");
     const mapView = document.getElementById("map-view");
+
+    // chip counts and the day strip both describe the window we're about to
+    // draw, so they're refreshed from the one place that always runs
+    syncTopicTokens();
+    syncDayTicks();
 
     mapView.hidden = state.view !== "map";
     main.hidden = state.view === "map";
@@ -1177,13 +1272,13 @@
     banner.className = "banner";
     if (e.image_url) {
       const img = document.createElement("img");
-      img.src = e.image_url;
       img.alt = "";
       img.loading = "lazy";
-      img.onerror = () => {
+      // 600 ≈ 2× the 265px min column, so it stays crisp on retina
+      setThumb(img, e.image_url, 600, () => {
         img.remove();
         paintPlaceholder(banner, e);
-      };
+      });
       banner.appendChild(img);
     } else {
       paintPlaceholder(banner, e);
@@ -1413,9 +1508,8 @@
       const media = document.createElement("div");
       media.className = "spotlight-media";
       const img = document.createElement("img");
-      img.src = e.image_url;
       img.alt = "";
-      img.onerror = () => media.remove();
+      setThumb(img, e.image_url, 700, () => media.remove());
       media.appendChild(img);
       card.appendChild(media);
     }

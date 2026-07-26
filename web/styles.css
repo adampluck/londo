@@ -571,6 +571,27 @@ body {
   background: rgba(227, 192, 141, 0.1);
 }
 
+/* how many this chip yields in the window on screen right now */
+.token-count {
+  margin-left: 0.32rem;
+  font-size: 0.86em;
+  opacity: 0.55;
+}
+
+/* nothing behind this door in the current window — still clickable (it
+   opens the "try a wider look" path), just not advertised */
+.token.spent {
+  opacity: 0.42;
+}
+
+.token.spent .token-count { opacity: 0.75; }
+
+/* a live search reaches past the chosen day, so the strip stands down */
+.ticker-shell.standing-by {
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+
 /* ---------- events ---------- */
 
 main {

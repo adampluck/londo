@@ -354,6 +354,19 @@ body {
   border-color: var(--sel-line);
 }
 
+/* the count rides inside the pill — tabular figures so chips of the same
+   word don't shift width as the numbers change with the date */
+.token-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+}
+
+/* 0.42 is londo's dimming against a near-black bench; on cream that reads
+   as broken rather than quiet */
+.token.spent {
+  opacity: 0.6;
+}
+
 /* visible keyboard focus — the filled states removed the old outline cue */
 .tick:focus-visible,
 .token:focus-visible,
