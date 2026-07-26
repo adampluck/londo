@@ -70,6 +70,10 @@
   --sel-wash: light-dark(rgba(109, 65, 96, 0.16), rgba(203, 157, 191, 0.2));
   --sel-ink: light-dark(#5a3450, #f0d7e8);
   --sel-line: light-dark(#6d4160, #cb9dbf);
+  /* 50px wider than the londo default, to give the 4-column spotlight room.
+     Deliberately under ~1161px: past that, .grid's minmax(265px, 1fr) reflows
+     the browse grid to 4 columns and the cards below shrink to ~275px. */
+  --page-max: 1150px;
 }
 
 /* an explicit choice pins the scheme; light-dark() resolves off the used
@@ -576,23 +580,27 @@ footer a {
 }
 
 /* ---------- spotlight: our next event + this week's picks ----------
-   One 3-column grid row on desktop: heading row, then card row. "Our next
+   One 4-column grid row on desktop: heading row, then card row. "Our next
    event" heads column 1 when a featured event is live; "Our top picks
-   this week" heads whatever's left (2 columns alongside a featured event,
-   or all 3 without one). Column spans are set inline per render since the
-   count of picks varies. "our next event" (peach edge) and curated picks
+   this week" heads whatever's left (3 columns alongside a featured event,
+   or all 4 without one). Column spans are set inline per render since the
+   count of picks varies. The column count is mirrored in JS as
+   SITE.curated.maxTotal (config.js) — keep the two in step or renderSpotlight
+   will place a card in an implicit extra column. Four columns land at ~265px
+   each, narrower than the browse cards below, so the card interior below is
+   tuned tighter than a .card. "our next event" (peach edge) and curated picks
    (sage edge) share the same card shape; only the border tells them
    apart. */
 
 #spotlight {
-  max-width: 1100px;
+  max-width: var(--page-max);
   margin: 0.4rem auto 0;
   padding: 0 1.5rem;
 }
 
 .spotlight-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.7rem 1rem;
 }
 
@@ -602,7 +610,7 @@ footer a {
   display: contents;
 }
 
-/* the 3rd pick is mobile-strip-only; desktop keeps featured + 2 picks.
+/* picks past the desktop set (featured + 3) are mobile-strip-only.
    Compound selector beats the later `.spotlight-card { display: flex }`. */
 @media (min-width: 641px) {
   .spotlight-card.spotlight-pick-extra {
@@ -676,8 +684,9 @@ footer a {
   .spotlight-card:hover .spotlight-media img { transform: none; }
 }
 
+/* holds roughly the 2.6:1 the 130px band gave the old 340px-wide card */
 .spotlight-media {
-  height: 130px;
+  height: 105px;
 }
 
 .spotlight-media img {
@@ -690,7 +699,7 @@ footer a {
 .spotlight-body {
   flex: 1;
   min-width: 0;
-  padding: 0.9rem 1.1rem 1.05rem;
+  padding: 0.8rem 0.9rem 0.95rem;
 }
 
 .spotlight-eyebrow {
@@ -706,12 +715,18 @@ footer a {
   color: var(--peach);
 }
 
+/* Clamped at every width: four columns leave ~215px of text, and one long
+   title would otherwise stretch the whole row (grid items share a height). */
 .spotlight-body h3 {
   margin: 0 0 0.25rem;
   font-family: var(--display);
   font-weight: 560;
-  font-size: 1.1rem;
+  font-size: 1.02rem;
   line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .spotlight-when {
@@ -723,12 +738,27 @@ footer a {
 
 /* deliberately visible at every width — the blurb hiding on mobile was
    the earlier featured card's compromise; the whole point of the picks
-   row is that the blurb stays readable */
+   row is that the blurb stays readable. Clamped on the picks for the same
+   reason as the title: app.js already caps it at 200 chars, which is 5-6
+   lines in a quarter-width column. Our own event is exempt (below). */
 .spotlight-blurb {
   margin: 0;
   font-size: 0.86rem;
   color: var(--ink-dim);
   line-height: 1.42;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Our own event runs unclamped: it carries no organiser eyebrow, so its body
+   starts a line higher than a pick's and there's room for the full blurb
+   (app.js still caps it at 200 chars). Unscoped is fine — the mobile rule
+   below hides this blurb outright and comes later. */
+.spotlight-featured .spotlight-blurb {
+  display: block;
+  overflow: visible;
 }
 
 /* mobile: a compact stack — small "our next event" label, a slim horizontal
@@ -792,14 +822,6 @@ footer a {
      title + when only */
   .spotlight-featured .spotlight-blurb {
     display: none;
-  }
-
-  /* trim overly long titles to two lines on every spotlight card */
-  .spotlight-body h3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
 
   /* drop the organiser eyebrow and the venue to save space */

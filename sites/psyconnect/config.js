@@ -69,7 +69,7 @@ self.LONDO_CONFIG = {
       ],
       "titleMatches": ["bohm"],
       "exclude": ["running club"],
-      "maxTotal": 3,
+      "maxTotal": 4,
       "maxMobile": 5,
       "priorityOrganizer": "The Psychedelic Society",
       "windowDays": 7,

@@ -1409,12 +1409,14 @@
 
   // ---------- spotlight: our next event + this week's picks ----------
   //
-  // One 3-column row on desktop: "Our next event" heads column 1 (if a
-  // featured event is live) and "Our top picks this week" heads the
-  // remaining columns (2 picks alongside a featured event, or all 3 if
-  // there's no featured event). Mobile turns the picks into a horizontal
-  // swipe strip, which is not column-bound, so it can show more of them —
-  // SITE.curated.maxMobile, defaulting to maxTotal.
+  // One row on desktop, SITE.curated.maxTotal columns wide: "Our next
+  // event" heads column 1 (if a featured event is live) and "Our top picks
+  // this week" heads the rest (maxTotal - 1 picks alongside a featured
+  // event, or all maxTotal if there's no featured event). maxTotal is the
+  // column count, so it has to match `.spotlight-grid`'s
+  // grid-template-columns in sites/psyconnect/theme.css. Mobile turns the
+  // picks into a horizontal swipe strip, which is not column-bound, so it
+  // can show more of them — SITE.curated.maxMobile, defaulting to maxTotal.
 
   // Selects up to `limit` events from SITE.curated.organizers/titleMatches,
   // within the next windowDays, dropping SITE.curated.exclude title matches
@@ -1594,14 +1596,14 @@
       state.events.find(
         (ev) => isOurs(ev) && new Date(ev.start_at).getTime() > Date.now()
       );
-    // Desktop is column-bound: featured + 2 picks in one 3-column row, or
-    // maxTotal picks across the whole row without a featured event. The
+    // Desktop is column-bound: the row is maxTotal columns wide and the
+    // featured card takes the first one, so picks get whatever's left. The
     // mobile strip just scrolls, so it can carry more (maxMobile, default
     // maxTotal). Fetch the larger of the two; picks past the desktop set are
     // marked strip-only and hidden by CSS above 640px.
     const curated = SITE.curated || {};
     const maxTotal = curated.maxTotal || 3;
-    const desktopLimit = featured ? Math.min(2, maxTotal) : maxTotal;
+    const desktopLimit = featured ? maxTotal - 1 : maxTotal;
     const pickLimit = SITE.curated
       ? Math.max(maxTotal, curated.maxMobile || 0)
       : 0;
