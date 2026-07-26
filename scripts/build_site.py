@@ -284,6 +284,24 @@ ABOUT_CONTENT: dict[str, list[str]] = {
     ],
 }
 
+# /privacy/ page copy, per site id. Same opt-in pattern as ABOUT_CONTENT —
+# a site with no entry gets no privacy page.
+PRIVACY_CONTENT: dict[str, list[str]] = {
+    "psyconnect": [
+        "PsyConnect has no user accounts, no sign-up, and no cookies. "
+        "It doesn't collect or store any personal data about visitors.",
+        "Page views and outbound clicks (e.g. to a ticket link) are "
+        "counted with GoatCounter, a cookieless analytics tool that "
+        "doesn't track individuals or build profiles across sites.",
+        "Event listings are read from a public database built from "
+        "ticketing platforms and organisers' own calendars — nothing "
+        "you do on this site is written back to it.",
+        "Clicking through to buy a ticket takes you to the organiser's "
+        "own site or ticketing platform, which has its own privacy "
+        "policy; this site has no visibility into what happens there.",
+    ],
+}
+
 
 def read_config() -> tuple[str, str]:
     text = SITE["config"].read_text()
@@ -604,16 +622,14 @@ def page(
   <title>{esc(title)}</title>
   <meta name="description" content="{esc(description)}">
   <link rel="canonical" href="{esc(canonical)}">
-  <meta property="og:site_name" content="{esc(SITE["name"])}">
+  <meta property="og:site_name" content="{esc(display_name())}">
   <meta property="og:type" content="website">
   <meta property="og:title" content="{esc(title)}">
   <meta property="og:description" content="{esc(description)}">
   <meta property="og:url" content="{esc(canonical)}">
   {image}
   <link rel="icon" type="image/png" href="{css_prefix}/icons/favicon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{css_prefix}/fonts/fonts.css">
   <link rel="stylesheet" href="{css_prefix}/styles.css">
   {extra_css(css_prefix)}
   {ld}
@@ -630,7 +646,7 @@ def page(
   </main>
   <footer class="static-footer">
     {seo_nav_html()}{channel_link_html()}
-    <p class="static-footer-home"><a href="{BASE_URL}/">{esc(SITE["name"])}</a> — {esc(SITE["tagline"])}{about_link_html()}</p>
+    <p class="static-footer-home"><a href="{BASE_URL}/">{esc(display_name())}</a> — {esc(SITE["tagline"])}{about_link_html()}{privacy_link_html()}</p>
   </footer>
 </body>
 </html>
@@ -680,12 +696,27 @@ def seo_nav_html() -> str:
     return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
 
 
+def display_name() -> str:
+    """User-facing brand name (e.g. "PsyConnect") — distinct from
+    SITE["name"], which stays lowercase since it's also a dict key
+    (ABOUT_CONTENT, PRIVACY_CONTENT) and part of cache/URL identifiers."""
+    return SITE_JSON.get("displayName") or SITE["name"]
+
+
 def about_link_html() -> str:
     """Footer-only "about" link — never in the header. No-op for sites
     with no ABOUT_CONTENT entry (e.g. londo, today)."""
     if not ABOUT_CONTENT.get(SITE["name"]):
         return ""
     return f' · <a href="{about_url()}">about</a>'
+
+
+def privacy_link_html() -> str:
+    """Footer-only "privacy" link, mirroring about_link_html(). No-op for
+    sites with no PRIVACY_CONTENT entry."""
+    if not PRIVACY_CONTENT.get(SITE["name"]):
+        return ""
+    return f' · <a href="{privacy_url()}">privacy</a>'
 
 
 def channel_link_html() -> str:
@@ -704,9 +735,9 @@ def channel_link_html() -> str:
 def site_wordmark(css_prefix: str) -> str:
     logo = SITE_JSON.get("logo")
     if not logo:
-        return esc(SITE["name"])
+        return esc(display_name())
     return (
-        f'<img src="{css_prefix}/{esc(logo)}" alt="{esc(SITE["name"])}" '
+        f'<img src="{css_prefix}/{esc(logo)}" alt="{esc(display_name())}" '
         'class="static-logo">'
     )
 
@@ -884,7 +915,7 @@ def event_page(event: dict) -> str:
 
     body = f"""
   <nav class="static-crumbs" aria-label="breadcrumb">
-    <a href="{BASE_URL}/">{esc(SITE["name"])}</a>
+    <a href="{BASE_URL}/">{esc(display_name())}</a>
     <span aria-hidden="true">/</span>
     <span>event</span>
   </nav>
@@ -904,11 +935,11 @@ def event_page(event: dict) -> str:
       </a>
     </p>
     <p class="static-back">
-      <a href="{BASE_URL}/">← more in-person gatherings on {esc(SITE["name"])}</a>
+      <a href="{BASE_URL}/">← more in-person gatherings on {esc(display_name())}</a>
     </p>
   </article>"""
     return page(
-        f"{event['title']} — {SITE['name']}",
+        f"{event['title']} — {display_name()}",
         description,
         canonical,
         event.get("image_url") or DEFAULT_OG_IMAGE,
@@ -925,7 +956,7 @@ def listing_intro_paragraphs(key: str, kind: str, label: str, count: int) -> lis
         paras = list(TOPIC_INTROS.get(key) or ())
     if not paras:
         paras = [
-            f"In-person {label} gatherings in London, collected on {SITE['name']} "
+            f"In-person {label} gatherings in London, collected on {display_name()} "
             f"so you can find the good rooms without scrolling forever."
         ]
     n = count
@@ -978,7 +1009,7 @@ def listing_page(
 
     body = f"""
   <nav class="static-crumbs" aria-label="breadcrumb">
-    <a href="{BASE_URL}/">{esc(SITE["name"])}</a>
+    <a href="{BASE_URL}/">{esc(display_name())}</a>
     <span aria-hidden="true">/</span>
     <span>{esc(kind)}</span>
   </nav>
@@ -993,14 +1024,15 @@ def listing_page(
     {"".join(items)}
   </ol>
   <p class="static-back">
-    <a href="{BASE_URL}/">← all of {esc(SITE["name"])}</a>
+    <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
   </p>"""
     return page(
-        f"{seo_title} — {SITE['name']}",
+        f"{seo_title} — {display_name()}",
         meta_desc,
         canonical,
         DEFAULT_OG_IMAGE,
         body,
+        css_prefix="..",
     )
 
 
@@ -1017,26 +1049,64 @@ def about_page(paragraphs: list[str]) -> str:
 
     body = f"""
   <nav class="static-crumbs" aria-label="breadcrumb">
-    <a href="{BASE_URL}/">{esc(SITE["name"])}</a>
+    <a href="{BASE_URL}/">{esc(display_name())}</a>
     <span aria-hidden="true">/</span>
     <span>about</span>
   </nav>
   <header class="static-list-head">
     <p class="static-kicker">about</p>
-    <h1 class="static-title">about {esc(SITE["name"])}</h1>
+    <h1 class="static-title">about {esc(display_name())}</h1>
     <div class="static-intro">
       {lead_html}
     </div>
   </header>
   <p class="static-back">
-    <a href="{BASE_URL}/">← all of {esc(SITE["name"])}</a>
+    <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
   </p>"""
     return page(
-        f"about — {SITE['name']}",
+        f"about — {display_name()}",
         meta_desc,
         canonical,
         DEFAULT_OG_IMAGE,
         body,
+        css_prefix="..",
+    )
+
+
+def privacy_url() -> str:
+    return f"{BASE_URL}/privacy/"
+
+
+def privacy_page(paragraphs: list[str]) -> str:
+    canonical = privacy_url()
+    lead_html = "".join(f'<p class="static-lead">{esc(p)}</p>' for p in paragraphs)
+    meta_desc = paragraphs[0]
+    if len(meta_desc) > 160:
+        meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
+
+    body = f"""
+  <nav class="static-crumbs" aria-label="breadcrumb">
+    <a href="{BASE_URL}/">{esc(display_name())}</a>
+    <span aria-hidden="true">/</span>
+    <span>privacy</span>
+  </nav>
+  <header class="static-list-head">
+    <p class="static-kicker">privacy</p>
+    <h1 class="static-title">privacy at {esc(display_name())}</h1>
+    <div class="static-intro">
+      {lead_html}
+    </div>
+  </header>
+  <p class="static-back">
+    <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
+  </p>"""
+    return page(
+        f"privacy — {display_name()}",
+        meta_desc,
+        canonical,
+        DEFAULT_OG_IMAGE,
+        body,
+        css_prefix="..",
     )
 
 
@@ -1071,6 +1141,11 @@ def build(outdir: Path) -> None:
     if about_paras:
         write_index(outdir / "about", about_page(about_paras))
         urls.append(about_url())
+
+    privacy_paras = PRIVACY_CONTENT.get(SITE["name"])
+    if privacy_paras:
+        write_index(outdir / "privacy", privacy_page(privacy_paras))
+        urls.append(privacy_url())
 
     for event in events:
         slug = event_slug(event)

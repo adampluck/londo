@@ -1848,7 +1848,7 @@
     if (window.goatcounter && window.goatcounter.count) {
       window.goatcounter.count({
         path: "/" + view,
-        title: (SITE.name || "londo") + " — " + view,
+        title: (SITE.displayName || SITE.name || "londo") + " — " + view,
         event: false,
       });
     }

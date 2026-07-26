@@ -7,11 +7,12 @@
 importScripts("config.js");
 
 const SITE = (self.LONDO_CONFIG && self.LONDO_CONFIG.SITE) || {};
-const CACHE = (SITE.id || "londo") + "-v26";
+const CACHE = (SITE.id || "londo") + "-v27";
 const SHELL = [
   "./",
   "index.html",
   "styles.css",
+  "fonts/fonts.css",
   "app.js",
   "config.js",
   "manifest.webmanifest",
