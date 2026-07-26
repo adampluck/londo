@@ -551,6 +551,19 @@
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  // GoatCounter click path for an outbound ticket link, grouped by
+  // organiser so the dashboard shows what actually converts. Mirror of
+  // build_site.py's about_page-adjacent organiser slugging — kept
+  // deliberately trivial (no need for the full title-slug machinery).
+  function organizerSlug(name) {
+    return (
+      (name || "unknown")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") || "unknown"
+    );
+  }
+
   // ---------- controls ----------
 
   function renderWeekStrip() {
@@ -1364,6 +1377,7 @@
     a.href = withUtm(e.source_url);
     a.target = "_blank";
     a.rel = "noopener";
+    a.dataset.goatcounterClick = "out/" + organizerSlug(e.organizer_name);
     if (!skipCardAnim)
       a.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
 
@@ -1614,6 +1628,8 @@
     card.href = withUtm(e.source_url);
     card.target = "_blank";
     card.rel = "noopener";
+    card.dataset.goatcounterClick =
+      "out/" + kind + "/" + organizerSlug(e.organizer_name);
 
     if (e.image_url) {
       const media = document.createElement("div");

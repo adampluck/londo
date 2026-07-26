@@ -267,6 +267,23 @@ TOPIC_INTROS = {
 # Nested static pages live at e/<id>/index.html → css/assets two levels up.
 NESTED_PREFIX = "../.."
 
+# /about/ page copy, per site id. A site with no entry here gets no about
+# page — londo doesn't have one yet. Deliberately impersonal: no name, no
+# contact address, just what the site is and how an event ends up on it.
+ABOUT_CONTENT: dict[str, list[str]] = {
+    "psyconnect": [
+        "PsyConnect collects in-person psychedelic, consciousness, ceremony "
+        "and connection gatherings happening across London, in one place.",
+        "Most listings arrive automatically: the site checks around a "
+        "dozen ticketing platforms and calendars several times a day and "
+        "keeps whatever matches this scene. A short list of organisers "
+        "we trust — The Psychedelic Society, Numinity and a few others — "
+        "is always included, whatever they're hosting.",
+        "Nothing here is sponsored. If an event looks wrong or missing, "
+        "the listing came from the organiser's own page — start there.",
+    ],
+}
+
 
 def read_config() -> tuple[str, str]:
     text = SITE["config"].read_text()
@@ -412,6 +429,14 @@ def slugify_title(title: str) -> str:
     if len(text) > 72:
         text = text[:72].rstrip("-")
     return text or "event"
+
+
+def organizer_slug(name: str | None) -> str:
+    """Mirror of organizerSlug() in web/app.js — keep the two in step, so
+    GoatCounter groups an organiser's clicks together regardless of whether
+    they came from the SPA or a static page."""
+    slug = re.sub(r"[^a-z0-9]+", "-", (name or "unknown").lower()).strip("-")
+    return slug or "unknown"
 
 
 def legacy_event_id(event: dict) -> str:
@@ -605,7 +630,7 @@ def page(
   </main>
   <footer class="static-footer">
     {seo_nav_html()}{channel_link_html()}
-    <p class="static-footer-home"><a href="{BASE_URL}/">{esc(SITE["name"])}</a> — {esc(SITE["tagline"])}</p>
+    <p class="static-footer-home"><a href="{BASE_URL}/">{esc(SITE["name"])}</a> — {esc(SITE["tagline"])}{about_link_html()}</p>
   </footer>
 </body>
 </html>
@@ -653,6 +678,14 @@ def seo_nav_html() -> str:
             parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
         parts.append(f'<a href="{topic_url(slug_)}">{esc(key)}</a>')
     return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
+
+
+def about_link_html() -> str:
+    """Footer-only "about" link — never in the header. No-op for sites
+    with no ABOUT_CONTENT entry (e.g. londo, today)."""
+    if not ABOUT_CONTENT.get(SITE["name"]):
+        return ""
+    return f' · <a href="{about_url()}">about</a>'
 
 
 def channel_link_html() -> str:
@@ -864,7 +897,8 @@ def event_page(event: dict) -> str:
     {img}
     {desc_html}
     <p class="static-cta-wrap">
-      <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener">
+      <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
+         data-goatcounter-click="out/{esc(organizer_slug(org))}">
         tickets &amp; details ↗
       </a>
     </p>
@@ -969,6 +1003,42 @@ def listing_page(
     )
 
 
+def about_url() -> str:
+    return f"{BASE_URL}/about/"
+
+
+def about_page(paragraphs: list[str]) -> str:
+    canonical = about_url()
+    lead_html = "".join(f'<p class="static-lead">{esc(p)}</p>' for p in paragraphs)
+    meta_desc = paragraphs[0]
+    if len(meta_desc) > 160:
+        meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
+
+    body = f"""
+  <nav class="static-crumbs" aria-label="breadcrumb">
+    <a href="{BASE_URL}/">{esc(SITE["name"])}</a>
+    <span aria-hidden="true">/</span>
+    <span>about</span>
+  </nav>
+  <header class="static-list-head">
+    <p class="static-kicker">about</p>
+    <h1 class="static-title">about {esc(SITE["name"])}</h1>
+    <div class="static-intro">
+      {lead_html}
+    </div>
+  </header>
+  <p class="static-back">
+    <a href="{BASE_URL}/">← all of {esc(SITE["name"])}</a>
+  </p>"""
+    return page(
+        f"about — {SITE['name']}",
+        meta_desc,
+        canonical,
+        DEFAULT_OG_IMAGE,
+        body,
+    )
+
+
 def build(outdir: Path) -> None:
     global _EVENT_SLUGS, DEFAULT_OG_IMAGE
     events = [e for e in fetch_events() if site_match(e)]
@@ -995,6 +1065,11 @@ def build(outdir: Path) -> None:
 
     _EVENT_SLUGS = assign_event_slugs(events)
     urls = [f"{BASE_URL}/"]
+
+    about_paras = ABOUT_CONTENT.get(SITE["name"])
+    if about_paras:
+        write_index(outdir / "about", about_page(about_paras))
+        urls.append(about_url())
 
     for event in events:
         slug = event_slug(event)

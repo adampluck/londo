@@ -80,7 +80,7 @@ self.LONDO_CONFIG = {
       "accent": "top picks"
     },
     "channel": {
-      "url": "https://chat.whatsapp.com/FK2A2Gp0cftB75AYkb4wpX",
+      "url": "",
       "label": "follow psyconnect on WhatsApp"
     },
     "logo": "logo.png",
