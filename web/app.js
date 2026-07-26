@@ -8,6 +8,19 @@
   const SITE = window.LONDO_CONFIG.SITE || {};
   const FEATURES = SITE.features || {};
 
+  // Sites with `animateDayChange: false` repaint the grid without the card
+  // settle animation when a date tick is clicked — the strip stays put, so
+  // re-animating every card under it reads as flicker rather than arrival.
+  let skipCardAnim = false;
+  function renderWithoutCardAnim() {
+    skipCardAnim = FEATURES.animateDayChange === false;
+    try {
+      render();
+    } finally {
+      skipCardAnim = false;
+    }
+  }
+
   // --- PWA install / launch helpers -------------------------------------
   const UA = navigator.userAgent || "";
   function isStandalone() {
@@ -510,7 +523,7 @@
         state.day = key;
         state.surprise = null;
         syncDayTicks();
-        render();
+        renderWithoutCardAnim();
       });
       return btn;
     }
@@ -1153,11 +1166,12 @@
 
   function card(e, index) {
     const a = document.createElement("a");
-    a.className = "card";
+    a.className = "card" + (skipCardAnim ? " instant" : "");
     a.href = withUtm(e.source_url);
     a.target = "_blank";
     a.rel = "noopener";
-    a.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
+    if (!skipCardAnim)
+      a.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
 
     const banner = document.createElement("div");
     banner.className = "banner";
@@ -1384,9 +1398,13 @@
   // kind: "featured" (our own event) or "pick" (curated third party) —
   // only used for the card's border colour now; the group heading carries
   // the "what is this" label.
-  function spotlightCard(e, kind) {
+  function spotlightCard(e, kind, index) {
     const card = document.createElement("a");
-    card.className = "spotlight-card spotlight-" + kind;
+    card.className =
+      "spotlight-card spotlight-" + kind + (skipCardAnim ? " instant" : "");
+    // same staggered settle as the browse cards (see card())
+    if (!skipCardAnim)
+      card.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
     card.href = withUtm(e.source_url);
     card.target = "_blank";
     card.rel = "noopener";
@@ -1536,7 +1554,7 @@
     }
 
     if (featured) {
-      const card = spotlightCard(featured, "featured");
+      const card = spotlightCard(featured, "featured", 0);
       card.style.gridColumn = "1";
       grid.appendChild(card);
     }
@@ -1557,8 +1575,8 @@
             )
           : new Set(picks);
       let col = pickStart;
-      picks.forEach((e) => {
-        const card = spotlightCard(e, "pick");
+      picks.forEach((e, i) => {
+        const card = spotlightCard(e, "pick", featured ? i + 1 : i);
         if (desktopSet.has(e)) {
           card.style.gridColumn = String(col++);
         } else {
@@ -1674,7 +1692,7 @@
       state.day = btn.dataset.day;
       state.surprise = null;
       syncDayTicks();
-      render();
+      renderWithoutCardAnim();
     });
 
     enableDragScroll(document.getElementById("week-strip"));

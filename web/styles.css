@@ -797,6 +797,12 @@ main {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* repaints that shouldn't read as an arrival (see animateDayChange) */
+.card.instant {
+  opacity: 1;
+  animation: none;
+}
+
 .card:hover {
   transform: translateY(-5px);
   border-color: rgba(232, 169, 140, 0.45);

@@ -300,7 +300,13 @@ body {
   color: var(--sel-ink);
 }
 /* the underline rides in as a background layer: .controls * kills every
-   box-shadow on the bench, which is where londo drew it */
+   box-shadow on the bench, which is where londo drew it. londo's
+   `transition: background` would interpolate that gradient's position, so
+   the rule visibly slides down the tick on click — colour only here. */
+.tick {
+  transition: color 0.15s;
+}
+
 .tick.cursor {
   background:
     linear-gradient(var(--sel-line), var(--sel-line)) bottom / 100% 2px no-repeat,
@@ -621,6 +627,40 @@ footer a {
 
 .spotlight-featured {
   border-color: var(--peach);
+}
+
+/* Entrance and rollover in step with the browse cards (`.card` in
+   styles.css): staggered settle on arrival, peach edge + shadow + slow
+   image zoom on hover. No lift here — `settle` runs with fill-mode
+   forwards, so the animated transform outranks any :hover transform and
+   the browse cards never actually rise. Matching means staying flat. */
+.spotlight-card {
+  opacity: 0;
+  animation: settle 0.55s ease forwards;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.spotlight-card.instant {
+  opacity: 1;
+  animation: none;
+}
+
+.spotlight-media img {
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.spotlight-card:hover {
+  border-color: var(--peach);
+  box-shadow: 0 14px 30px -18px light-dark(rgba(90, 62, 40, 0.5), rgba(0, 0, 0, 0.8));
+}
+
+.spotlight-card:hover .spotlight-media img {
+  transform: scale(1.045);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-card { animation-duration: 0.01s; }
+  .spotlight-card:hover .spotlight-media img { transform: none; }
 }
 
 .spotlight-media {
