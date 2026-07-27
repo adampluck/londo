@@ -1032,7 +1032,7 @@ def listing_page(
         canonical,
         DEFAULT_OG_IMAGE,
         body,
-        css_prefix="..",
+        css_prefix="../..",
     )
 
 
