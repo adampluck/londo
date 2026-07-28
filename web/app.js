@@ -1588,10 +1588,17 @@
     // trusted organisers would otherwise leave the row half empty, so when
     // it can't fill the slots we reach further out (windowDaysMax). Sorting
     // is by date throughout, so the near events still come first.
+    // Widening is decided against the configured total, not the caller's
+    // limit: renderSpotlight re-runs this with a smaller limit just to get
+    // the desktop-sized subset's organiser spread (see below), and that
+    // smaller number must not make the near week look fuller than it is —
+    // otherwise the desktop recompute quietly skips the far window that the
+    // full (mobile) pick list already widened into.
     const near = cfg.windowDays || 7;
     let candidates = within(near);
     const far = cfg.windowDaysMax || 0;
-    if (candidates.length < maxTotal && far > near) candidates = within(far);
+    const widenThreshold = Math.max(maxTotal, cfg.maxTotal || 3);
+    if (candidates.length < widenThreshold && far > near) candidates = within(far);
     if (!candidates.length) return [];
 
     const priority = (cfg.priorityOrganizer || "").toLowerCase();
