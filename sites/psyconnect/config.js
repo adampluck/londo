@@ -74,8 +74,7 @@ self.LONDO_CONFIG = {
       "maxTotal": 4,
       "maxMobile": 5,
       "priorityOrganizer": "The Psychedelic Society",
-      "windowDays": 7,
-      "windowDaysMax": 45,
+      "windowStages": [7, 14, 30],
       "label": "Our upcoming top picks",
       "accent": "top picks"
     },

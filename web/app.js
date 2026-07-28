@@ -1558,12 +1558,12 @@
   // can show more of them — SITE.curated.maxMobile, defaulting to maxTotal.
 
   // Selects up to `limit` events from SITE.curated.organizers/titleMatches,
-  // within the next windowDays, dropping SITE.curated.exclude title matches
-  // (e.g. Numinity's weekly running club). Spreads picks across distinct
-  // organisers (round-robin, earliest event each) rather than stacking
-  // repeats of one — priorityOrganizer is only ever the first pick when
-  // there's just one candidate slot, and only contributes a 2nd/3rd pick
-  // once every other organiser in the window has already had a turn.
+  // dropping SITE.curated.exclude title matches (e.g. Numinity's weekly
+  // running club). Spreads picks across distinct organisers (round-robin,
+  // earliest event each) rather than stacking repeats of one —
+  // priorityOrganizer is only ever the first pick when there's just one
+  // candidate slot, and only contributes a 2nd/3rd pick once every other
+  // organiser in the window has already had a turn.
   function pickCurated(excludeSourceUrl, limit) {
     const cfg = SITE.curated;
     if (!cfg) return [];
@@ -1584,21 +1584,26 @@
       });
     };
 
-    // The near window is the preference, not the rule: a quiet week from the
+    // The near week is the preference, not the rule: a quiet week from the
     // trusted organisers would otherwise leave the row half empty, so when
-    // it can't fill the slots we reach further out (windowDaysMax). Sorting
-    // is by date throughout, so the near events still come first.
+    // it can't fill the slots (even with repeats — see the backfill below)
+    // we reach further out, stage by stage (windowStages, e.g. 7/14/30 days).
+    // Sorting is by date throughout, so the near events still come first.
     // Widening is decided against the configured total, not the caller's
     // limit: renderSpotlight re-runs this with a smaller limit just to get
     // the desktop-sized subset's organiser spread (see below), and that
     // smaller number must not make the near week look fuller than it is —
-    // otherwise the desktop recompute quietly skips the far window that the
-    // full (mobile) pick list already widened into.
-    const near = cfg.windowDays || 7;
-    let candidates = within(near);
-    const far = cfg.windowDaysMax || 0;
+    // otherwise the desktop recompute quietly skips stages that the full
+    // (mobile) pick list already widened into.
+    const stages = cfg.windowStages && cfg.windowStages.length
+      ? cfg.windowStages
+      : [cfg.windowDays || 7];
     const widenThreshold = Math.max(maxTotal, cfg.maxTotal || 3);
-    if (candidates.length < widenThreshold && far > near) candidates = within(far);
+    let candidates = [];
+    for (const days of stages) {
+      candidates = within(days);
+      if (candidates.length >= widenThreshold) break;
+    }
     if (!candidates.length) return [];
 
     const priority = (cfg.priorityOrganizer || "").toLowerCase();
