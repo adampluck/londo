@@ -73,7 +73,6 @@ self.LONDO_CONFIG = {
       "exclude": ["running club"],
       "maxTotal": 4,
       "maxMobile": 5,
-      "priorityOrganizer": "The Psychedelic Society",
       "windowStages": [7, 14, 30],
       "label": "Our upcoming top picks",
       "accent": "top picks"
