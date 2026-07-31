@@ -409,13 +409,23 @@
     (term) => new RegExp("(^|[^a-z0-9])" + escapeRe(term))
   );
 
+  // excludeText: same word-start matching, but the description counts too.
+  // Only for terms distinctive enough that a mention in the blurb really
+  // does mean the event is off-brand (e.g. "shibari").
+  const excludeTextRes = ((SITE.filter && SITE.filter.excludeText) || []).map(
+    (term) => new RegExp("(^|[^a-z0-9])" + escapeRe(term))
+  );
+
   function isExcluded(e) {
-    if (!excludeRes.length) return false;
+    if (!excludeRes.length && !excludeTextRes.length) return false;
     const hay = [e.title, e.organizer_name, (e.tags || []).join(" ")]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
-    return excludeRes.some((re) => re.test(hay));
+    if (excludeRes.some((re) => re.test(hay))) return true;
+    if (!excludeTextRes.length) return false;
+    const deepHay = (hay + " " + (e.description || "")).toLowerCase();
+    return excludeTextRes.some((re) => re.test(deepHay));
   }
 
   // A filtered site (SITE.filter) only ever sees its slice of the table:

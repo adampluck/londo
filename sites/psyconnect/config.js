@@ -43,7 +43,8 @@ self.LONDO_CONFIG = {
         "red light therapy", "high performers", "performance studio",
         "biohacking", "bon charge", "ydun",
         "aperitivo", "bottomless brunch", "coworking", "investor"
-      ]
+      ],
+      "excludeText": ["shibari"]
     },
     "topics": [
       "psychedelics", "consciousness", "spirituality & ritual",

@@ -329,7 +329,8 @@ def _excluded(event: dict, flt: dict) -> bool:
     ("founders meet up") still match, "remedy" no longer trips "emed".
     """
     terms = flt.get("exclude") or []
-    if not terms:
+    text_terms = flt.get("excludeText") or []
+    if not terms and not text_terms:
         return False
     hay = " ".join(
         p
@@ -340,8 +341,17 @@ def _excluded(event: dict, flt: dict) -> bool:
         )
         if p
     ).lower()
-    return any(
+    if any(
         re.search(r"(^|[^a-z0-9])" + re.escape(term), hay) for term in terms
+    ):
+        return True
+    # excludeText: same matching, but the description counts too. Only for
+    # terms distinctive enough that a mention in the blurb really does mean
+    # the event is off-brand (e.g. "shibari").
+    deep_hay = (hay + " " + (event.get("description") or "")).lower()
+    return any(
+        re.search(r"(^|[^a-z0-9])" + re.escape(term), deep_hay)
+        for term in text_terms
     )
 
 
