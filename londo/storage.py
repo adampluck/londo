@@ -106,18 +106,34 @@ class SupabaseStore:
         logger.info("Upserted %d events to Supabase", written)
         return written
 
+    # PostgREST caps a response at 1000 rows, so this has to be paged: an
+    # enriched event missing from the map is re-classified on every run, and
+    # the bill for that grows with the table.
+    PAGE = 1000
+
     def fetch_enrichment(self) -> dict[tuple[str, str], dict]:
         """Existing enrichment keyed by (source, source_id), so the scrape
         only pays for LLM calls on events it hasn't classified before."""
         cols = "source,source_id," + ",".join(self.ENRICHMENT_COLUMNS)
-        response = self.session.get(
-            f"{self.url}/rest/v1/events?select={cols}&enriched_at=not.is.null",
-            timeout=60,
-        )
-        if response.status_code == 400:  # migration not applied yet
-            return {}
-        response.raise_for_status()
-        return {(r["source"], r["source_id"]): r for r in response.json()}
+        url = f"{self.url}/rest/v1/events?select={cols}&enriched_at=not.is.null"
+        out: dict[tuple[str, str], dict] = {}
+        offset = 0
+        while True:
+            response = self.session.get(
+                f"{url}&order=source.asc,source_id.asc"
+                f"&offset={offset}&limit={self.PAGE}",
+                timeout=60,
+            )
+            if response.status_code == 400:  # migration not applied yet
+                return {}
+            response.raise_for_status()
+            rows = response.json()
+            out.update({(r["source"], r["source_id"]): r for r in rows})
+            if len(rows) < self.PAGE:
+                break
+            offset += self.PAGE
+        logger.info("Loaded enrichment for %d events", len(out))
+        return out
 
     def fetch_pending_submissions(self) -> list[dict]:
         response = self.session.get(
