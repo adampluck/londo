@@ -14,6 +14,49 @@ POSTCODE_RE = re.compile(r"\b(EC|WC|E|N|NW|SE|SW|W)(\d{1,2})[A-Z]?\b", re.I)
 
 AREAS = ("central", "east", "north", "south", "west")
 
+# Outer-London postcode areas. A few (EN, KT, DA, WD) straddle the boundary
+# into the home counties and are left out: sources that reach them are
+# generally leaving London altogether.
+OUTER_POSTCODE_RE = re.compile(r"\b(BR|CR|HA|IG|RM|SM|TW|UB)(\d{1,2})[A-Z]?\b", re.I)
+
+# Greater London boroughs and the districts that stand in for them in
+# addresses, for venues that name a place but never "London" ("Richmond
+# Station", "Lauderdale House, Highgate"). Names shared with towns outside
+# London (Richmond, Sutton) are a deliberate trade: the sources these
+# match are London listings to begin with.
+LONDON_PLACES = frozenset(
+    """
+    barking dagenham barnet bexley brent bromley camden croydon ealing
+    enfield greenwich hackney hammersmith fulham haringey harrow havering
+    hillingdon hounslow islington kensington chelsea kingston lambeth
+    lewisham merton newham redbridge richmond southwark sutton
+    tower-hamlets walthamstow wandsworth westminster shoreditch hoxton
+    dalston peckham brixton clapham camberwell deptford bermondsey
+    highgate hampstead holloway kilburn stratford twickenham wimbledon
+    soho dulwich hackney-wick
+    """.split()
+)
+
+_WORD_RE = re.compile(r"[a-z]+(?:-[a-z]+)?")
+
+
+def is_london(text: str) -> bool:
+    """Whether a free-text address plausibly sits in Greater London.
+
+    Used by sources that cover more than London (national networks,
+    Meetup groups that occasionally run a retreat elsewhere) to keep only
+    what belongs here. Answers on positive evidence — callers decide what
+    an unrecognised address means.
+    """
+    if not text:
+        return False
+    lowered = text.lower()
+    if "london" in lowered:
+        return True
+    if POSTCODE_RE.search(text) or OUTER_POSTCODE_RE.search(text):
+        return True
+    return any(word in LONDON_PLACES for word in _WORD_RE.findall(lowered))
+
 
 def assign_area(event: Event) -> str | None:
     """Deterministic London area from postcode (preferred) or lat/lng."""

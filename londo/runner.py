@@ -9,6 +9,7 @@ import click
 from londo.dedupe import dedupe
 from londo.models import Event
 from londo.output import write_events
+from londo.scrapers.consciouscafe import ConsciousCafeScraper
 from londo.scrapers.dandelion import DandelionScraper
 from londo.scrapers.eventbrite import EventbriteListingsScraper, NuminityScraper
 from londo.scrapers.luma import LumaScraper
@@ -31,6 +32,7 @@ SCRAPERS = {
     "eventbrite": EventbriteListingsScraper,
     "psycalendar": PsyCalendarScraper,  # aggregator; events land under 'other'
     "studysociety": StudySocietyScraper,
+    "consciouscafe": ConsciousCafeScraper,
     "seeds": SeedsScraper,  # chat-ingested URLs; needs Supabase credentials
     "submissions": SubmissionsScraper,  # community links; needs Supabase creds
 }
