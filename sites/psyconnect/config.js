@@ -14,6 +14,11 @@ self.LONDO_CONFIG = {
   // static pages share one filter definition.
   // "channel": the footer's "follow us" link (SPA + static pages). Paste
   // the WhatsApp channel invite URL to switch it on; empty = hidden.
+  // "joinCommunity": the unlisted /join-community/ page. Both the Worker URL
+  // (workers/join-community) and the Turnstile *site* key must be set or the
+  // page isn't built. The invite link itself is a Worker secret, never here.
+  // Clear passphraseHint to drop the passphrase field (also unset the
+  // Worker's JOIN_PASSPHRASE secret).
   SITE: /*SITE-JSON*/ {
     "id": "psyconnect",
     "name": "psyconnect",
@@ -81,6 +86,11 @@ self.LONDO_CONFIG = {
     "channel": {
       "url": "",
       "label": "follow psyconnect on WhatsApp"
+    },
+    "joinCommunity": {
+      "workerUrl": "https://psyconnect-join.plucky101.workers.dev",
+      "turnstileSiteKey": "0x4AAAAAAEG-S32kYG1X6qMl",
+      "passphraseHint": "Find the passphrase on our Luma event"
     },
     "logo": "logo.png",
     "shellExtras": ["theme.css", "bg.jpg", "logo.png"]

@@ -1,0 +1,20 @@
+name = "psyconnect-join"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# 5 attempts per minute per IP. The binding only accepts a period of 10 or 60
+# seconds — for an hourly cap we'd need a KV namespace keyed by IP with a TTL.
+[[unsafe.bindings]]
+name = "JOIN_RL"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 5, period = 60 }
+
+[vars]
+ALLOWED_ORIGIN = "https://psyconnect.london"
+
+# Secrets (never in this file — `wrangler secret put NAME`, or the dashboard at
+# Workers → psyconnect-join → Settings → Variables):
+#   TURNSTILE_SECRET     Turnstile secret key
+#   WHATSAPP_INVITE_URL  the invite link — edit here to rotate it
+#   JOIN_PASSPHRASE      shared passphrase; unset disables the passphrase check

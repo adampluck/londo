@@ -299,6 +299,9 @@ PRIVACY_CONTENT: dict[str, list[str]] = {
         "Clicking through to buy a ticket takes you to the organiser's "
         "own site or ticketing platform, which has its own privacy "
         "policy; this site has no visibility into what happens there.",
+        "One exception: the community join page runs a Cloudflare Turnstile "
+        "check, which sends your IP address to Cloudflare to confirm you're "
+        "not a bot. Nothing about that check is stored here.",
     ],
 }
 
@@ -607,6 +610,7 @@ def page(
     body: str,
     json_ld: dict | None = None,
     css_prefix: str = NESTED_PREFIX,
+    head_extra: str = "",
 ) -> str:
     # "</" must not appear inside a <script> block: a scraped description
     # containing "</script>" would otherwise break out and execute (XSS)
@@ -632,6 +636,7 @@ def page(
   <title>{esc(title)}</title>
   <meta name="description" content="{esc(description)}">
   <link rel="canonical" href="{esc(canonical)}">
+  {head_extra}
   <meta property="og:site_name" content="{esc(display_name())}">
   <meta property="og:type" content="website">
   <meta property="og:title" content="{esc(title)}">
@@ -1120,6 +1125,160 @@ def privacy_page(paragraphs: list[str]) -> str:
     )
 
 
+def join_community_url() -> str:
+    return f"{BASE_URL}/join-community/"
+
+
+# Kept out of the f-string below because it is dense with JS braces. The three
+# __PLACEHOLDERS__ are substituted, not interpolated.
+JOIN_SCRIPT = """
+(function () {
+  var form = document.getElementById("join-form");
+  var button = document.getElementById("join-submit");
+  var status = document.getElementById("join-status");
+  var result = document.getElementById("join-result");
+  var loadedAt = Date.now();
+
+  // Dwell gate: a real person needs a moment to read the page anyway, and
+  // instant submits are the signature of a script.
+  button.disabled = true;
+  setTimeout(function () { button.disabled = false; }, __DWELL_MS__);
+
+  var MESSAGES = {
+    rate: "too many tries. wait a minute, then try again.",
+    passphrase: "that's not the word \\u2014 check where you found this link.",
+    token: "the human check didn't pass. try again.",
+    stale: "the human check expired. try again.",
+    fast: "that was too quick. give the page a moment, then try again.",
+  };
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var token = (form.elements["cf-turnstile-response"] || {}).value || "";
+    if (!token) {
+      status.textContent = "still checking you're human \\u2014 one moment, then try again.";
+      return;
+    }
+    button.disabled = true;
+    status.textContent = "checking\\u2026";
+
+    fetch("__WORKER_URL__", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: token,
+        passphrase: (form.elements.passphrase || {}).value || "",
+        website: (form.elements.website || {}).value || "",
+        dwellMs: Date.now() - loadedAt,
+      }),
+    })
+      .then(function (res) {
+        return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+      })
+      .then(function (r) {
+        if (!r.ok || !r.data.url) {
+          throw new Error(r.data.error || "failed");
+        }
+        reveal(r.data.url);
+      })
+      .catch(function (err) {
+        status.textContent =
+          MESSAGES[err.message] || "something went wrong. reload the page and try again.";
+        button.disabled = false;
+        // Turnstile tokens are single-use, so the widget needs a fresh one.
+        if (window.turnstile) window.turnstile.reset();
+      });
+  });
+
+  function reveal(url) {
+    form.hidden = true;
+    status.textContent = "";
+    var link = document.createElement("a");
+    link.className = "join-invite";
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "open the WhatsApp invite";
+    var copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "join-copy";
+    copy.textContent = "copy link";
+    copy.addEventListener("click", function () {
+      navigator.clipboard.writeText(url).then(function () {
+        copy.textContent = "copied";
+        setTimeout(function () { copy.textContent = "copy link"; }, 2000);
+      });
+    });
+    result.appendChild(link);
+    result.appendChild(copy);
+    result.hidden = false;
+    link.focus();
+  }
+})();
+"""
+
+
+def join_community_page(join: dict) -> str:
+    """Turnstile-gated page revealing the WhatsApp invite. The invite URL is
+    never here — the Worker at join["workerUrl"] holds it and only returns it
+    once the token, passphrase, honeypot and rate limit all pass."""
+    canonical = join_community_url()
+    hint = join.get("passphraseHint") or ""
+    passphrase_field = (
+        f"""
+      <label class="join-label" for="join-passphrase">passphrase</label>
+      <p class="join-hint">{esc(hint)}</p>
+      <input class="join-input" id="join-passphrase" name="passphrase" type="text"
+             autocomplete="off" autocapitalize="none" spellcheck="false" required>"""
+        if hint
+        else ""
+    )
+
+    script = (
+        JOIN_SCRIPT.replace("__WORKER_URL__", join["workerUrl"].rstrip("/"))
+        .replace("__DWELL_MS__", "2500")
+        .replace("</", "<\\/")  # never let a value break out of <script>
+    )
+
+    body = f"""
+  <header class="static-list-head">
+    <p class="static-kicker">community</p>
+    <h1 class="static-title">join the {esc(display_name())} community</h1>
+    <div class="static-intro">
+      <p class="static-lead">A WhatsApp group for people who come to these
+      gatherings — plans, questions, and the odd last-minute ticket.</p>
+      <p class="static-lead">Confirm you're human and the invite link appears.</p>
+    </div>
+  </header>
+  <form class="join-form" id="join-form" novalidate>
+    {passphrase_field}
+    <div class="join-honeypot" aria-hidden="true">
+      <label for="join-website">leave this empty</label>
+      <input id="join-website" name="website" type="text" tabindex="-1" autocomplete="off">
+    </div>
+    <div class="cf-turnstile" data-sitekey="{esc(join["turnstileSiteKey"])}"
+         data-theme="auto" data-appearance="always"></div>
+    <button class="join-submit" id="join-submit" type="submit">show me the invite</button>
+    <p class="join-status" id="join-status" role="status" aria-live="polite"></p>
+  </form>
+  <div class="join-result" id="join-result" hidden></div>
+  <p class="static-back">
+    <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
+  </p>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script>{script}</script>"""
+
+    return page(
+        f"join the community — {display_name()}",
+        f"Join the {display_name()} WhatsApp community.",
+        canonical,
+        None,
+        body,
+        css_prefix="..",
+        head_extra='<meta name="robots" content="noindex, nofollow">',
+    )
+
+
 def build(outdir: Path) -> None:
     global _EVENT_SLUGS, DEFAULT_OG_IMAGE
     events = [e for e in fetch_events() if site_match(e)]
@@ -1156,6 +1315,14 @@ def build(outdir: Path) -> None:
     if privacy_paras:
         write_index(outdir / "privacy", privacy_page(privacy_paras))
         urls.append(privacy_url())
+
+    # Unlisted by design: reachable only by typing the URL. No sitemap entry,
+    # no .html twin, no link from any other page. Off until SITE.joinCommunity
+    # names a deployed Worker.
+    join = SITE_JSON.get("joinCommunity") or {}
+    has_join = bool(join.get("workerUrl") and join.get("turnstileSiteKey"))
+    if has_join:
+        write_index(outdir / "join-community", join_community_page(join))
 
     for event in events:
         slug = event_slug(event)
@@ -1225,8 +1392,9 @@ def build(outdir: Path) -> None:
         + "</urlset>\n"
     )
     (outdir / "sitemap.xml").write_text(sitemap)
+    disallow = "Disallow: /join-community/\n" if has_join else ""
     (outdir / "robots.txt").write_text(
-        f"User-agent: *\nAllow: /\nSitemap: {BASE_URL}/sitemap.xml\n"
+        f"User-agent: *\nAllow: /\n{disallow}Sitemap: {BASE_URL}/sitemap.xml\n"
     )
     print(f"Wrote {len(urls)} pages -> {outdir}")
 

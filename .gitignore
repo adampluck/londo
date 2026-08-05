@@ -6,3 +6,6 @@ __pycache__/
 data/
 build/
 build-psyconnect/
+node_modules/
+.wrangler/
+.dev.vars

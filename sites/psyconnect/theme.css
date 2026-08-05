@@ -1023,3 +1023,118 @@ body.theme-night .blob { opacity: 0.3; }
 .key-expand.lit,
 .key-think.lit,
 .key-make.lit { color: var(--gold); }
+
+/* /join-community/ — the Turnstile-gated WhatsApp invite page. Card, input
+   and button follow .spotlight-card's surface: --card fill, --card-edge
+   border, peach on focus/hover. */
+.join-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin: 1.6rem 0 0;
+  padding: 1.4rem;
+  background: var(--card);
+  border: 1.5px solid var(--card-edge);
+  border-radius: var(--radius);
+}
+
+.join-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mauve);
+}
+
+.join-hint {
+  margin: 0.35rem 0 0.6rem;
+  font-size: 0.9rem;
+  color: var(--ink-dim);
+}
+
+.join-input {
+  width: 100%;
+  max-width: 22rem;
+  margin: 0 0 1.1rem;
+  padding: 0.7rem 0.85rem;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--ink);
+  background: light-dark(rgba(255, 252, 245, 0.8), rgba(0, 0, 0, 0.18));
+  border: 1.5px solid var(--card-edge);
+  border-radius: 12px;
+  transition: border-color 0.3s ease;
+}
+
+.join-input:focus {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+  border-color: var(--peach);
+}
+
+/* the honeypot: off-screen rather than display:none, which some bots skip */
+.join-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.join-submit,
+.join-copy {
+  margin: 1.1rem 0 0;
+  padding: 0.7rem 1.3rem;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: transparent;
+  border: 1.5px solid var(--card-edge);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+.join-submit:hover:not(:disabled),
+.join-copy:hover {
+  color: var(--peach);
+  border-color: var(--peach);
+}
+
+.join-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.join-status:empty { display: none; }
+
+.join-status {
+  margin: 0.9rem 0 0;
+  font-size: 0.92rem;
+  color: var(--gold);
+}
+
+.join-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 1.6rem 0 0;
+  padding: 1.4rem;
+  background: var(--card);
+  border: 1.5px solid var(--peach);
+  border-radius: var(--radius);
+}
+
+.join-invite {
+  font-family: var(--display);
+  font-size: 1.15rem;
+  color: var(--peach);
+  text-decoration: none;
+}
+
+.join-invite:hover { color: var(--gold); }
+
+.join-copy { margin: 0; }
