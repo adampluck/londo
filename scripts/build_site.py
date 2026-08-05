@@ -1150,6 +1150,7 @@ JOIN_SCRIPT = """
     token: "the human check didn't pass. try again.",
     stale: "the human check expired. try again.",
     fast: "that was too quick. give the page a moment, then try again.",
+    config: "the invite isn't set up right now. try again later.",
   };
 
   form.addEventListener("submit", function (e) {
@@ -1198,7 +1199,7 @@ JOIN_SCRIPT = """
     link.href = url;
     link.target = "_blank";
     link.rel = "noopener";
-    link.textContent = "open the WhatsApp invite";
+    link.textContent = url;
     var copy = document.createElement("button");
     copy.type = "button";
     copy.className = "join-copy";

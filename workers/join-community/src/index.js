@@ -65,6 +65,12 @@ async function handle(request, env, origin) {
   const token = String(body.token || "");
   if (!token) return fail(origin, 400, "token");
 
+  // A missing secret would make siteverify reject every token, which reads to
+  // the visitor as "you failed the human check" — say "misconfigured" instead.
+  if (!env.TURNSTILE_SECRET || !env.WHATSAPP_INVITE_URL) {
+    return fail(origin, 500, "config");
+  }
+
   const form = new FormData();
   form.append("secret", env.TURNSTILE_SECRET);
   form.append("response", token);
@@ -86,7 +92,7 @@ async function handle(request, env, origin) {
     return fail(origin, 403, "stale");
   }
 
-  return json(origin, 200, { url: env.WHATSAPP_INVITE_URL || "" });
+  return json(origin, 200, { url: env.WHATSAPP_INVITE_URL });
 }
 
 function cors(origin) {

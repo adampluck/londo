@@ -1128,11 +1128,17 @@ body.theme-night .blob { opacity: 0.3; }
   border-radius: var(--radius);
 }
 
+/* the invite URL shown verbatim: mono so it reads as a link you could copy by
+   hand, and breaking anywhere so a long code can't push the card sideways */
 .join-invite {
-  font-family: var(--display);
-  font-size: 1.15rem;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  line-height: 1.5;
   color: var(--peach);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
 }
 
 .join-invite:hover { color: var(--gold); }
