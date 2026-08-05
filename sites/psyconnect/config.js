@@ -17,8 +17,12 @@ self.LONDO_CONFIG = {
   // "joinCommunity": the unlisted /join-community/ page. Both the Worker URL
   // (workers/join-community) and the Turnstile *site* key must be set or the
   // page isn't built. The invite link itself is a Worker secret, never here.
-  // Clear passphraseHint to drop the passphrase field (also unset the
-  // Worker's JOIN_PASSPHRASE secret).
+  // The passphrase layer is off: passphraseHint is empty, so no field is
+  // rendered, and the Worker has no JOIN_PASSPHRASE secret, so it doesn't
+  // check one. To turn it back on, do both — `wrangler secret put
+  // JOIN_PASSPHRASE` first, then set the hint here (say where to find the
+  // word, never the word itself: this text is public). Secret first, or the
+  // live page asks for nothing while the Worker still demands it.
   SITE: /*SITE-JSON*/ {
     "id": "psyconnect",
     "name": "psyconnect",
@@ -90,7 +94,7 @@ self.LONDO_CONFIG = {
     "joinCommunity": {
       "workerUrl": "https://psyconnect-join.plucky101.workers.dev",
       "turnstileSiteKey": "0x4AAAAAAEG-S32kYG1X6qMl",
-      "passphraseHint": "Find the passphrase on our Luma event"
+      "passphraseHint": ""
     },
     "logo": "logo.png",
     "shellExtras": ["theme.css", "bg.jpg", "logo.png"]
