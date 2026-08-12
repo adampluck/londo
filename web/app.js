@@ -21,6 +21,16 @@
     }
   }
 
+  // Tapping a date on a small screen changes the list below the fold
+  // (featured/top picks sit between the ticker and #events), so nothing
+  // visible appears to happen. Scroll the results into view to confirm
+  // the tap registered.
+  function scrollToEvents() {
+    const el = document.getElementById("events");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   // --- PWA install / launch helpers -------------------------------------
   const UA = navigator.userAgent || "";
   function isStandalone() {
@@ -621,6 +631,7 @@
         state.surprise = null;
         syncDayTicks();
         renderWithoutCardAnim();
+        scrollToEvents();
       });
       return btn;
     }
@@ -1955,6 +1966,7 @@
       state.surprise = null;
       syncDayTicks();
       renderWithoutCardAnim();
+      scrollToEvents();
     });
 
     enableDragScroll(document.getElementById("week-strip"));
