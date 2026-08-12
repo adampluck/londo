@@ -132,6 +132,9 @@ EVENTBRITE_ORGANIZERS = {
     "109324686131": "YOUnited Breath Space",
     "95867879283": "Moon Haven",
     "121274518486": "Gaia Wellbeing Collective CIC",
+    "74421598883": "FULL JOY",
+    "18772485944": "Alvoré",
+    "64817739183": "Justyna",
 }
 
 # Greater London bounding box — events outside this are skipped.
