@@ -2278,6 +2278,21 @@
     initInstallHint();
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("sw.js").catch(() => {});
+      // A cache-version bump (sw.js CACHE) installs a new worker that takes
+      // over via skipWaiting+clients.claim, but the *already-open* tab keeps
+      // running the JS it loaded under the old one until it navigates again
+      // — so a deploy fix can sit invisible behind "your last visit" for
+      // days on an installed PWA. controllerchange fires exactly when that
+      // handover happens (never on a page's first-ever install, since
+      // there's no prior controller to change from), so a single reload
+      // here is enough to pick up the new shell without a manual hard
+      // refresh. `reloaded` guards against a reload loop.
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (reloaded) return;
+        reloaded = true;
+        window.location.reload();
+      });
     }
     applyTimeTheme();
     initAnalytics();
