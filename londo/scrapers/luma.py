@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 
 import icalendar
 
+from londo.geo import is_london
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
 
@@ -30,7 +31,13 @@ EXTRA_CALENDARS = [
     "unseen",
     "cml",
     "theofflineclublondon",
+    "epicllama",
 ]
+
+# Calendars in EXTRA_CALENDARS that run events in multiple cities, not just
+# London (Epic Llama runs "F*ck the Small Talk" in ~30 cities worldwide) —
+# every event they list gets is_london-filtered rather than assumed local.
+MULTI_CITY_CALENDARS = frozenset({"epicllama"})
 
 # Luma user profiles whose hosted events are scraped in addition to the
 # feeds above (luma.com/user/<username>). PsyConnect London is our own
@@ -187,7 +194,9 @@ class LumaScraper(BaseScraper):
             return []
 
         logger.info("Scraping Luma calendar '%s' (%s)", slug, cal_api_id)
+        multi_city = slug in MULTI_CITY_CALENDARS
         events: list[Event] = []
+        skipped_other_city = 0
         cursor: str | None = None
         while True:
             params = {
@@ -199,6 +208,9 @@ class LumaScraper(BaseScraper):
             resp = self.get(f"{CALENDAR_ITEMS_URL}?{urlencode(params)}").json()
             for entry in resp.get("entries", []):
                 try:
+                    if multi_city and not _is_london_entry(entry["event"]):
+                        skipped_other_city += 1
+                        continue
                     events.append(self._build_event(entry, descriptions))
                 except Exception:
                     logger.exception("Failed to parse calendar entry from '%s'", slug)
@@ -206,6 +218,12 @@ class LumaScraper(BaseScraper):
                 break
             cursor = resp["next_cursor"]
 
+        if skipped_other_city:
+            logger.info(
+                "Skipped %d non-London event(s) from Luma calendar '%s'",
+                skipped_other_city,
+                slug,
+            )
         logger.info("Got %d events from Luma calendar '%s'", len(events), slug)
         return events
 
@@ -366,6 +384,34 @@ def build_event_from_event_api(data: dict, slug: str) -> Event | None:
         organizer=Organizer(name=org_name) if org_name else None,
         scraped_at=datetime.now(timezone.utc),
     )
+
+
+def _is_london_entry(ev: dict) -> bool:
+    """Whether a MULTI_CITY_CALENDARS event's venue is plausibly in London.
+
+    Reads the raw geo_address_info rather than a built Location: a venue
+    hidden pre-RSVP ("mode": "obfuscated" with no city fields at all) would
+    otherwise fall through build_location's "London, UK" default, which
+    exists for calendars that only ever run in London and is wrong here —
+    no city evidence means excluded, not included. Online events carry no
+    venue to judge either.
+    """
+    if ev.get("location_type") != "offline":
+        return False
+    geo = ev.get("geo_address_info") or {}
+    localized = (geo.get("localized") or {}).get("en-GB") or {}
+    text = " ".join(
+        p
+        for p in (
+            geo.get("address"),
+            localized.get("full_address"),
+            geo.get("full_address"),
+            geo.get("city_state"),
+            geo.get("city"),
+        )
+        if p
+    )
+    return is_london(text)
 
 
 def build_location(geo: dict, coord: dict) -> Location | None:
