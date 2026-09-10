@@ -1609,16 +1609,19 @@
     // it can't fill the slots (even with repeats — see the backfill below)
     // we reach further out, stage by stage (windowStages, e.g. 7/14/30 days).
     // Sorting is by date throughout, so the near events still come first.
-    // Widening is decided against the configured total, not the caller's
-    // limit: renderSpotlight re-runs this with a smaller limit just to get
-    // the desktop-sized subset's organiser spread (see below), and that
-    // smaller number must not make the near week look fuller than it is —
-    // otherwise the desktop recompute quietly skips stages that the full
-    // (mobile) pick list already widened into.
+    // Widening is decided against the larger of maxTotal/maxMobile, never
+    // against the caller's own limit: renderSpotlight re-runs this with a
+    // smaller limit just to get the desktop-sized subset's organiser spread
+    // (see below), and that recompute has to widen to the *same* window the
+    // full (mobile) pick list did — otherwise the two calls can land on
+    // different-sized candidate pools with different organiser round-robins,
+    // and the "desktop" picks stop being a subset of the "mobile" ones, so
+    // renderSpotlight's desktopSet.has(e) check silently drops picks that
+    // never even appear in the mobile list to compare against.
     const stages = cfg.windowStages && cfg.windowStages.length
       ? cfg.windowStages
       : [cfg.windowDays || 7];
-    const widenThreshold = Math.max(maxTotal, cfg.maxTotal || 3);
+    const widenThreshold = Math.max(cfg.maxTotal || 3, cfg.maxMobile || 0);
     let candidates = [];
     for (const days of stages) {
       candidates = within(days);
