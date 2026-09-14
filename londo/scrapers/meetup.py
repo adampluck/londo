@@ -24,6 +24,7 @@ MEETUP_GROUPS = [
     "thought-experiments-in-pubs",
     "spiritual-vibes",
     "spiritualunderground",
+    "spiritualcreatives",
 ]
 
 _MEETUP_URL_RE = re.compile(r"https?://(?:www\.)?meetup\.com/\S+")
