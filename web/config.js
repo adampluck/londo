@@ -9,4 +9,7 @@ self.LONDO_CONFIG = {
   // GoatCounter (open source, cookieless) — register the "londo" code at
   // goatcounter.com; leave empty ("") to disable analytics entirely.
   GOATCOUNTER: "https://londo.goatcounter.com/count",
+  // CARTO basemap key (map tiles). Public like the anon key above —
+  // restrict it to the site's domains at https://carto.com/basemaps/apikey/
+  CARTO_API_KEY: "cb1_3kru_1_c22ef6590f5bf44aa5dd60d9",
 };

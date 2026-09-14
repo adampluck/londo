@@ -1367,11 +1367,14 @@
         [51.5072, -0.1276],
         11
       );
+      const cartoKey = window.LONDO_CONFIG.CARTO_API_KEY || "";
       L.tileLayer(
-        `https://{s}.basemaps.cartocdn.com/${SITE.mapTiles || "dark_all"}/{z}/{x}/{y}{r}.png`,
+        `https://{s}.basemaps.cartocdn.com/rastertiles/${SITE.mapTiles || "dark_all"}/{z}/{x}/{y}{r}.png` +
+          (cartoKey ? `?key=${encodeURIComponent(cartoKey)}` : ""),
         {
           attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          subdomains: "abcd",
           maxZoom: 19,
         }
       ).addTo(state.map);
