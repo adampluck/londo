@@ -24,6 +24,16 @@ MESSAGE_HEADER_RE = re.compile(
 
 URL_RE = re.compile(r"https?://[^\s<>\"')\]}]+", re.I)
 
+# People also paste bare sites ("healingartsmassages.com", "www.x.org/book").
+# Only well-known endings, not preceded by "@" (emails) or "/" (already
+# part of a full URL above).
+BARE_URL_RE = re.compile(
+    r"(?<![@/\w.-])((?:www\.)?(?:[a-z0-9-]+\.)+"
+    r"(?:com|co\.uk|org\.uk|org|uk|net|io|app|life|events|london|me|info|eu|co|live|space|studio|yoga|love|community)"
+    r"(?:/[^\s<>\"')\]}]*)?)(?![\w.-]*@)",
+    re.I,
+)
+
 TRACKING_PARAMS = re.compile(r"[?&](utm_[a-z]+|fbclid|gclid|mc_[a-z]+)=[^&#]*")
 
 # "<attached: 00013439-PHOTO-2026-09-12-12-42-52.jpg>" — iOS exports put
@@ -70,7 +80,12 @@ def extract_urls(export_text: str) -> list[str]:
         # strip the timestamp/author prefix when present; URLs can also be
         # in continuation lines of multi-line messages
         line = MESSAGE_PREFIX_RE.sub("", line)
-        for raw in URL_RE.findall(line):
+        found = URL_RE.findall(line)
+        found += [
+            "https://" + m.group(1)
+            for m in BARE_URL_RE.finditer(URL_RE.sub(" ", line))
+        ]
+        for raw in found:
             url = _clean_url(raw)
             key = url.lower().rstrip("/")
             if key not in seen:
