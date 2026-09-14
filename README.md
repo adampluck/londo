@@ -89,6 +89,7 @@ deploy this build; the scrape regenerates it every 6 hours.
 ## Usage
 
 ```sh
+londo help                        # cheat-sheet: WhatsApp import, seeds, deploy
 londo scrape                      # all sources -> data/*.json (debug)
 londo scrape --store supabase     # all sources -> Supabase
 londo scrape -s luma -v           # one source, verbose

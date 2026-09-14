@@ -15,9 +15,18 @@ logger = logging.getLogger(__name__)
 CHUNK_SIZE = 100
 
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
 def load_dotenv(path: str | Path = ".env") -> None:
-    """Minimal .env loader — existing environment variables win."""
+    """Minimal .env loader — existing environment variables win.
+
+    Looks in the current directory first, then the project root, so the
+    CLI works from anywhere once it's on the PATH.
+    """
     env_path = Path(path)
+    if not env_path.exists():
+        env_path = PROJECT_ROOT / path
     if not env_path.exists():
         return
     for line in env_path.read_text().splitlines():

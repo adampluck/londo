@@ -490,3 +490,76 @@ def seed(
             click.echo(f"Upserted {written} event(s) to Supabase")
         supabase.upsert_seeds(seeds)
         click.echo(f"Upserted {len(seeds)} seed(s) to Supabase")
+
+
+HELP_TEXT = """\
+Londo — everyday commands
+
+  `londo` is ~/.local/bin/londo -> .venv/bin/londo in the project
+  (pip install -e . in the venv after changing dependencies).
+  Credentials come from .env in the current dir or the project root
+  (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY).
+
+IMPORT WHATSAPP POSTS
+  1. In WhatsApp: open the group > group name > Export Chat > Attach Media.
+  2. Unzip the export into chat_export/ (gitignored; holds _chat.txt +
+     the photos). Photos older than the disappearing-message window
+     are gone, so export soon after the posts you want.
+  3. londo ingest-whatsapp chat_export/
+       --since-days 7      only posts from the last N days (default 30)
+       --store json        dry run: writes data/whatsapp.json, no upload
+       -v                  show every link fetched / flyer read
+  Links (Luma, Eventbrite, Dandelion, JSON-LD pages) are fetched and
+  seeded; flyer-only posts are read by Claude (needs ANTHROPIC_API_KEY)
+  and their photo uploaded to Storage. Writes to Supabase by default.
+  Pull a bad extraction from the site by ticking `hidden` on its row
+  in the Supabase dashboard.
+
+ADD A SINGLE EVENT LINK
+  londo seed https://luma.com/xyz [more urls...]
+       --seed-only         just remember the URL; fetch on the next scrape
+
+SCRAPE ALL SOURCES (what the 6-hourly GitHub Action runs)
+  londo scrape                    debug run -> data/all.json
+  londo scrape --store supabase   the real thing
+  londo scrape -s luma -v         one source, verbose
+{sources}
+  (Supabase-only: {supabase_only})
+
+BUILD / PREVIEW THE SITES
+  python3 scripts/build_site.py build                          londo
+  python3 scripts/build_site.py --site psyconnect build-psyconnect
+  open build-psyconnect/index.html   (or build/index.html) in a browser
+  python3 -m http.server -d web 8080          serve the live SPA locally
+  python3 scripts/preview.py [rows.json] [port]  SPA + mock Supabase
+
+DEPLOY / CI
+  gh workflow run scrape.yml     scrape + rebuild + deploy both sites now
+  gh workflow run pages.yml      redeploy the frontends only
+  gh run list --limit 5          see how the last runs went
+  Pushing to main auto-deploys when web/, sites/ or build_site.py change.
+
+ONE-OFFS
+  python3 scripts/backfill_topics.py   re-enrich events missing topics
+
+For a command's full options: londo <command> --help
+"""
+
+
+@cli.command("help")
+def help_command() -> None:
+    """Cheat-sheet of the everyday workflows (WhatsApp import, scrape, deploy)."""
+    import textwrap
+
+    sources = textwrap.fill(
+        "Sources: " + ", ".join(SCRAPERS),
+        width=76,
+        initial_indent="  ",
+        subsequent_indent="           ",
+    )
+    click.echo(
+        HELP_TEXT.format(
+            sources=sources,
+            supabase_only=", ".join(SUPABASE_ONLY_SOURCES),
+        )
+    )
