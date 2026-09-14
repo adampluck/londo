@@ -477,10 +477,14 @@ def legacy_event_id(event: dict) -> str:
 
 
 def assign_event_slugs(events: list[dict]) -> dict[tuple[str, str], str]:
-    """Prefer bare title slug; on collision append date, then a short unique tail."""
+    """Prefer bare title slug; on collision append date, then a short unique tail.
+
+    Listings without a ticket page (chat-shared flyers) pick first: the
+    SPA links them to their own page by bare title slug (eventHref() in
+    web/app.js), so that slug has to be theirs."""
     used: set[str] = set()
     mapping: dict[tuple[str, str], str] = {}
-    for event in events:
+    for event in sorted(events, key=lambda e: bool(e.get("source_url"))):
         base = slugify_title(event.get("title") or "event")
         day = ""
         if event.get("start_at"):
@@ -855,16 +859,16 @@ def event_page(event: dict) -> str:
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "GBP",
-            "url": event["source_url"],
             "availability": "https://schema.org/InStock",
+            **({"url": event["source_url"]} if event.get("source_url") else {}),
         }
     elif event.get("price_min") is not None:
         json_ld["offers"] = {
             "@type": "Offer",
             "price": str(event["price_min"]),
             "priceCurrency": "GBP",
-            "url": event["source_url"],
             "availability": "https://schema.org/InStock",
+            **({"url": event["source_url"]} if event.get("source_url") else {}),
         }
 
     facts = []
@@ -921,6 +925,21 @@ def event_page(event: dict) -> str:
             "</div>"
         )
 
+    if event.get("source_url"):
+        cta = f"""<p class="static-cta-wrap">
+      <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
+         data-goatcounter-click="out/{esc(organizer_slug(org))}"
+         data-goatcounter-title="{esc(event["title"])}">
+        tickets &amp; details ↗
+      </a>
+    </p>"""
+    else:
+        # a flyer shared in the community chat, with no page of its own:
+        # the details above are all there is
+        cta = ('<p class="static-cta-wrap static-cta-note">'
+               "shared in the community chat — no ticket page; "
+               "details as posted above</p>")
+
     area = event.get("area")
     kicker_bits = ["in person", "London"]
     if area:
@@ -942,13 +961,7 @@ def event_page(event: dict) -> str:
     {topic_chips(event)}
     {img}
     {desc_html}
-    <p class="static-cta-wrap">
-      <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
-         data-goatcounter-click="out/{esc(organizer_slug(org))}"
-         data-goatcounter-title="{esc(event["title"])}">
-        tickets &amp; details ↗
-      </a>
-    </p>
+    {cta}
     <p class="static-back">
       <a href="{BASE_URL}/">← more in-person gatherings on {esc(display_name())}</a>
     </p>

@@ -18,7 +18,7 @@ per-event SEO pages.
 | Meetup groups | Public iCal feed per group, listed in `MEETUP_GROUPS` (`londo/scrapers/meetup.py`); the feeds no longer carry a venue, so each event page's schema.org blob supplies the address and cover image, and drops the online (`VirtualLocation`) and out-of-town listings these groups occasionally post |
 | [ConsciousCafe](https://consciouscafe.org/events/category/group-events/) | The Events Calendar REST API, `group-events` category (the in-person track; `online-events` is left alone). A national network, so London is required positively — a London venue record, a London "Venue:" line in the description, or the listing naming London for the roving lunches and dinners |
 | [PsyCalendar](https://www.psycalendar.com/other-psy-events) | Squarespace collection JSON; in-person London listings only, each resolved via its ticket link (Eventbrite/Dandelion/Luma/JSON-LD) and kept only with full details (date+time, location, description, image, cost). Emitted as source `other` ("elsewhere"); dedupe prefers native scrapers' copies |
-| WhatsApp groups | `londo ingest-whatsapp export.txt` — extracts event links from a chat export; Luma/Eventbrite/Dandelion links fetch from their platforms, other links via schema.org JSON-LD (source `other`, only when date, time and location are present) |
+| WhatsApp groups | `londo ingest-whatsapp chat_export/` — reads a chat export (the folder with `_chat.txt` and its photos). Each post is tried by its links first: Luma/Eventbrite/Dandelion links fetch from their platforms, other links via schema.org JSON-LD (source `other`). A post whose links yield nothing but which carries a photo is read by Claude (flyer + caption, `londo/chat_events.py`) and listed as source `whatsapp` when it has a title, description, date *and* time, a London venue and the photo — which is uploaded to the public `event-images` Storage bucket (created on first use). A fetched page's own image always beats the uploaded photo. Chat listings have no page to re-fetch, so the daily scrape carries them forward from the database (`londo/scrapers/whatsapp.py`) until they've passed; a ticket-page copy of the same event that turns up later becomes canonical |
 | Visitor submissions | "Know a gathering we don't?" box on the site inserts into a `submissions` table (anon, insert-only RLS); the scrape validates each URL with the same completeness gate and promotes good ones to seeds |
 
 Chat-ingested and submitted URLs are remembered in a `seeds` table and
@@ -100,7 +100,14 @@ Every upsert stamps `last_seen_at`. The frontend only shows events seen in
 the last 3 days, so events removed from a source disappear automatically
 without hard deletes.
 
-## Not yet implemented
+## Chat-shared listings
 
-- WhatsApp group scraping (deliberately deferred — needs a different
-  approach, likely WhatsApp Web automation or manual export parsing).
+Flyers posted to the group without a ticket page are listed with an
+empty `source_url`: cards link to the event's own static page (`/e/<slug>/`,
+reserved for them by `scripts/build_site.py`) and that page says the
+details are as posted. Sender handles are never used as the organiser —
+only a brand named on the flyer. A bad extraction is pulled from both
+sites by setting `hidden` on the row in the Supabase dashboard.
+
+Keep `chat_export/` out of git (it is ignored): it is a private chat with
+phone numbers and photos of real people.

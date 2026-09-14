@@ -9,3 +9,5 @@ build-psyconnect/
 node_modules/
 .wrangler/
 .dev.vars
+chat_export/
+chat.txt

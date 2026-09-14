@@ -26,6 +26,7 @@ SOURCE_PRIORITY = [
     "studysociety",
     "momence",
     "other",
+    "whatsapp",  # flyer + blurb from a chat: any page-backed copy is better
 ]
 
 # Tiny words that don't carry event identity across sources. Keep
@@ -244,9 +245,25 @@ def _venue_slug(event: Event) -> str | None:
     return slug or None
 
 
+# A chat-extracted title is the flyer's headline, often shorter than the
+# ticket page's ("The Sovereign Woman" vs "The Sovereign Woman: Tantric
+# Women's Circle"), so with too few tokens for the shared-token rules
+# above. Containment of one slug in the other is enough when one side is a
+# chat listing — as long as the shorter is not a generic word or two.
+_CONTAIN_MIN = 10
+
+
+def _chat_title_contained(a: Event, b: Event) -> bool:
+    if "whatsapp" not in (a.source, b.source):
+        return False
+    sa, sb = _title_slug(a.title), _title_slug(b.title)
+    shorter, longer = (sa, sb) if len(sa) <= len(sb) else (sb, sa)
+    return len(shorter) >= _CONTAIN_MIN and shorter in longer
+
+
 def _near_duplicate(a: Event, b: Event) -> bool:
     """Same-day near-duplicates across sources with slightly different titles."""
-    if not _titles_similar(a.title, b.title):
+    if not _titles_similar(a.title, b.title) and not _chat_title_contained(a, b):
         return False
     if not _starts_compatible(a, b):
         return False

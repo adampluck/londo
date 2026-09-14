@@ -20,6 +20,7 @@ from londo.scrapers.psycalendar import PsyCalendarScraper
 from londo.scrapers.seeds import SeedsScraper
 from londo.scrapers.studysociety import StudySocietyScraper
 from londo.scrapers.submissions import SubmissionsScraper
+from londo.scrapers.whatsapp import WhatsAppScraper
 from londo.storage import SupabaseStore, load_dotenv
 
 SCRAPERS = {
@@ -35,9 +36,10 @@ SCRAPERS = {
     "consciouscafe": ConsciousCafeScraper,
     "seeds": SeedsScraper,  # chat-ingested URLs; needs Supabase credentials
     "submissions": SubmissionsScraper,  # community links; needs Supabase creds
+    "whatsapp": WhatsAppScraper,  # carries forward chat-ingested flyers; Supabase only
 }
 
-SUPABASE_ONLY_SOURCES = ("seeds", "submissions")
+SUPABASE_ONLY_SOURCES = ("seeds", "submissions", "whatsapp")
 
 # Event types we never list, whatever the source (matched against title).
 UNWANTED_TITLE_RE = re.compile(r"book[\s-]*signing", re.IGNORECASE)
@@ -148,7 +150,7 @@ def scrape(
 
 
 @cli.command("ingest-whatsapp")
-@click.argument("export_file", type=click.Path(exists=True, dir_okay=False))
+@click.argument("export_path", type=click.Path(exists=True))
 @click.option(
     "--store",
     type=click.Choice(["json", "supabase", "both"]),
@@ -157,24 +159,39 @@ def scrape(
 )
 @click.option("--output-dir", "-o", default="data")
 @click.option("--rate-limit", "-r", default=1.0, type=float)
+@click.option(
+    "--since-days",
+    default=30,
+    type=int,
+    help="Only read posts sent in the last N days (photos older than the "
+    "chat's disappearing-message window are gone anyway).",
+)
 @click.option("--verbose", "-v", is_flag=True)
 def ingest_whatsapp(
-    export_file: str,
+    export_path: str,
     store: str,
     output_dir: str,
     rate_limit: float,
+    since_days: int,
     verbose: bool,
 ) -> None:
-    """Extract event links from a WhatsApp chat export (.txt) and ingest them.
+    """Ingest events from a WhatsApp chat export (the .txt, or the folder
+    holding it and its photos).
 
-    Luma/Eventbrite/Dandelion links are fetched from their platforms;
-    anything else is tried via schema.org metadata and stored as 'other'
-    when the page has full details (date, time, location).
+    Every post is tried by its links first: Luma/Eventbrite/Dandelion links
+    are fetched from their platforms, anything else via schema.org metadata
+    (source 'other'). A post whose links yield nothing but which carries a
+    photo is read by Claude instead — flyer plus caption — and listed under
+    source 'whatsapp' when it has a title, description, date and time, a
+    London venue and the photo. A fetched page's own image always wins
+    over the uploaded photo, which only fills in when the page has none.
     """
+    from datetime import datetime, timedelta, timezone
     from pathlib import Path
 
+    from londo.chat_events import build_event, extract_event, photo_digest
     from londo.links import LinkFetcher, classify_url
-    from londo.whatsapp import extract_urls
+    from londo.whatsapp import group_posts, locate_export, parse_messages
 
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
@@ -182,42 +199,108 @@ def ingest_whatsapp(
     )
     load_dotenv()
 
-    text = Path(export_file).read_text(encoding="utf-8", errors="replace")
-    urls = extract_urls(text)
-    candidates = [u for u in urls if classify_url(u) is not None]
-    click.echo(f"Found {len(urls)} links, {len(candidates)} possible event links")
+    if store in ("supabase", "both") and not os.environ.get("SUPABASE_URL"):
+        click.echo("SUPABASE_URL not set. Copy .env.example to .env and fill credentials.", err=True)
+        raise SystemExit(1)
 
-    from datetime import datetime, timedelta, timezone
+    chat_file, media_dir = locate_export(export_path)
+    text = chat_file.read_text(encoding="utf-8", errors="replace")
+    posts = group_posts(parse_messages(text))
+    since = datetime.now() - timedelta(days=since_days)
+    posts = [p for p in posts if p.sent_at >= since]
+    click.echo(f"{len(posts)} posts in the last {since_days} days, {sum(1 for p in posts if p.photos)} with photos")
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=1)
     fetcher = LinkFetcher(rate_limit=rate_limit)
+    supabase = SupabaseStore() if store in ("supabase", "both") else None
+    client = None  # Anthropic client, created on first flyer
+
     all_events: list[Event] = []
     seeds: list[dict] = []
-    seen_keys: set[tuple[str, str]] = set()
-    for url in candidates:
-        kind, key = classify_url(url)
-        if (kind, key) in seen_keys:
+    fetched_keys: set[tuple[str, str]] = set()  # every link tried
+    listed_keys: set[tuple[str, str]] = set()  # links that produced events
+    uploaded: dict[str, str] = {}  # photo filename -> hosted URL
+
+    def hosted(photo: str) -> str | None:
+        """Public URL for a flyer photo (uploaded once per run)."""
+        if photo in uploaded:
+            return uploaded[photo]
+        path = media_dir / photo
+        if not path.exists():
+            return None
+        if supabase is None:
+            url = path.resolve().as_uri()  # json runs: point at the local file
+        else:
+            url = supabase.upload_image(
+                path.read_bytes(), f"whatsapp/{photo_digest(path)}{path.suffix.lower()}"
+            )
+        uploaded[photo] = url
+        return url
+
+    for post in posts:
+        links = [(u, classify_url(u)) for u in post.urls]
+        links = [(u, c) for u, c in links if c is not None]
+        if any(c in listed_keys for _, c in links):
+            continue  # a repost of a link already listed this run
+
+        link_events: list[Event] = []
+        for url, (kind, key) in links:
+            if (kind, key) in fetched_keys:
+                continue
+            fetched_keys.add((kind, key))
+            events = [
+                e for e in fetcher.fetch(url)
+                if e.start_datetime is None or e.start_datetime >= cutoff
+            ]
+            if not events:
+                continue
+            listed_keys.add((kind, key))
+            link_events.extend(events)
+            starts = [e.start_datetime for e in events if e.start_datetime]
+            seeds.append(
+                {
+                    "url": url,
+                    "kind": kind,
+                    "added_by": "whatsapp",
+                    "event_start_at": max(starts).isoformat() if starts else None,
+                }
+            )
+            click.echo(f"  [{kind}] {events[0].title} ({len(events)} event(s))")
+
+        if link_events:
+            # the page's own image wins; the flyer only fills a gap
+            for event in link_events:
+                if not event.image_url and post.photos:
+                    event.image_url = hosted(post.photos[0])
+            all_events.extend(link_events)
             continue
-        seen_keys.add((kind, key))
-        events = fetcher.fetch(url)
-        events = [
-            e
-            for e in events
-            if e.start_datetime is None or e.start_datetime >= cutoff
-        ]
-        if not events:
+
+        if not post.photos or not any((media_dir / p).exists() for p in post.photos):
             continue
-        all_events.extend(events)
-        starts = [e.start_datetime for e in events if e.start_datetime]
-        seeds.append(
-            {
-                "url": url,
-                "kind": kind,
-                "added_by": "whatsapp",
-                "event_start_at": max(starts).isoformat() if starts else None,
-            }
-        )
-        click.echo(f"  [{kind}] {events[0].title} ({len(events)} event(s))")
+        if client is None:
+            if not os.environ.get("ANTHROPIC_API_KEY"):
+                click.echo("ANTHROPIC_API_KEY not set - skipping flyer-only posts", err=True)
+                break
+            import anthropic
+
+            client = anthropic.Anthropic()
+        try:
+            extracted = extract_event(client, post, media_dir)
+        except Exception as exc:
+            logging.getLogger(__name__).exception("Extraction failed for a post by %s", post.sender)
+            click.echo(f"  FAILED extraction: {exc}", err=True)
+            continue
+        if extracted is None:
+            continue
+        event = build_event(extracted, post)
+        if event is None or (event.start_datetime and event.start_datetime < cutoff):
+            continue
+        event.image_url = hosted(post.photos[0])
+        if not event.image_url:
+            continue
+        all_events.append(event)
+        click.echo(f"  [whatsapp] {event.title} ({event.start_datetime:%a %d %b %H:%M})")
 
     all_events = drop_unwanted(all_events)
 
@@ -225,15 +308,36 @@ def ingest_whatsapp(
         click.echo("No usable events found in this export.")
         return
 
-    dedupe(all_events)
-    click.echo(f"Total: {len(all_events)} events from {len(seeds)} links")
+    # Dedupe against what's already listed too, so a flyer for an event the
+    # scrape has from its ticket page is marked a copy now rather than at
+    # the next scrape. Those rows are context only — not written back.
+    listed: list[Event] = []
+    if supabase is not None:
+        try:
+            listed = supabase.fetch_upcoming_events()
+        except Exception:
+            logging.getLogger(__name__).exception("Could not fetch listed events")
+    ours = {(e.source, e.source_id) for e in all_events}
+    dedupe(all_events + [e for e in listed if (e.source, e.source_id) not in ours])
+    n_dupes = sum(1 for e in all_events if e.duplicate_of)
+    click.echo(f"Total: {len(all_events)} events ({len(seeds)} from links, {n_dupes} already listed)")
+
+    from londo.enrich import enrich_events
+
+    existing = {}
+    if supabase is not None:
+        try:
+            existing = supabase.fetch_enrichment()
+        except Exception:
+            logging.getLogger(__name__).exception("Could not fetch enrichment")
+    calls = enrich_events(all_events, existing=existing)
+    click.echo(f"Enriched: {calls} new LLM classifications")
 
     if store in ("json", "both"):
         filepath = write_events(all_events, "whatsapp", output_dir)
         click.echo(f"Wrote JSON -> {filepath}")
 
-    if store in ("supabase", "both"):
-        supabase = SupabaseStore()
+    if supabase is not None:
         supabase.upsert_events(all_events)
         supabase.upsert_seeds(seeds)
         click.echo(

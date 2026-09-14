@@ -110,3 +110,7 @@ create policy "anon submit" on public.submissions
     and char_length(url) <= 500
     and (note is null or char_length(note) <= 500)
   );
+
+-- Flyer photos from chat exports live in a public Storage bucket named
+-- event-images. `londo ingest-whatsapp` creates it on first use via the
+-- Storage API (service role); nothing to run here.

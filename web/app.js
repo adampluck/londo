@@ -93,6 +93,26 @@
     img.src = thumb(url, width);
   }
 
+  // Mirror of slugify_title() in scripts/build_site.py — keep the two in
+  // step: a listing with no ticket page (a flyer shared in the community
+  // chat) links to its own static page, whose slug the build reserves for
+  // it first so the bare title slug is always right.
+  function slugifyTitle(title) {
+    let text = (title || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+    text = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-{2,}/g, "-");
+    text = text.replace(/^-+|-+$/g, "");
+    if (text.length > 72) text = text.slice(0, 72).replace(/-+$/, "");
+    return text || "event";
+  }
+
+  // Where a card goes: the ticket/details page, or for a chat-shared
+  // listing without one, its page on this site (relative, so it works at
+  // both the github.io subpath and the custom domain).
+  function eventHref(e) {
+    if (e.source_url) return withUtm(e.source_url);
+    return new URL("e/" + slugifyTitle(e.title) + "/", document.baseURI).toString();
+  }
+
   // Tag outbound event links with UTM params so organisers can see
   // psyconnect referral traffic in their own analytics — londo has no
   // SITE.id and stays unchanged.
@@ -1387,7 +1407,7 @@
         `<strong>${escapeHtml(e.title)}</strong><br>` +
           `${when} · ${escapeHtml(formatTime(e))}<br>` +
           `${escapeHtml(e.venue_name || e.address || "")}<br>` +
-          `<a href="${escapeHtml(withUtm(e.source_url))}" target="_blank" rel="noopener">open ↗</a>`
+          `<a href="${escapeHtml(eventHref(e))}" target="_blank" rel="noopener">open ↗</a>`
       );
       state.markerLayer.addLayer(marker);
     }
@@ -1408,10 +1428,12 @@
   function card(e, index) {
     const a = document.createElement("a");
     a.className = "card" + (skipCardAnim ? " instant" : "");
-    a.href = withUtm(e.source_url);
+    a.href = eventHref(e);
     a.target = "_blank";
     a.rel = "noopener";
-    a.dataset.goatcounterClick = "out/" + organizerSlug(e.organizer_name);
+    // a chat-shared listing goes to its own page here, not out
+    if (e.source_url)
+      a.dataset.goatcounterClick = "out/" + organizerSlug(e.organizer_name);
     // without this, count.js falls back to the link's innerHTML (the
     // whole card's markup) as the click's title
     a.dataset.goatcounterTitle = e.title || "";
@@ -1513,17 +1535,19 @@
       body.appendChild(blurb);
     }
 
-    body.appendChild(newTabCue());
+    body.appendChild(newTabCue(e));
     a.append(banner, body);
     return a;
   }
 
   // target="_blank" gives sighted users a visual context switch; screen
   // readers need it said out loud
-  function newTabCue() {
+  function newTabCue(e) {
     const cue = document.createElement("span");
     cue.className = "sr-only";
-    cue.textContent = "(opens the ticket page in a new tab)";
+    cue.textContent = e.source_url
+      ? "(opens the ticket page in a new tab)"
+      : "(opens the event page in a new tab)";
     return cue;
   }
 
@@ -1673,11 +1697,13 @@
     // same staggered settle as the browse cards (see card())
     if (!skipCardAnim)
       card.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
-    card.href = withUtm(e.source_url);
+    card.href = eventHref(e);
     card.target = "_blank";
     card.rel = "noopener";
-    card.dataset.goatcounterClick =
-      "out/" + kind + "/" + organizerSlug(e.organizer_name);
+    // a chat-shared listing goes to its own page here, not out
+    if (e.source_url)
+      card.dataset.goatcounterClick =
+        "out/" + kind + "/" + organizerSlug(e.organizer_name);
     card.dataset.goatcounterTitle = e.title || "";
 
     if (e.image_url) {

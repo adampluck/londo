@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -186,6 +187,62 @@ class SupabaseStore:
         response.raise_for_status()
         logger.info("Upserted %d seeds", len(seeds))
 
+    # Flyer photos from chat exports. A public bucket, created on first
+    # use; objects are named by content hash so a reposted flyer reuses
+    # the same file.
+    IMAGE_BUCKET = "event-images"
+
+    def upload_image(self, data: bytes, name: str, content_type: str = "image/jpeg") -> str:
+        """Store an image in Supabase Storage and return its public URL."""
+        self._ensure_bucket()
+        response = self.session.post(
+            f"{self.url}/storage/v1/object/{self.IMAGE_BUCKET}/{name}",
+            data=data,
+            headers={"Content-Type": content_type, "x-upsert": "true"},
+            timeout=60,
+        )
+        if response.status_code >= 400:
+            logger.error("Image upload failed (%d): %s", response.status_code, response.text)
+            response.raise_for_status()
+        return f"{self.url}/storage/v1/object/public/{self.IMAGE_BUCKET}/{name}"
+
+    _bucket_ready = False
+
+    def _ensure_bucket(self) -> None:
+        if self._bucket_ready:
+            return
+        response = self.session.post(
+            f"{self.url}/storage/v1/bucket",
+            json={"id": self.IMAGE_BUCKET, "name": self.IMAGE_BUCKET, "public": True},
+            timeout=30,
+        )
+        # 400/409 = already exists (the error code differs by storage version)
+        if response.status_code >= 400 and "already exists" not in response.text.lower():
+            logger.error("Bucket create failed (%d): %s", response.status_code, response.text)
+            response.raise_for_status()
+        self._bucket_ready = True
+
+    def fetch_upcoming_events(self, source: str | None = None) -> list[Event]:
+        """Upcoming rows (of one source, or all), rebuilt as Events.
+
+        Chat-ingested listings have no page to re-fetch, so the daily
+        scrape re-emits them from here: that re-stamps last_seen_at (the
+        frontend drops anything unseen for 3 days) and lets dedupe mark
+        them as copies when a platform listing of the same event turns up.
+        The chat ingest reads every source so a new flyer can be matched
+        against what's already listed."""
+        # "Z" rather than isoformat(): "+00:00" reads as a space in a query string
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        source_filter = f"&source=eq.{source}" if source else ""
+        response = self.session.get(
+            f"{self.url}/rest/v1/events?select=*{source_filter}"
+            f"&start_at=gte.{now}&duplicate_of=is.null"
+            f"&order=start_at.asc&limit={self.PAGE}",
+            timeout=30,
+        )
+        response.raise_for_status()
+        return [_row_to_event(r) for r in response.json()]
+
     def fetch_active_seeds(self) -> list[dict]:
         response = self.session.get(
             f"{self.url}/rest/v1/seeds?active=is.true&select=*", timeout=30
@@ -241,6 +298,65 @@ def _event_to_row(event: Event) -> dict:
         "enriched_at": event.enriched_at.isoformat() if event.enriched_at else None,
         "last_seen_at": event.scraped_at.isoformat(),
     }
+
+
+def _row_to_event(row: dict) -> Event:
+    """Inverse of _event_to_row for the columns the scraper owns (hidden and
+    first_seen_at stay with the database)."""
+    from decimal import Decimal
+
+    from londo.models import Location, Organizer, PriceTier
+
+    location = None
+    if row.get("address") or row.get("venue_name"):
+        location = Location(
+            venue_name=row.get("venue_name"),
+            address=row.get("address") or row.get("venue_name"),
+            city=row.get("city"),
+            latitude=row.get("latitude"),
+            longitude=row.get("longitude"),
+        )
+    price_tiers = []
+    for amount in {row.get("price_min"), row.get("price_max")} - {None}:
+        price_tiers.append(PriceTier(name="Ticket", amount=Decimal(str(amount))))
+    price_tiers.sort(key=lambda t: t.amount)
+
+    def _dt(value):
+        if not value:
+            return None
+        # Postgres trims trailing zeros from fractional seconds
+        # ("…01.34749+00:00"); pad to the 6 digits fromisoformat expects
+        value = re.sub(r"\.(\d{1,6})", lambda m: "." + m.group(1).ljust(6, "0"), value)
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+    return Event(
+        source=row["source"],
+        source_id=row["source_id"],
+        source_url=row.get("source_url") or "",
+        external_ref=row.get("external_ref"),
+        title=row["title"],
+        description=row.get("description"),
+        start_datetime=_dt(row.get("start_at")),
+        end_datetime=_dt(row.get("end_at")),
+        is_all_day=bool(row.get("is_all_day")),
+        location=location,
+        is_online=bool(row.get("is_online")),
+        image_url=row.get("image_url"),
+        tags=row.get("tags") or [],
+        price_tiers=price_tiers,
+        is_free=bool(row.get("is_free")),
+        organizer=Organizer(name=row["organizer_name"], url=row.get("organizer_url"))
+        if row.get("organizer_name")
+        else None,
+        category=row.get("category"),
+        topics=row.get("topics") or [],
+        traits=row.get("traits") or [],
+        hook=row.get("hook"),
+        quality_score=row.get("quality_score"),
+        area=row.get("area"),
+        enriched_at=_dt(row.get("enriched_at")),
+        scraped_at=datetime.now(timezone.utc),
+    )
 
 
 def _without_enrichment(row: dict) -> dict:
