@@ -8,11 +8,12 @@ from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
 
-from decimal import Decimal
-
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
 from londo.scrapers.eventbrite import BROWSER_UA
+from londo.scrapers.tickettailor import EVENT_URL_RE as TICKETTAILOR_RE
+from londo.scrapers.tickettailor import external_ref as tickettailor_ref
+from londo.scrapers.tickettailor import price_from_text
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +25,6 @@ BOOT_URL = "https://core.service.elfsight.com/p/boot/"
 HORIZON_DAYS = 35
 
 WIDGET_ID_RE = re.compile(r"elfsight-app-([0-9a-f-]{36})")
-
-PRICE_RE = re.compile(r"£\s*(\d+(?:\.\d{1,2})?)")
-# descriptions here use "free" loosely ("free movement", a host surnamed
-# Free), so only an explicit no-charge phrasing counts
-FREE_RE = re.compile(
-    r"\bfree\s+(?:entry|event|admission|to\s+attend)\b"
-    r"|\bentry\s+is\s+free\b|\bfree\s+of\s+charge\b",
-    re.I,
-)
 
 COLET_HOUSE = Location(
     venue_name="Colet House",
@@ -96,7 +88,7 @@ class StudySocietyScraper(BaseScraper):
                     base.start_date is None or base.start_date < cutoff.date()
                 ):
                     continue
-                events.append(base)
+                events.append(_with_ticket_ref(base, base.start_date))
                 logger.info("Scraped: %s", base.title)
                 continue
             occurrences = [
@@ -106,16 +98,19 @@ class StudySocietyScraper(BaseScraper):
             ]
             for start, end, day in occurrences:
                 events.append(
-                    base.model_copy(
-                        deep=True,
-                        update={
-                            # per-date row: occurrences appear/expire
-                            # independently as the horizon slides
-                            "source_id": f"{base.source_id}:{day.isoformat()}",
-                            "start_datetime": start,
-                            "end_datetime": end,
-                            "start_date": day,
-                        },
+                    _with_ticket_ref(
+                        base.model_copy(
+                            deep=True,
+                            update={
+                                # per-date row: occurrences appear/expire
+                                # independently as the horizon slides
+                                "source_id": f"{base.source_id}:{day.isoformat()}",
+                                "start_datetime": start,
+                                "end_datetime": end,
+                                "start_date": day,
+                            },
+                        ),
+                        day,
                     )
                 )
             if occurrences:
@@ -125,6 +120,15 @@ class StudySocietyScraper(BaseScraper):
 
         logger.info("Kept %d upcoming events", len(events))
         return events
+
+
+def _with_ticket_ref(event: Event, day: date | None) -> Event:
+    """Key the row by its Ticket Tailor occurrence so the same date shared
+    as a bare Ticket Tailor link (chat, seeds) dedupes onto it."""
+    m = TICKETTAILOR_RE.match(event.source_url)
+    if m and day is not None:
+        event.external_ref = tickettailor_ref(m.group(2), day)
+    return event
 
 
 def _build_event(item: dict, locations: dict, types: dict) -> Event | None:
@@ -152,7 +156,7 @@ def _build_event(item: dict, locations: dict, types: dict) -> Event | None:
     end_dt, _ = _parse_when(item.get("end"), tz)
 
     description = _html_text(item.get("description"))
-    price_tiers, is_free = _price_from_text(description)
+    price_tiers, is_free = price_from_text(description)
 
     ticket_url = _ticket_url(item)
     tags = sorted(
@@ -357,18 +361,6 @@ def _ticket_url(item: dict) -> str | None:
             # parameters that render a bare iframe view in a normal tab
             return url.replace("?modal_widget=true&widget=true", "")
     return None
-
-
-def _price_from_text(text: str | None) -> tuple[list[PriceTier], bool]:
-    if not text:
-        return [], False
-    amounts = sorted({Decimal(m) for m in PRICE_RE.findall(text)})
-    tiers = [
-        PriceTier(name=f"Tier {i + 1}", amount=amount)
-        for i, amount in enumerate(amounts)
-    ]
-    is_free = not tiers and FREE_RE.search(text) is not None
-    return tiers, is_free
 
 
 def _html_text(value: str | None) -> str | None:

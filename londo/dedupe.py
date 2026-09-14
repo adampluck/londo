@@ -24,6 +24,7 @@ SOURCE_PRIORITY = [
     "numinity",
     "eventbrite",
     "studysociety",
+    "tickettailor",
     "momence",
     "other",
     "whatsapp",  # flyer + blurb from a chat: any page-backed copy is better

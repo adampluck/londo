@@ -16,6 +16,12 @@ from londo.scrapers.base import BaseScraper
 from londo.scrapers.dandelion import DandelionScraper
 from londo.scrapers.eventbrite import BROWSER_UA, build_events
 from londo.scrapers.luma import build_event_from_event_api
+from londo.scrapers.tickettailor import (
+    EVENT_URL_RE as TICKETTAILOR_RE,
+    Blocked,
+    NotFound,
+    TicketTailorClient,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +87,9 @@ def classify_url(url: str) -> tuple[str, str] | None:
     m = DANDELION_RE.match(url)
     if m:
         return ("dandelion", m.group(1))
+    m = TICKETTAILOR_RE.match(url)
+    if m:
+        return ("tickettailor", m.group(2))
     if url.lower().startswith("http"):
         return ("other", url)
     return None
@@ -95,6 +104,7 @@ class LinkFetcher(BaseScraper):
         super().__init__(rate_limit=rate_limit)
         self.session.headers.update({"User-Agent": BROWSER_UA})
         self._dandelion = DandelionScraper(rate_limit=rate_limit)
+        self._tickettailor = TicketTailorClient(rate_limit=rate_limit)
 
     def scrape(self) -> list[Event]:
         raise NotImplementedError("LinkFetcher is driven per-URL via fetch()")
@@ -114,8 +124,10 @@ class LinkFetcher(BaseScraper):
                 return self._fetch_eventbrite(key)
             if kind == "dandelion":
                 return [self._dandelion.scrape_event_url(url)]
+            if kind == "tickettailor":
+                return self._tickettailor.scrape_event_url(url)
             return self._fetch_generic(url)
-        except requests.RequestException as exc:
+        except (requests.RequestException, Blocked, NotFound) as exc:
             logger.warning("Could not fetch %s link %s: %s", kind, url, exc)
             return []
         except Exception:

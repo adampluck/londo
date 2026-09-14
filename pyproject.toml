@@ -14,6 +14,7 @@ dependencies = [
     "pydantic>=2.0",
     "click>=8.1",
     "anthropic>=0.95",
+    "curl_cffi>=0.10",
 ]
 
 [tool.setuptools.packages.find]

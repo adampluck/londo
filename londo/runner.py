@@ -20,6 +20,7 @@ from londo.scrapers.psycalendar import PsyCalendarScraper
 from londo.scrapers.seeds import SeedsScraper
 from londo.scrapers.studysociety import StudySocietyScraper
 from londo.scrapers.submissions import SubmissionsScraper
+from londo.scrapers.tickettailor import TicketTailorScraper
 from londo.scrapers.whatsapp import WhatsAppScraper
 from londo.storage import SupabaseStore, load_dotenv
 
@@ -33,6 +34,7 @@ SCRAPERS = {
     "eventbrite": EventbriteListingsScraper,
     "psycalendar": PsyCalendarScraper,  # aggregator; events land under 'other'
     "studysociety": StudySocietyScraper,
+    "tickettailor": TicketTailorScraper,  # box offices behind Cloudflare; see scraper
     "consciouscafe": ConsciousCafeScraper,
     "seeds": SeedsScraper,  # chat-ingested URLs; needs Supabase credentials
     "submissions": SubmissionsScraper,  # community links; needs Supabase creds
@@ -178,7 +180,8 @@ def ingest_whatsapp(
     """Ingest events from a WhatsApp chat export (the .txt, or the folder
     holding it and its photos).
 
-    Every post is tried by its links first: Luma/Eventbrite/Dandelion links
+    Every post is tried by its links first: Luma/Eventbrite/Dandelion/
+    Ticket Tailor links
     are fetched from their platforms, anything else via schema.org metadata
     (source 'other'). A post whose links yield nothing but which carries a
     photo is read by Claude instead — flyer plus caption — and listed under
@@ -509,8 +512,8 @@ IMPORT WHATSAPP POSTS
        --since-days 7      only posts from the last N days (default 30)
        --store json        dry run: writes data/whatsapp.json, no upload
        -v                  show every link fetched / flyer read
-  Links (Luma, Eventbrite, Dandelion, JSON-LD pages) are fetched and
-  seeded; flyer-only posts are read by Claude (needs ANTHROPIC_API_KEY)
+  Links (Luma, Eventbrite, Dandelion, Ticket Tailor, JSON-LD pages) are
+  fetched and seeded; flyer-only posts are read by Claude (needs ANTHROPIC_API_KEY)
   and their photo uploaded to Storage. Writes to Supabase by default.
   Pull a bad extraction from the site by ticking `hidden` on its row
   in the Supabase dashboard.
