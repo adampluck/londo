@@ -1757,7 +1757,7 @@
       body.appendChild(p);
     }
 
-    body.appendChild(newTabCue());
+    body.appendChild(newTabCue(e));
     card.appendChild(body);
     return card;
   }

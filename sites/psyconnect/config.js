@@ -50,7 +50,7 @@ self.LONDO_CONFIG = {
         "crossfit", "spin class", "pilates", "reformer", "kettlebell",
         "personal training", "strength training", "fitness class",
         "red light therapy", "high performers", "performance studio",
-        "biohacking", "bon charge", "ydun",
+        "bon charge", "ydun",
         "aperitivo", "bottomless brunch", "coworking", "investor"
       ],
       "excludeText": ["shibari"]
@@ -77,9 +77,9 @@ self.LONDO_CONFIG = {
     "curated": {
       "organizers": [
         "The Psychedelic Society", "Numinity", "Adventures in Awareness",
-        "Unseen", "Unseen London", "Creating Meaning"
+        "Unseen", "Unseen London", "Creating Meaning", "The Study Society"
       ],
-      "titleMatches": ["bohm"],
+      "titleMatches": ["bohm", "contact improvisation", "ci lab"],
       "exclude": ["running club"],
       "maxTotal": 4,
       "maxMobile": 5,
