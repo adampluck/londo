@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import logging
 import re
@@ -252,7 +253,11 @@ def _iter_json_ld_events(soup: BeautifulSoup):
 def _text(value) -> str | None:
     if isinstance(value, dict):
         value = value.get("name") or value.get("@value")
-    return str(value).strip() if value else None
+    if not value:
+        return None
+    # WordPress emits "&#038;" for "&" inside JSON-LD; left as-is the slug
+    # gains a "038" and the listing never dedupes against its Dandelion copy.
+    return html.unescape(str(value)).strip() or None
 
 
 def _parse_ld_datetime(value) -> datetime | None:
