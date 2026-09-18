@@ -18,6 +18,7 @@ from londo.scrapers.momence import MomenceScraper
 from londo.scrapers.newspeak import NewspeakScraper
 from londo.scrapers.psycalendar import PsyCalendarScraper
 from londo.scrapers.seeds import SeedsScraper
+from londo.scrapers.soullinkhub import SoulLinkHubScraper
 from londo.scrapers.studysociety import StudySocietyScraper
 from londo.scrapers.submissions import SubmissionsScraper
 from londo.scrapers.tickettailor import TicketTailorScraper
@@ -36,6 +37,7 @@ SCRAPERS = {
     "studysociety": StudySocietyScraper,
     "tickettailor": TicketTailorScraper,  # box offices behind Cloudflare; see scraper
     "consciouscafe": ConsciousCafeScraper,
+    "soullinkhub": SoulLinkHubScraper,  # UK-wide listing site; London rows only
     "seeds": SeedsScraper,  # chat-ingested URLs; needs Supabase credentials
     "submissions": SubmissionsScraper,  # community links; needs Supabase creds
     "whatsapp": WhatsAppScraper,  # carries forward chat-ingested flyers; Supabase only
