@@ -10,6 +10,8 @@ from bs4 import BeautifulSoup
 
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
+from londo.scrapers.dandelion import DandelionScraper
+from londo.scrapers.dandelion import external_ref as dandelion_ref
 from londo.scrapers.eventbrite import BROWSER_UA
 from londo.scrapers.tickettailor import EVENT_URL_RE as TICKETTAILOR_RE
 from londo.scrapers.tickettailor import external_ref as tickettailor_ref
@@ -55,6 +57,7 @@ class StudySocietyScraper(BaseScraper):
     def __init__(self, rate_limit: float = 1.0):
         super().__init__(rate_limit=rate_limit)
         self.session.headers.update({"User-Agent": BROWSER_UA})
+        self._dandelion = DandelionScraper(rate_limit=rate_limit)
 
     def scrape(self) -> list[Event]:
         page = self.get(WHATS_ON_URL).text
@@ -88,7 +91,7 @@ class StudySocietyScraper(BaseScraper):
                     base.start_date is None or base.start_date < cutoff.date()
                 ):
                     continue
-                events.append(_with_ticket_ref(base, base.start_date))
+                events.append(self._with_ticket_ref(base, base.start_date))
                 logger.info("Scraped: %s", base.title)
                 continue
             occurrences = [
@@ -98,7 +101,7 @@ class StudySocietyScraper(BaseScraper):
             ]
             for start, end, day in occurrences:
                 events.append(
-                    _with_ticket_ref(
+                    self._with_ticket_ref(
                         base.model_copy(
                             deep=True,
                             update={
@@ -121,14 +124,21 @@ class StudySocietyScraper(BaseScraper):
         logger.info("Kept %d upcoming events", len(events))
         return events
 
-
-def _with_ticket_ref(event: Event, day: date | None) -> Event:
-    """Key the row by its Ticket Tailor occurrence so the same date shared
-    as a bare Ticket Tailor link (chat, seeds) dedupes onto it."""
-    m = TICKETTAILOR_RE.match(event.source_url)
-    if m and day is not None:
-        event.external_ref = tickettailor_ref(m.group(2), day)
-    return event
+    def _with_ticket_ref(self, event: Event, day: date | None) -> Event:
+        """Key the row by its ticket-page occurrence so the same date reached
+        another way (a bare Ticket Tailor link in a chat, the Dandelion feed)
+        dedupes onto it. Titles differ between the widget and the ticket
+        page, so title matching alone can't be relied on."""
+        if day is None:
+            return event
+        m = TICKETTAILOR_RE.match(event.source_url)
+        if m:
+            event.external_ref = tickettailor_ref(m.group(2), day)
+            return event
+        uid = self._dandelion.resolve_uid(event.source_url)
+        if uid:
+            event.external_ref = dandelion_ref(uid, day)
+        return event
 
 
 def _build_event(item: dict, locations: dict, types: dict) -> Event | None:

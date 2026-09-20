@@ -5,6 +5,7 @@ import logging
 import re
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import icalendar
 from bs4 import BeautifulSoup
@@ -20,10 +21,30 @@ ICAL_URL = (
     "&near=London%2C+UK&order=&q=&to="
 )
 EVENT_PAGE_URL = "https://dandelion.events/events/{uid}"
+# /events/<uid> is the canonical page; /e/<slug> is the organiser's short
+# link, which serves the same page under the short URL (no redirect).
+EVENT_URL_RE = re.compile(
+    r"https?://(?:www\.)?dandelion\.events/(?:events|e)/([A-Za-z0-9-]+)", re.I
+)
+UID_RE = re.compile(r"/events/([a-f0-9]{16,})")
+
+LONDON = ZoneInfo("Europe/London")
+
+
+def external_ref(uid: str, day: date) -> str:
+    """Shared identity for a Dandelion event on a given day, so a copy
+    reached via an organiser's own calendar (Study Society links its
+    Dandelion tickets by short link) dedupes onto the feed's row rather
+    than relying on the titles matching."""
+    return f"dandelion:{uid}:{day.isoformat()}"
 
 
 class DandelionScraper(BaseScraper):
     source_name = "dandelion"
+
+    def __init__(self, rate_limit: float = 1.0):
+        super().__init__(rate_limit=rate_limit)
+        self._uid_cache: dict[str, str | None] = {}
 
     def scrape(self) -> list[Event]:
         today = date.today().isoformat()
@@ -57,13 +78,32 @@ class DandelionScraper(BaseScraper):
     def _scrape_event(self, uid: str) -> Event:
         return self.scrape_event_url(EVENT_PAGE_URL.format(uid=uid), uid=uid)
 
+    def resolve_uid(self, url: str) -> str | None:
+        """Canonical event uid for any Dandelion event URL. A /events/<uid>
+        link needs no fetch; a /e/<slug> short link is fetched (once per
+        slug) and the uid read off the page."""
+        m = EVENT_URL_RE.match(url)
+        if not m:
+            return None
+        key = m.group(1)
+        if UID_RE.fullmatch(f"/events/{key}"):
+            return key
+        if key not in self._uid_cache:
+            try:
+                m = UID_RE.search(self.get(url).text)
+            except Exception:
+                logger.warning("Could not resolve Dandelion short link %s", url)
+                m = None
+            self._uid_cache[key] = m.group(1) if m else None
+        return self._uid_cache[key]
+
     def scrape_event_url(self, url: str, uid: str | None = None) -> Event:
         """Scrape any Dandelion event page, including /e/<slug> short links
         (which serve the event page directly under the short URL)."""
         response = self.get(url)
 
         if uid is None:
-            m = re.search(r"/events/([a-f0-9]{16,})", response.text)
+            m = UID_RE.search(response.text)
             uid = m.group(1) if m else url.rstrip("/").rsplit("/", 1)[-1]
             url = EVENT_PAGE_URL.format(uid=uid) if m else url
 
@@ -83,10 +123,16 @@ class DandelionScraper(BaseScraper):
         )
         is_free = len(price_tiers) > 0 and all(t.amount == 0 for t in price_tiers)
 
+        if start_dt is not None:
+            day = (start_dt.astimezone(LONDON) if start_dt.tzinfo else start_dt).date()
+        else:
+            day = start_d
+
         return Event(
             source="dandelion",
             source_id=uid,
             source_url=url,
+            external_ref=external_ref(uid, day) if day else None,
             title=json_ld.get("name", ""),
             description=json_ld.get("description"),
             short_description=json_ld.get("description"),

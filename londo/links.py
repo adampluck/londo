@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
+from londo.scrapers.dandelion import EVENT_URL_RE as DANDELION_RE
 from londo.scrapers.dandelion import DandelionScraper
 from londo.scrapers.eventbrite import BROWSER_UA, build_events
 from londo.scrapers.luma import build_event_from_event_api
@@ -36,9 +37,6 @@ LUMA_NON_EVENT_PATHS = {
 }
 EVENTBRITE_RE = re.compile(
     r"https?://(?:www\.)?eventbrite\.[a-z.]+/e/(?:[^/?#]*?-)?(\d{8,})", re.I
-)
-DANDELION_RE = re.compile(
-    r"https?://(?:www\.)?dandelion\.events/(?:events|e)/([A-Za-z0-9-]+)", re.I
 )
 
 EVENTBRITE_DEST_API = (
