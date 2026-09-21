@@ -60,10 +60,19 @@ class StudySocietyScraper(BaseScraper):
         self._dandelion = DandelionScraper(rate_limit=rate_limit)
 
     def scrape(self) -> list[Event]:
-        page = self.get(WHATS_ON_URL).text
+        response = self.get(WHATS_ON_URL)
+        page = response.text
         match = WIDGET_ID_RE.search(page)
         if not match:
-            raise RuntimeError("No Elfsight widget found on What's On page")
+            # Say what came back instead: a 200 with no widget from a CI
+            # runner is a bot wall or a re-embed, and they need different fixes.
+            title = re.search(r"<title[^>]*>(.*?)</title>", page, re.S | re.I)
+            raise RuntimeError(
+                "No Elfsight widget found on What's On page "
+                f"(status {response.status_code}, {len(page)} chars, "
+                f"title {title.group(1).strip()[:80] if title else None!r}, "
+                f"mentions elfsight: {'elfsight' in page.lower()})"
+            )
         widget_id = match.group(1)
 
         boot_url = f"{BOOT_URL}?page={quote(WHATS_ON_URL, safe='')}&w={widget_id}"

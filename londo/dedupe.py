@@ -39,6 +39,9 @@ _STOP = frozenset({"a", "an", "and", "or", "of", "the", "to", "for", "with", "by
 # Starts within this window count as the same slot when titles only fuzzy-match.
 _SAME_SLOT = timedelta(minutes=90)
 
+# UK postcode: the one address token every source spells the same way.
+_POSTCODE_RE = re.compile(r"\b([A-Z]{1,2}\d[A-Z\d]?) ?(\d[A-Z]{2})\b", re.I)
+
 
 def dedupe(events: list[Event]) -> list[Event]:
     """Assign dedupe keys, mark cross-source / same-day duplicates, and
@@ -263,10 +266,81 @@ def _chat_title_contained(a: Event, b: Event) -> bool:
     return len(shorter) >= _CONTAIN_MIN and shorter in longer
 
 
+def _postcode(event: Event) -> str | None:
+    if not event.location or not event.location.address:
+        return None
+    m = _POSTCODE_RE.search(event.location.address)
+    return f"{m.group(1)}{m.group(2)}".upper() if m else None
+
+
+def _place_slug(event: Event) -> str:
+    loc = event.location
+    if not loc:
+        return ""
+    return re.sub(r"[^a-z0-9]+", "", f"{loc.venue_name or ''} {loc.address or ''}".lower())
+
+
+def _same_place(a: Event, b: Event) -> bool:
+    """Same postcode, or one side's venue name sits inside the other's
+    venue + address (SoulLinkHub folds the venue into its address)."""
+    pa, pb = _postcode(a), _postcode(b)
+    if pa and pb:
+        return pa == pb
+    for x, y in ((a, b), (b, a)):
+        vx = _venue_slug(x)
+        if vx and len(vx) >= 8 and vx in _place_slug(y):
+            return True
+    return False
+
+
+def _same_instant(a: Event, b: Event) -> bool:
+    """Identical start, and identical end when both give one."""
+    sa, sb = _start_utc(a), _start_utc(b)
+    if sa is None or sb is None or sa != sb:
+        return False
+    ea, eb = a.end_datetime, b.end_datetime
+    if ea is None or eb is None:
+        return True
+    return ea.astimezone(timezone.utc) == eb.astimezone(timezone.utc)
+
+
+def _text_tokens(event: Event) -> set[str]:
+    return _title_tokens(f"{event.title} {event.description or ''}")
+
+
+def _cross_referenced(a: Event, b: Event) -> bool:
+    """One listing's whole title, or its named facilitator, appears in the
+    other's title + description ("5Rhythms with Flow" inside "SACR(w)ED –
+    5Rhythms® Midweek Ritual with Flow Vulk")."""
+    for x, y in ((a, b), (b, a)):
+        text = _text_tokens(y)
+        title = _title_tokens(x.title)
+        if len(title) >= 2 and title <= text:
+            return True
+        host = _title_tokens(x.organizer.name) if x.organizer else set()
+        if len(host) >= 2 and host <= text:
+            return True
+    return False
+
+
+def _co_listed(a: Event, b: Event) -> bool:
+    """Two sources naming the same gathering differently — a facilitator's
+    own event name on an aggregator vs the venue's series name on its ticket
+    page. With no title overlap to go on, all of: different sources, the
+    same instant, the same place, and one listing's title or host named in
+    full by the other."""
+    return (
+        a.source != b.source
+        and _same_instant(a, b)
+        and _same_place(a, b)
+        and _cross_referenced(a, b)
+    )
+
+
 def _near_duplicate(a: Event, b: Event) -> bool:
     """Same-day near-duplicates across sources with slightly different titles."""
     if not _titles_similar(a.title, b.title) and not _chat_title_contained(a, b):
-        return False
+        return _co_listed(a, b)
     if not _starts_compatible(a, b):
         return False
     # If both name a venue and they clearly disagree, keep them separate
