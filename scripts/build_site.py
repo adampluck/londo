@@ -666,6 +666,7 @@ def page(
   <footer class="static-footer">
     {seo_nav_html()}{channel_link_html()}
     <p class="static-footer-home"><a href="{BASE_URL}/">{esc(display_name())}</a> — {esc(SITE["tagline"])}{about_link_html()}{privacy_link_html()}</p>
+    <p class="static-footer-home credit">Made by your friendly <a href="https://www.digitalhandyman.london" rel="noopener">digital handyman</a></p>
   </footer>
 </body>
 </html>
