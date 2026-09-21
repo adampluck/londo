@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
+import requests
 from bs4 import BeautifulSoup
 
 from londo.models import Event, Location, Organizer, PriceTier
@@ -27,6 +28,10 @@ BOOT_URL = "https://core.service.elfsight.com/p/boot/"
 HORIZON_DAYS = 35
 
 WIDGET_ID_RE = re.compile(r"elfsight-app-([0-9a-f-]{36})")
+# The site's host (20i) meets datacentre IPs with a 202 interstitial instead
+# of the page, so CI can't always read the id; the widget itself has been
+# stable and its boot endpoint isn't behind that wall.
+KNOWN_WIDGET_ID = "b32601c9-0ce7-48c2-bf2d-c3ee5f9c172f"
 
 COLET_HOUSE = Location(
     venue_name="Colet House",
@@ -59,21 +64,28 @@ class StudySocietyScraper(BaseScraper):
         self.session.headers.update({"User-Agent": BROWSER_UA})
         self._dandelion = DandelionScraper(rate_limit=rate_limit)
 
+    def _widget_id(self) -> str:
+        """The calendar widget's id from the What's On page, or the last
+        known one when the page comes back as a bot-wall interstitial."""
+        try:
+            response = self.get(WHATS_ON_URL)
+        except requests.RequestException as exc:
+            logger.warning("What's On page unavailable (%s); using known widget id", exc)
+            return KNOWN_WIDGET_ID
+        match = WIDGET_ID_RE.search(response.text)
+        if match:
+            return match.group(1)
+        logger.warning(
+            "No Elfsight widget on What's On page (status %d, %d chars: %r); "
+            "using known widget id",
+            response.status_code,
+            len(response.text),
+            response.text[:200],
+        )
+        return KNOWN_WIDGET_ID
+
     def scrape(self) -> list[Event]:
-        response = self.get(WHATS_ON_URL)
-        page = response.text
-        match = WIDGET_ID_RE.search(page)
-        if not match:
-            # Say what came back instead: a 200 with no widget from a CI
-            # runner is a bot wall or a re-embed, and they need different fixes.
-            title = re.search(r"<title[^>]*>(.*?)</title>", page, re.S | re.I)
-            raise RuntimeError(
-                "No Elfsight widget found on What's On page "
-                f"(status {response.status_code}, {len(page)} chars, "
-                f"title {title.group(1).strip()[:80] if title else None!r}, "
-                f"mentions elfsight: {'elfsight' in page.lower()})"
-            )
-        widget_id = match.group(1)
+        widget_id = self._widget_id()
 
         boot_url = f"{BOOT_URL}?page={quote(WHATS_ON_URL, safe='')}&w={widget_id}"
         self.session.headers["Referer"] = WHATS_ON_URL
