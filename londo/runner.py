@@ -12,6 +12,7 @@ from londo.output import write_events
 from londo.scrapers.consciouscafe import ConsciousCafeScraper
 from londo.scrapers.dandelion import DandelionScraper
 from londo.scrapers.eventbrite import EventbriteListingsScraper, NuminityScraper
+from londo.scrapers.jimeaton import JimEatonScraper
 from londo.scrapers.luma import LumaScraper
 from londo.scrapers.meetup import MeetupScraper
 from londo.scrapers.momence import MomenceScraper
@@ -38,6 +39,7 @@ SCRAPERS = {
     "tickettailor": TicketTailorScraper,  # box offices behind Cloudflare; see scraper
     "consciouscafe": ConsciousCafeScraper,
     "soullinkhub": SoulLinkHubScraper,  # UK-wide listing site; London rows only
+    "jimeaton": JimEatonScraper,  # WooCommerce shop; London dates only
     "seeds": SeedsScraper,  # chat-ingested URLs; needs Supabase credentials
     "submissions": SubmissionsScraper,  # community links; needs Supabase creds
     "whatsapp": WhatsAppScraper,  # carries forward chat-ingested flyers; Supabase only

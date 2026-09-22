@@ -26,6 +26,7 @@ SOURCE_PRIORITY = [
     "studysociety",
     "tickettailor",
     "momence",
+    "jimeaton",
     "soullinkhub",  # aggregator copy: any native ticket-page copy is better
     "other",
     "whatsapp",  # flyer + blurb from a chat: any page-backed copy is better
