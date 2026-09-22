@@ -1953,8 +1953,27 @@
     return h2;
   }
 
+  // Dismissing the spotlight is a rest for the week, not a setting: the
+  // picks turn over, so it comes back with a new set rather than being
+  // gone for good.
+  const SPOTLIGHT_KEY = "spotlight-dismissed";
+  const SPOTLIGHT_REDISPLAY_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function spotlightDismissed() {
+    try {
+      const t = Number(localStorage.getItem(storeKey(SPOTLIGHT_KEY)));
+      return t && Date.now() - t < SPOTLIGHT_REDISPLAY_MS;
+    } catch (_) {
+      return false; // private windows and blocked storage just keep it
+    }
+  }
+
   function renderSpotlight() {
     const section = document.getElementById("spotlight");
+    if (spotlightDismissed()) {
+      section.hidden = true;
+      return;
+    }
     // state.events is start_at-sorted, so the first match is the next one
     const featured =
       SITE.featured &&
@@ -2048,7 +2067,22 @@
       grid.appendChild(picksWrap);
     }
 
-    section.replaceChildren(grid);
+    const close = document.createElement("button");
+    close.className = "spotlight-close";
+    close.type = "button";
+    close.setAttribute("aria-label", "hide the picks");
+    close.title = "hide the picks";
+    close.innerHTML = "&times;";
+    close.addEventListener("click", () => {
+      try {
+        localStorage.setItem(storeKey(SPOTLIGHT_KEY), String(Date.now()));
+      } catch (_) {
+        /* it still hides for this visit */
+      }
+      section.hidden = true;
+    });
+
+    section.replaceChildren(close, grid);
     section.hidden = false;
     rebindClickTracking();
   }
