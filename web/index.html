@@ -91,38 +91,25 @@
           </div>
         </div>
       </div>
-
-      <div class="unit unit-grow">
-        <div class="ticker-shell">
-          <div class="ticker" id="week-strip">
-            <!-- day cells rendered from live data -->
-          </div>
-          <div class="ticker-fixed" id="range-ticks">
-            <button class="tick" data-day="7">7<small>days</small></button>
-            <button class="tick" data-day="30">30<small>days</small></button>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <div class="controls-row unit" id="topic-unit" hidden>
-      <div class="tape-shell">
-        <div class="tape-fixed" id="topic-anchor">
-          <!-- the "anything" token stays put -->
-        </div>
-        <div class="tape" id="topic-chips">
-          <!-- topic tokens rendered from live data -->
-        </div>
-      </div>
-    </div>
-
-    <div class="controls-row unit" id="practice-unit" hidden>
-      <div class="tape-shell">
-        <span class="tape-fixed legend practice-legend">practice</span>
-        <div class="tape" id="practice-chips">
-          <!-- practice tokens, read from practices.json -->
-        </div>
-      </div>
+    <div class="controls-row fields" id="filter-fields">
+      <label class="field" id="field-when">
+        <span class="legend">when</span>
+        <select id="filter-when" aria-label="when"></select>
+      </label>
+      <label class="field" id="field-topic" hidden>
+        <span class="legend">what</span>
+        <select id="filter-topic" aria-label="what it's about"></select>
+      </label>
+      <label class="field" id="field-modality" hidden>
+        <span class="legend">modality</span>
+        <select id="filter-modality" aria-label="modality"></select>
+      </label>
+      <label class="field" id="field-vibe" hidden>
+        <span class="legend">vibe</span>
+        <select id="filter-vibe" aria-label="vibe"></select>
+      </label>
     </div>
   </div>
 

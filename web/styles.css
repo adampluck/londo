@@ -610,50 +610,110 @@ body {
 
 .token.spent .token-count { opacity: 0.75; }
 
-/* --- practice tape: the /p/ pages, as a filter ---
-   Topics are the broad lenses and read as raised keys; a practice is a
-   narrower thing you'd go and do, so the row sits behind its own label
-   and its chips are rounder, flatter and unfilled until chosen. The
-   shapes have to differ at a glance, or two rows of identical pills
-   just look like one wrapped row. */
+/* --- the bench: four dropdowns ---
+   One row in place of the day strip and the chip tapes it grew. Native
+   <select> so a phone gives its own picker and the keyboard works for
+   free; the keycap tokens do the styling so it still reads as part of
+   the same instrument. */
 
-.practice-legend {
-  align-self: center;
-  padding: 0 0.6rem 0 0.1rem;
-  /* the accent, not a white tint: it has to read on the light theme too */
-  border-right: 1px solid rgba(157, 127, 209, 0.35);
-  margin-right: 0.55rem;
-  opacity: 0.75;
-  white-space: nowrap;
+.controls-row.fields {
+  gap: 0.5rem;
+  align-items: flex-end;
 }
 
-/* a clear step down from the topic tape rather than a second row of it */
-#practice-unit {
-  margin-top: 0.15rem;
+/* with the ticker gone this row is empty on a filtered site */
+.controls-row.bench:empty {
+  display: none;
 }
 
-#practice-unit .tape {
-  mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
+.field {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 16rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
-#practice-unit .token {
-  border-radius: 999px;
-  background: none;
-  border-color: rgba(157, 127, 209, 0.3);
-  padding: 0.3rem 0.7rem;
+.field .legend {
+  padding-left: 0.1rem;
+  opacity: 0.8;
 }
 
-@media (hover: hover) {
-  #practice-unit .token:hover {
-    border-color: rgba(157, 127, 209, 0.45);
+.field select {
+  width: 100%;
+  min-width: 0;
+  height: 2.5rem;
+  padding: 0 1.7rem 0 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--key-lit), var(--key-face));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  box-shadow:
+    0 3px 0 var(--key-side),
+    0 5px 12px -6px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+/* the caret, drawn rather than shipped: one less asset to cache */
+.field::after {
+  content: "";
+  position: absolute;
+  right: 0.65rem;
+  bottom: 1.05rem;
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4.5px solid currentColor;
+  color: var(--ink-dim);
+  pointer-events: none;
+}
+
+.field select:focus-visible {
+  outline: 2px solid var(--mauve);
+  outline-offset: 2px;
+}
+
+/* a field at rest is quiet; a narrowed one carries the accent */
+.field.lit select {
+  color: var(--gold);
+  border-color: rgba(227, 192, 141, 0.5);
+}
+
+.field.lit::after {
+  color: var(--gold);
+}
+
+/* nothing behind this door in the current window — still choosable, it
+   opens the "try a wider look" path, just not advertised */
+.field option.spent {
+  opacity: 0.5;
+}
+
+@media (max-width: 560px) {
+  /* two by two rather than four squeezed columns */
+  .field {
+    flex: 1 1 calc(50% - 0.5rem);
+    max-width: none;
   }
-}
 
-#practice-unit .token.lit {
-  color: var(--mauve);
-  border-color: rgba(157, 127, 209, 0.7);
-  background: rgba(157, 127, 209, 0.12);
+  .field select {
+    height: 2.75rem; /* a thumb-sized target */
+    font-size: 0.8rem;
+  }
+
+  .field::after {
+    bottom: 1.15rem;
+  }
 }
 
 /* "new to this? read about cacao ceremonies" under the bench */

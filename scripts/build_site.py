@@ -326,6 +326,9 @@ PRACTICES = {
     "5rhythms": {
         "label": "5Rhythms",
         "seo_title": "5Rhythms classes in London",
+        # a kind of ecstatic dance: the dance page covers it, this one
+        # is the narrower door for people who know the name
+        "parent": "ecstatic-dance",
         "terms": ["5rhythms", "five rhythms", "5 rhythms"],
         "deep": ["5rhythms"],
         "intro": (
@@ -734,14 +737,29 @@ def _matches(hay: str, terms: list[str]) -> bool:
     )
 
 
-def practice_match(event: dict, spec: dict) -> bool:
+def practice_match(event: dict, spec: dict, slug: str | None = None) -> bool:
     """Whether this listing belongs on a practice page.
 
     Same two tiers as the site filter's exclude terms: the safe fields
     (title, organizer, tags) take any of the practice's terms, while the
     description — long prose, where a bare substring catches passing
     mentions — only takes the phrases listed as deep.
+
+    A parent takes its children too: 5Rhythms is a kind of ecstatic
+    dance, so the dance page lists those nights and the 5Rhythms page
+    stays the narrower door.
     """
+    if slug and _term_match(event, spec):
+        return True
+    if slug:
+        return any(
+            child.get("parent") == slug and _term_match(event, child)
+            for child in PRACTICES.values()
+        )
+    return _term_match(event, spec)
+
+
+def _term_match(event: dict, spec: dict) -> bool:
     hay = " ".join(
         p
         for p in (
@@ -763,7 +781,7 @@ def site_practices(events: list[dict]) -> list[tuple[str, dict, list[dict]]]:
     """Each practice this site has enough listings for, with its events."""
     out = []
     for slug_, spec in PRACTICES.items():
-        matched = [e for e in events if practice_match(e, spec)]
+        matched = [e for e in events if practice_match(e, spec, slug_)]
         if len(matched) >= MIN_PRACTICE_EVENTS:
             out.append((slug_, spec, matched))
     return out
@@ -1443,7 +1461,7 @@ def topic_chips(event: dict) -> str:
             f'<a class="static-chip" href="{category_url(cat)}">{esc(cat)}</a>',
         )
     for slug_, spec, _ in SITE_PRACTICES:
-        if practice_match(event, spec):
+        if practice_match(event, spec, slug_):
             chips.append(
                 f'<a class="static-chip" href="{practice_url(slug_)}">'
                 f'{esc(spec["label"])}</a>'
@@ -2166,6 +2184,7 @@ def build(outdir: Path) -> None:
                     "terms": spec["terms"],
                     "deep": spec.get("deep") or [],
                     "exclude": spec.get("exclude") or [],
+                    "parent": spec.get("parent"),
                 }
                 for slug_, spec, _ in SITE_PRACTICES
             ]

@@ -132,8 +132,9 @@
     events: [],
     view: "browse", // browse | tonight | map
     category: "all",
-    topics: new Set(), // multi-select; empty = anything
-    practices: new Set(), // slugs from practices.json; empty = anything
+    topic: null, // one of TOPICS, or null for anything
+    modality: null, // a slug from practices.json, or null
+    vibe: null, // a trait key (see VIBES), or null
     lens: "all", // all | tech | beyond
     area: "all",
     day: "7", // "7", "30", or a London YYYY-MM-DD
@@ -536,50 +537,17 @@
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
-  function inPractices(e) {
-    if (!state.practices.size) return true;
-    return [...state.practices].some((slug) => {
-      const spec = practiceSpec(slug);
-      return spec && practiceMatch(e, spec);
-    });
-  }
-
-  // Every filter except the topic tokens. Split out so a chip can count what
-  // it would yield against the rest of the bench as it currently stands —
-  // counting past an active search or a lit "free" would be the same lie the
-  // chips used to tell about the date.
-  function filtersBesidesTopics(e) {
-    if (state.category !== "all" && e.category !== state.category) return false;
-    if (state.lens === "tech" && !isTech(e)) return false;
-    if (state.lens === "beyond" && isTech(e)) return false;
-    if (state.area !== "all" && e.area !== state.area) return false;
-    if (state.freeOnly && !e.is_free) return false;
-    const q = state.query.trim().toLowerCase();
-    if (q && !matchesQuery(e, q)) return false;
-    return true;
-  }
-
   function baseFilter(e) {
-    if (
-      state.topics.size &&
-      !(e.topics || []).some((t) => state.topics.has(t))
-    )
-      return false;
-    if (!inPractices(e)) return false;
-    return filtersBesidesTopics(e);
+    // every facet but "when": browseEvents applies that as the window
+    return filtersExcept(e, "when");
   }
 
-  // The day window on its own, so the topic chips can count against exactly
-  // the window the grid is about to draw. A live search deliberately ignores
+  // The day window on its own, so a facet can count against exactly the
+  // window the grid is about to draw. A live search deliberately ignores
   // the day (see browseEvents), and so do the counts.
   function inDayWindow(e) {
     if (state.query.trim()) return true;
-    const until =
-      state.day === "7" || state.day === "30"
-        ? Date.now() + Number(state.day) * 864e5
-        : null;
-    if (until) return new Date(e.start_at).getTime() <= until;
-    return londonDate(e.start_at) === state.day;
+    return matchesDay(e, state.day);
   }
 
   function browseEvents() {
@@ -668,124 +636,245 @@
 
   // ---------- controls ----------
 
-  function renderWeekStrip() {
-    const strip = document.getElementById("week-strip");
-    const cells = [];
-    const now = new Date();
-    const fmt = (d, opts) =>
-      d
-        .toLocaleDateString("en-GB", { ...opts, timeZone: "Europe/London" })
-        .toLowerCase();
+  // ---------- the bench: four dropdowns ----------
+  //
+  // One row, single-select, in place of the day strip and the two chip
+  // tapes it grew. Every option carries what it would yield on its own:
+  // the rest of the bench as it stands, minus this facet's own choice —
+  // counting past an active search or a lit "free" would be the lie the
+  // chips used to tell about the date.
+
+  const VIBES = [
+    ["beginner-friendly", "beginner-friendly"],
+    ["ceremony", "ceremony"],
+    ["small-group", "small group"],
+    ["music", "live music & sound"],
+    ["workshop", "workshop"],
+    ["embodied", "embodied"],
+    ["talky", "talks & discussion"],
+    ["daytime", "daytime"],
+    ["late-night", "late night"],
+    ["touch-based", "touch-based"],
+    ["outdoors", "outdoors"],
+    ["sober", "sober"],
+  ];
+
+  // Ranges first, then every day in the horizon: the strip could scan a
+  // particular Thursday and this has to be able to as well.
+  function whenOptions() {
+    const opts = [
+      ["today", "today"],
+      ["tomorrow", "tomorrow"],
+      ["weekend", "this weekend"],
+      ["7", "next 7 days"],
+      ["30", "next 30 days"],
+    ];
+    const days = [];
+    const now = Date.now();
     for (let i = 0; i < HORIZON_DAYS; i++) {
-      const d = new Date(now.getTime() + i * 864e5);
-      const key = londonDate(d);
-      if (i === 0) cells.push(tick("today", fmt(d, { weekday: "short" }), key));
-      else if (i === 1)
-        cells.push(tick("tmrw", fmt(d, { weekday: "short" }), key));
-      else
-        cells.push(
-          tick(fmt(d, { weekday: "short" }), fmt(d, { day: "numeric" }), key)
-        );
+      const d = new Date(now + i * 864e5);
+      days.push([
+        londonDate(d),
+        d
+          .toLocaleDateString("en-GB", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            timeZone: "Europe/London",
+          })
+          .toLowerCase(),
+      ]);
     }
-    strip.replaceChildren(...cells);
-    syncDayTicks(); // include the pinned 7/30 ticks on first paint
-
-    function tick(main, sub, key) {
-      const btn = document.createElement("button");
-      btn.className = "tick" + (key === state.day ? " cursor" : "");
-      btn.dataset.day = key;
-      btn.appendChild(document.createTextNode(main));
-      const small = document.createElement("small");
-      small.textContent = sub;
-      btn.appendChild(small);
-      btn.addEventListener("click", () => {
-        state.day = key;
-        state.surprise = null;
-        syncDayTicks();
-        renderWithoutCardAnim();
-        scrollToEvents();
-      });
-      return btn;
-    }
+    return { opts, days };
   }
 
-  // A live search reaches past the chosen day (see browseEvents), so nothing
-  // in the strip is selected while one is running — leaving "tue" lit over a
-  // list of results four weeks out just misreports what you're looking at.
-  function syncDayTicks() {
-    const searching = !!state.query.trim();
-    document.querySelectorAll(".tick").forEach((t) => {
-      const on = !searching && t.dataset.day === state.day;
-      t.classList.toggle("cursor", on);
-      t.setAttribute("aria-pressed", String(on));
-    });
-    document
-      .querySelector(".ticker-shell")
-      .classList.toggle("standing-by", searching);
+  // Mirror of inDayWindow's vocabulary — the named ranges resolve to a
+  // start and end in London time, a bare date to that one day.
+  function dayRange(day) {
+    const startOfToday = new Date(londonDate(new Date()) + "T00:00:00");
+    const dayMs = 864e5;
+    if (day === "today") return [startOfToday, +startOfToday + dayMs];
+    if (day === "tomorrow")
+      return [+startOfToday + dayMs, +startOfToday + 2 * dayMs];
+    if (day === "weekend") {
+      // Saturday and Sunday of the week we're in: on a Sunday that's today
+      const dow = new Date(startOfToday).getDay(); // 0 Sun … 6 Sat
+      const toSat = dow === 0 ? -1 : 6 - dow;
+      const sat = +startOfToday + toSat * dayMs;
+      return [sat, sat + 2 * dayMs];
+    }
+    return null;
   }
 
-  // A practice chip counts what it would yield on its own, the way the
-  // topic chips do: the rest of the bench as it stands, minus any other
-  // practice selection.
-  function renderPracticeTokens() {
-    const tape = document.getElementById("practice-chips");
-    const tokens = [];
-    for (const spec of PRACTICES) {
-      if (!state.events.some((e) => practiceMatch(e, spec))) continue;
-      const btn = document.createElement("button");
-      btn.className = "token";
-      btn.dataset.practice = spec.slug;
-      btn.appendChild(document.createTextNode(spec.label));
-      const n = document.createElement("small");
-      n.className = "token-count";
-      btn.append(" ", n);
-      btn.addEventListener("click", () => {
+  function isKnownDay(day) {
+    return (
+      ["today", "tomorrow", "weekend", "7", "30"].includes(day) ||
+      /^\d{4}-\d{2}-\d{2}$/.test(day)
+    );
+  }
+
+  function matchesDay(e, day) {
+    if (day === "7" || day === "30")
+      return new Date(e.start_at).getTime() <= Date.now() + Number(day) * 864e5;
+    const range = dayRange(day);
+    if (range) {
+      const t = new Date(e.start_at).getTime();
+      return t >= range[0] && t < range[1];
+    }
+    return londonDate(e.start_at) === day;
+  }
+
+  // A parent modality takes its children too: picking ecstatic dance
+  // includes the 5Rhythms nights.
+  function modalityMatch(e, slug) {
+    const spec = practiceSpec(slug);
+    if (spec && practiceMatch(e, spec)) return true;
+    return PRACTICES.some(
+      (p) => p.parent === slug && practiceMatch(e, p)
+    );
+  }
+
+  const FACETS = {
+    when: {
+      state: "day",
+      blank: null, // "when" always has a value; 7 days is its rest state
+      test: (e, v) => matchesDay(e, v),
+      options: () => {
+        const { opts, days } = whenOptions();
+        return [...opts.map(([v, l]) => ({ value: v, label: l })),
+          { group: "a day", items: days.map(([v, l]) => ({ value: v, label: l })) }];
+      },
+    },
+    topic: {
+      state: "topic",
+      blank: "anything",
+      test: (e, v) => (e.topics || []).includes(v),
+      options: () =>
+        TOPICS.filter((t) =>
+          state.events.some((e) => (e.topics || []).includes(t))
+        ).map((t) => ({ value: t, label: t })),
+    },
+    modality: {
+      state: "modality",
+      blank: "anything",
+      test: modalityMatch,
+      options: () =>
+        PRACTICES.filter((p) => !p.parent).flatMap((p) => [
+          { value: p.slug, label: p.label },
+          ...PRACTICES.filter((c) => c.parent === p.slug).map((c) => ({
+            value: c.slug,
+            label: `— ${c.label}`,
+          })),
+        ]),
+    },
+    vibe: {
+      state: "vibe",
+      blank: "anything",
+      test: (e, v) => (e.traits || []).includes(v),
+      options: () =>
+        VIBES.filter(
+          ([key]) =>
+            state.events.filter((e) => (e.traits || []).includes(key)).length >=
+            5
+        ).map(([key, label]) => ({ value: key, label })),
+    },
+  };
+
+  // Everything on the bench except one facet, so that facet can count
+  // honestly against the rest.
+  function filtersExcept(e, skip) {
+    if (state.category !== "all" && e.category !== state.category) return false;
+    if (state.lens === "tech" && !isTech(e)) return false;
+    if (state.lens === "beyond" && isTech(e)) return false;
+    if (state.area !== "all" && e.area !== state.area) return false;
+    if (state.freeOnly && !e.is_free) return false;
+    const q = state.query.trim().toLowerCase();
+    if (q && !matchesQuery(e, q)) return false;
+    for (const [name, facet] of Object.entries(FACETS)) {
+      if (name === skip) continue;
+      const value = state[facet.state];
+      if (!value) continue;
+      // a live search reaches past the chosen day, as it always has
+      if (name === "when" && q) continue;
+      if (!facet.test(e, value)) return false;
+    }
+    return true;
+  }
+
+  function renderFilters() {
+    for (const [name, facet] of Object.entries(FACETS)) {
+      const select = document.getElementById(`filter-${name}`);
+      const items = facet.options();
+      if (facet.blank && !items.length) continue;
+      const frag = document.createDocumentFragment();
+      if (facet.blank) frag.appendChild(option("", facet.blank));
+      for (const item of items) {
+        if (item.group) {
+          const group = document.createElement("optgroup");
+          group.label = item.group;
+          item.items.forEach((o) => group.appendChild(option(o.value, o.label)));
+          frag.appendChild(group);
+        } else {
+          frag.appendChild(option(item.value, item.label));
+        }
+      }
+      select.replaceChildren(frag);
+      // a failed first load retries, and this runs again: bind once
+      if (select.dataset.bound) {
+        document.getElementById(`field-${name}`).hidden = false;
+        continue;
+      }
+      select.dataset.bound = "1";
+      select.addEventListener("change", () => {
         clearLanding();
-        if (state.practices.has(spec.slug)) state.practices.delete(spec.slug);
-        else state.practices.add(spec.slug);
+        state[facet.state] = select.value || (name === "when" ? "7" : null);
         state.surprise = null;
-        render();
+        renderWithoutCardAnim();
+        if (name === "when") scrollToEvents();
       });
-      tokens.push(btn);
+      document.getElementById(`field-${name}`).hidden = false;
     }
-    tape.replaceChildren(...tokens);
-    return tokens.length;
+    syncFilters();
+
+    function option(value, label) {
+      const o = document.createElement("option");
+      o.value = value;
+      o.textContent = label;
+      return o;
+    }
   }
 
-  function syncPracticeTokens() {
-    const others = new Set(state.practices);
-    document.querySelectorAll("#practice-chips .token").forEach((t) => {
-      const slug = t.dataset.practice;
-      const spec = practiceSpec(slug);
-      if (!spec) return;
-      const lit = state.practices.has(slug);
-      t.classList.toggle("lit", lit);
-      t.setAttribute("aria-pressed", String(lit));
-      others.delete(slug);
-      const n = state.events.filter(
-        (e) =>
-          practiceMatch(e, spec) &&
-          !hasStarted(e) &&
-          inDayWindow(e) &&
-          filtersBesidesTopics(e)
-      ).length;
-      others.add(slug);
-      t.querySelector(".token-count").textContent = String(n);
-      t.classList.toggle("spent", n === 0);
-      t.title = n ? `${n} in this window` : "nothing in this window";
-    });
+  // Counts and the chosen value, refreshed from render() so they always
+  // describe the list about to be drawn.
+  function syncFilters() {
+    for (const [name, facet] of Object.entries(FACETS)) {
+      const select = document.getElementById(`filter-${name}`);
+      const value = state[facet.state] || "";
+      for (const o of select.querySelectorAll("option")) {
+        if (!o.value) continue;
+        const n = state.events.filter(
+          (e) =>
+            !hasStarted(e) && facet.test(e, o.value) && filtersExcept(e, name)
+        ).length;
+        const label = o.dataset.label || (o.dataset.label = o.textContent);
+        o.textContent = n ? `${label} (${n})` : label;
+        o.classList.toggle("spent", n === 0);
+      }
+      select.value = value;
+      // the rest state isn't "chosen" — only a narrowed field lights up
+      const chosen = name === "when" ? value !== "7" : !!value;
+      document.getElementById(`field-${name}`).classList.toggle("lit", chosen);
+    }
     renderPracticeGuide();
   }
 
-  // One practice lit: offer the page that explains it. Two or more and
-  // there's no single guide to point at, so the line stands down.
   function renderPracticeGuide() {
     const line = document.getElementById("practice-guide");
-    if (state.practices.size !== 1) {
+    if (!state.modality) {
       line.hidden = true;
       return;
     }
-    const spec = practiceSpec([...state.practices][0]);
+    const spec = practiceSpec(state.modality);
     if (!spec || location.protocol === "file:") {
       line.hidden = true;
       return;
@@ -809,94 +898,11 @@
     const withArea = state.events.filter((e) => e.area).length;
     if (withArea >= 5 && FEATURES.compass !== false)
       document.getElementById("compass-unit").hidden = false;
-    const withTopics = state.events.filter(
-      (e) => (e.topics || []).length
-    ).length;
-    if (withTopics >= 5 && FEATURES.topics !== false) {
-      renderTopicTokens();
-      document.getElementById("topic-unit").hidden = false;
-      if (FEATURES.lens !== false) {
-        document.getElementById("lens-unit").hidden = false;
-        setLens(state.lens);
-      }
-      startTapeDrift();
+    if (FEATURES.lens !== false && state.events.some((e) => (e.topics || []).length)) {
+      document.getElementById("lens-unit").hidden = false;
+      setLens(state.lens);
     }
-    if (PRACTICES.length && FEATURES.practices !== false) {
-      if (renderPracticeTokens()) {
-        document.getElementById("practice-unit").hidden = false;
-      }
-    }
-  }
-
-  // Tape membership is decided once, over everything loaded — a chip that
-  // came and went as the date moved would be worse than a quiet one. The
-  // number on the chip is the live count for the current day window.
-  function renderTopicTokens() {
-    const tape = document.getElementById("topic-chips");
-    const countOverall = (topic) =>
-      state.events.filter((e) => (e.topics || []).includes(topic)).length;
-
-    // "anything" sits still beside the tape so it's always in reach
-    document
-      .getElementById("topic-anchor")
-      .replaceChildren(token("anything", "all"));
-    const tokens = [];
-    for (const topic of TOPICS) {
-      if (countOverall(topic) < 2) continue; // don't offer near-empty doorways
-      tokens.push(token(topic, topic));
-    }
-    tape.replaceChildren(...tokens);
-    syncTopicTokens();
-
-    function token(label, key) {
-      const btn = document.createElement("button");
-      btn.className = "token";
-      btn.dataset.topic = key;
-      btn.appendChild(document.createTextNode(label));
-      if (key !== "all") {
-        const n = document.createElement("small");
-        n.className = "token-count";
-        // a real space, so it isn't announced as "psychedelics4"
-        btn.append(" ", n);
-      }
-      btn.addEventListener("click", () => {
-        clearLanding();
-        if (key === "all") state.topics.clear();
-        else if (state.topics.has(key)) state.topics.delete(key);
-        else state.topics.add(key);
-        state.surprise = null;
-        syncTopicTokens();
-        render();
-      });
-      return btn;
-    }
-  }
-
-  function syncTopicTokens() {
-    // What this chip would actually yield if it were the only topic picked —
-    // every other filter still applies, so the number matches the grid.
-    const countHere = (topic) =>
-      state.events.filter(
-        (e) =>
-          (e.topics || []).includes(topic) &&
-          !hasStarted(e) &&
-          inDayWindow(e) &&
-          filtersBesidesTopics(e)
-      ).length;
-
-    document.querySelectorAll("#topic-unit .token").forEach((t) => {
-      const k = t.dataset.topic;
-      const lit = k === "all" ? state.topics.size === 0 : state.topics.has(k);
-      t.classList.toggle("lit", lit);
-      t.setAttribute("aria-pressed", String(lit));
-      if (k === "all") return;
-      const n = countHere(k);
-      const label = t.querySelector(".token-count");
-      if (label) label.textContent = String(n);
-      // dimmed, not hidden — a chip that vanished mid-scan would be worse
-      t.classList.toggle("spent", n === 0);
-      t.title = n ? `${n} in this window` : "nothing in this window";
-    });
+    renderFilters();
   }
 
   function setLens(lens) {
@@ -927,80 +933,6 @@
 
   // let mouse users drag (and flick) the horizontal tapes — touch
   // already scrolls natively
-  function enableDragScroll(el) {
-    let down = false, moved = false;
-    let startX = 0, startLeft = 0, lastX = 0, lastT = 0, vel = 0, raf;
-    el.addEventListener("pointerdown", (ev) => {
-      if (ev.pointerType !== "mouse") return;
-      down = true;
-      moved = false;
-      startX = lastX = ev.clientX;
-      startLeft = el.scrollLeft;
-      lastT = performance.now();
-      vel = 0;
-      cancelAnimationFrame(raf);
-    });
-    window.addEventListener("pointermove", (ev) => {
-      if (!down) return;
-      const dx = ev.clientX - startX;
-      if (Math.abs(dx) > 4) moved = true;
-      el.scrollLeft = startLeft - dx;
-      const t = performance.now();
-      vel = (ev.clientX - lastX) / Math.max(1, t - lastT);
-      lastX = ev.clientX;
-      lastT = t;
-    });
-    window.addEventListener("pointerup", () => {
-      if (!down) return;
-      down = false;
-      let speed = -vel * 14; // carry the release velocity into a glide
-      const glide = () => {
-        if (Math.abs(speed) < 0.4) return;
-        el.scrollLeft += speed;
-        speed *= 0.92;
-        raf = requestAnimationFrame(glide);
-      };
-      glide();
-    });
-    // a drag shouldn't also press whatever it started on
-    el.addEventListener(
-      "click",
-      (ev) => {
-        if (!moved) return;
-        ev.stopPropagation();
-        ev.preventDefault();
-        moved = false;
-      },
-      true
-    );
-  }
-
-  // drift the topic tape gently until first touch — a quiet hint that
-  // there's more to the right
-  function startTapeDrift() {
-    const tape = document.getElementById("topic-chips");
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    // track position as a float: scrollLeft truncates on read, so a
-    // sub-pixel increment would otherwise never accumulate
-    let pos = tape.scrollLeft;
-    let dir = 1;
-    let raf;
-    const step = () => {
-      const max = tape.scrollWidth - tape.clientWidth;
-      if (max > 4) {
-        pos += 0.3 * dir;
-        if (pos >= max - 1) dir = -1;
-        else if (pos <= 0) dir = 1;
-        tape.scrollLeft = pos;
-      }
-      raf = requestAnimationFrame(step);
-    };
-    const stop = () => cancelAnimationFrame(raf);
-    for (const ev of ["pointerdown", "wheel", "touchstart"])
-      tape.addEventListener(ev, stop, { once: true, passive: true });
-    raf = requestAnimationFrame(step);
-  }
-
   function topicKeyFromSlug(slug) {
     if (!slug) return null;
     const s = slug.toLowerCase();
@@ -1034,7 +966,7 @@
       const key = topicKeyFromSlug(topicSlug);
       if (key && TOPICS.includes(key)) {
         state.landing = { kind: "topic", key };
-        state.topics = new Set([key]);
+        state.topic = key;
         state.category = "all";
         state.day = "30";
         return true;
@@ -1043,7 +975,7 @@
     if (cat && CATEGORIES[cat]) {
       state.landing = { kind: "category", key: cat };
       state.category = cat;
-      state.topics.clear();
+      state.topic = null;
       state.day = "30";
       return true;
     }
@@ -1065,19 +997,21 @@
       document.getElementById("free-toggle").checked = true;
     }
     const day = params.get("day");
-    if (day && (day === "7" || day === "30" || /^\d{4}-\d{2}-\d{2}$/.test(day)))
-      state.day = day;
-    // comma-separated multi-topic (single topics go the landing path)
+    if (day && isKnownDay(day)) state.day = day;
     if (!state.landing) {
-      const keys = (params.get("topic") || "")
-        .split(",")
-        .map(topicKeyFromSlug)
-        .filter((k) => k && TOPICS.includes(k));
-      if (keys.length) state.topics = new Set(keys);
-      const practices = (params.get("practice") || "")
-        .split(",")
-        .filter(Boolean);
-      if (practices.length) state.practices = new Set(practices);
+      // the first of a comma-separated list: links shared before the
+      // bench went single-select still open on something sensible
+      const key = topicKeyFromSlug((params.get("topic") || "").split(",")[0]);
+      if (key && TOPICS.includes(key)) state.topic = key;
+      // "practice" was this facet's first name — keep reading it
+      const modality = (
+        params.get("modality") ||
+        params.get("practice") ||
+        ""
+      ).split(",")[0];
+      if (modality) state.modality = modality;
+      const vibe = params.get("vibe");
+      if (vibe && VIBES.some(([k]) => k === vibe)) state.vibe = vibe;
       const cat = params.get("category");
       if (cat && CATEGORIES[cat]) state.category = cat;
     }
@@ -1090,13 +1024,10 @@
   function syncUrl() {
     if (location.protocol === "file:" || state.landing) return;
     const params = new URLSearchParams();
-    if (state.topics.size)
-      params.set(
-        "topic",
-        [...state.topics].map((t) => TOPIC_SLUGS[t] || t).join(",")
-      );
-    if (state.practices.size)
-      params.set("practice", [...state.practices].join(","));
+    if (state.topic)
+      params.set("topic", TOPIC_SLUGS[state.topic] || state.topic);
+    if (state.modality) params.set("modality", state.modality);
+    if (state.vibe) params.set("vibe", state.vibe);
     if (state.category !== "all") params.set("category", state.category);
     if (state.day !== "7") params.set("day", state.day);
     if (state.freeOnly) params.set("free", "1");
@@ -1156,15 +1087,13 @@
     clear.addEventListener("click", () => {
       clearLanding();
       state.category = "all";
-      state.topics.clear();
+      state.topic = null;
       state.day = "7";
       document
         .querySelectorAll("#category-pills .key")
         .forEach((k) =>
           k.classList.toggle("lit", k.dataset.category === "all")
         );
-      syncDayTicks();
-      syncTopicTokens();
       render();
     });
     head.appendChild(clear);
@@ -1174,8 +1103,9 @@
   function resetFilters() {
     clearLanding();
     state.category = "all";
-    state.practices.clear();
-    state.topics.clear();
+    state.topic = null;
+    state.modality = null;
+    state.vibe = null;
     state.area = "all";
     state.day = "7";
     state.freeOnly = false;
@@ -1186,10 +1116,8 @@
     document
       .querySelectorAll("#category-pills .key")
       .forEach((k) => k.classList.toggle("lit", k.dataset.category === "all"));
-    syncDayTicks();
     setLens("all");
     syncCompass();
-    syncTopicTokens();
     render();
   }
 
@@ -1254,9 +1182,7 @@
 
     // chip counts, the day strip and the URL all describe the window we're
     // about to draw, so they're refreshed from the one place that always runs
-    syncTopicTokens();
-    syncPracticeTokens();
-    syncDayTicks();
+    syncFilters();
     syncUrl();
 
     mapView.hidden = state.view !== "map";
@@ -1290,7 +1216,6 @@
     if (state.day === "30") return;
     state.day = "30";
     state.surprise = null;
-    syncDayTicks();
     render();
   }
 
@@ -2131,22 +2056,6 @@
       render();
     });
 
-    // pinned 7/30 day ranges next to the date ticker
-    document.getElementById("range-ticks").addEventListener("click", (ev) => {
-      const btn = ev.target.closest(".tick");
-      if (!btn) return;
-      if (state.day === btn.dataset.day) return;
-      state.day = btn.dataset.day;
-      state.surprise = null;
-      syncDayTicks();
-      renderWithoutCardAnim();
-      scrollToEvents();
-    });
-
-    enableDragScroll(document.getElementById("week-strip"));
-    enableDragScroll(document.getElementById("topic-chips"));
-    enableDragScroll(document.getElementById("practice-chips"));
-
     document.getElementById("free-toggle").addEventListener("change", (ev) => {
       state.freeOnly = ev.target.checked;
       state.surprise = null;
@@ -2500,7 +2409,6 @@
           el.hidden = true;
         });
     }
-    renderWeekStrip();
     setLens("all");
     const loadingTimer = startLoadingCycle();
     if (SUPABASE_URL.startsWith("YOUR_")) {
@@ -2536,11 +2444,8 @@
         .forEach((k) =>
           k.classList.toggle("lit", k.dataset.category === state.category)
         );
-      syncDayTicks();
       renderSpotlight();
       maybeShowEnrichedControls();
-      // topic chips only exist after maybeShowEnrichedControls
-      syncTopicTokens();
       renderLastUpdated();
       render();
       hideSplash();

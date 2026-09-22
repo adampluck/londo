@@ -238,10 +238,10 @@ body {
   box-shadow: none !important;
 }
 
-/* desktop: fold the date picker onto the search row to save vertical
-   space. Safe to do here because psyconnect hides the lens toggle and
-   compass (SITE.features.lens/compass false), so .bench holds nothing but
-   the ticker — plenty of room for it alongside search/free/reset. */
+/* desktop: search, free and reset share a row; the four filter fields
+   take the next one whole. psyconnect hides the lens toggle and compass
+   (SITE.features.lens/compass false), so .bench is empty here and folds
+   away to nothing. */
 @media (min-width: 641px) {
   #controls {
     flex-direction: row;
@@ -257,6 +257,7 @@ body {
     min-width: 0;
   }
   #controls > .controls-row.keys,
+  #controls > .controls-row.fields,
   #controls > .controls-row.unit {
     flex-basis: 100%;
   }
