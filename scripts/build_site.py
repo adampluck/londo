@@ -841,6 +841,32 @@ def seo_nav_html() -> str:
     return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
 
 
+# Upcoming events per topic, filled in by build() before listing pages
+# are written, so their topic chips can carry the same counts the SPA's do.
+TOPIC_COUNTS: dict[str, int] = {}
+
+
+def topic_nav_html(current: str | None) -> str:
+    """The main page's topic chips as links: "anything" (home) then each
+    of the site's topics, the current page lit. Static pages have no
+    filter state, so this is the navigation."""
+    site_topics = SITE_JSON.get("topics")
+    keys = [k for k in TOPICS if site_topics is None or k in site_topics]
+    parts = [f'<a class="token" href="{BASE_URL}/">anything</a>']
+    for key in keys:
+        n = TOPIC_COUNTS.get(key, 0)
+        if not n:
+            continue
+        slug_, _ = TOPICS[key]
+        lit = " lit" if key == current else ""
+        current_attr = ' aria-current="page"' if key == current else ""
+        parts.append(
+            f'<a class="token{lit}" href="{topic_url(slug_)}"{current_attr}>'
+            f'{esc(key)} <small class="token-count">{n}</small></a>'
+        )
+    return f'<nav class="static-topics" aria-label="topics">{"".join(parts)}</nav>'
+
+
 def display_name() -> str:
     """User-facing brand name (e.g. "PsyConnect") — distinct from
     SITE["name"], which stays lowercase since it's also a dict key
@@ -1141,11 +1167,7 @@ def listing_page(
     groups = day_groups(events[:200])
 
     body = f"""
-  <nav class="static-crumbs" aria-label="breadcrumb">
-    <a href="{BASE_URL}/">{esc(display_name())}</a>
-    <span aria-hidden="true">/</span>
-    <span>{esc(kind)}</span>
-  </nav>
+  {topic_nav_html(key if kind == "topic" else None)}
   <header class="static-list-head">
     <p class="static-kicker">in person · London</p>
     <h1 class="static-title">{esc(seo_title)}</h1>
@@ -1464,6 +1486,11 @@ def build(outdir: Path) -> None:
             )
         write_html_redirect(outdir / "e" / f"{slug}.html", canonical)
         urls.append(canonical)
+
+    TOPIC_COUNTS.clear()
+    for e in events:
+        for t in e.get("topics") or []:
+            TOPIC_COUNTS[t] = TOPIC_COUNTS.get(t, 0) + 1
 
     # category pages only make sense when the site spans all categories;
     # on a filtered site one of them would just mirror the homepage

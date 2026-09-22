@@ -1217,6 +1217,30 @@ body.static-page {
   margin-bottom: 0.5rem;
 }
 
+/* the main page's topic chips, as links */
+.static-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.2rem 0 1.6rem;
+}
+
+.static-topics .token,
+.static-topics .token:link,
+.static-topics .token:visited {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.static-topics .token:hover {
+  color: var(--ink);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.static-topics .token.lit:hover {
+  color: var(--gold);
+}
+
 .static-listing .day-group:first-of-type .day-heading {
   margin-top: 1.6rem;
 }
