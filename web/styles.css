@@ -1267,6 +1267,39 @@ body.static-page {
   scroll-margin-top: 1rem;
 }
 
+/* practice pages: the questions, under the listings */
+.static-faq {
+  max-width: 38rem;
+  margin: 3rem 0 0;
+}
+
+.static-faq h2 {
+  margin: 0 0 1.2rem;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.static-faq dl {
+  margin: 0;
+}
+
+.static-faq dt {
+  margin: 1.4rem 0 0.45rem;
+  font-family: var(--display);
+  font-size: 1.02rem;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.static-faq dd {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
 .static-listing .day-group:first-of-type .day-heading {
   margin-top: 1.6rem;
 }

@@ -207,6 +207,347 @@ TOPICS = {
 }
 
 # Warm intro copy for /t/<topic>/ pages.
+# Practice pages (/p/<slug>/): the level people actually search at —
+# "cacao ceremonies in London", not "spirituality & ritual". Each entry
+# is matched against the live listings by keyword, so a page only exists
+# on a site whose events support it, and re-shapes itself every build.
+#   terms:   matched on title + organizer + tags, at the start of a word
+#   deep:    also matched in the description; only phrases distinctive
+#            enough that a passing mention really is the practice
+#   exclude: guards against a false friend ("gongfu" for "gong")
+# The prose is the point: it answers the query in its first sentence so
+# a search engine — or a model quoting one paragraph — has something to
+# lift. Keep it concrete and keep it honest about prices and safety.
+PRACTICES = {
+    "cacao-ceremony": {
+        "label": "cacao ceremony",
+        "seo_title": "Cacao ceremonies in London",
+        "terms": ["cacao", "cocoa ceremony"],
+        "deep": ["cacao ceremony", "cacao circle"],
+        "intro": (
+            "A cacao ceremony is a gathering where everyone drinks a cup of "
+            "thick, bitter ceremonial cacao together and then sits, moves or "
+            "shares for a couple of hours. The cacao is a mild heart opener, "
+            "not a psychedelic: it lifts the mood, warms the chest and makes "
+            "people a little more willing to be honest with each other.",
+            "In London they usually run on a weekday evening or a Sunday "
+            "afternoon, often paired with ecstatic dance, sound, breathwork or "
+            "a sharing circle. Expect two to three hours, a room of twenty to "
+            "eighty people, and no requirement to say anything at all.",
+        ),
+        "faq": [
+            (
+                "What happens at a cacao ceremony?",
+                "You arrive, sit in a circle and are handed a cup of ceremonial "
+                "cacao — thick, dark and unsweetened. The facilitator usually "
+                "opens with an intention or a short meditation while the cacao "
+                "takes effect over twenty minutes or so, then leads whatever the "
+                "evening is built around: dance, sound, breathwork, journalling "
+                "or open sharing. Most end with a closing circle.",
+            ),
+            (
+                "How much does a cacao ceremony cost in London?",
+                "Most London cacao ceremonies cost between £10 and £30, with the "
+                "typical ticket around £17. A few community evenings are free or "
+                "donation-based; day-long retreats and full-moon specials run higher.",
+            ),
+            (
+                "Is cacao a drug, and is it safe?",
+                "Ceremonial cacao is food, not a drug — it's unprocessed cacao "
+                "with theobromine and a little caffeine, so it feels like a strong "
+                "coffee with a warmer edge. It's worth telling the facilitator "
+                "beforehand if you take antidepressants (particularly MAOIs), have "
+                "a heart condition, or are pregnant, as they will often serve a "
+                "smaller dose.",
+            ),
+            (
+                "Can I go to a cacao ceremony on my own?",
+                "Yes — most people there came alone. Facilitators build in "
+                "introductions and pairs, and nobody is made to speak or touch "
+                "anyone. Arriving ten minutes early makes the first circle easier.",
+            ),
+        ],
+    },
+    "ecstatic-dance": {
+        "label": "ecstatic dance",
+        "seo_title": "Ecstatic dance in London",
+        "terms": ["ecstatic dance", "ecstatic rave", "conscious dance"],
+        "deep": ["ecstatic dance"],
+        "intro": (
+            "Ecstatic dance is a freeform dance floor with no talking, no "
+            "alcohol and no steps to learn. A DJ builds a wave from slow and "
+            "grounded to fast and loud and back down again, and everyone moves "
+            "however their body wants to for a couple of hours.",
+            "London has one most nights of the week, from sunrise sessions to "
+            "Friday and Saturday floors of two hundred people. Many open with "
+            "cacao or a short warm-up circle and close with a lie-down.",
+        ),
+        "faq": [
+            (
+                "What is ecstatic dance?",
+                "A sober, freeform dance practice: no choreography, no "
+                "conversation on the floor, and no drinking. The DJ's set is "
+                "arranged as a journey through tempos so the room moves together "
+                "without anyone leading. It grew out of the 5Rhythms and conscious "
+                "dance scenes of the 1970s and 80s.",
+            ),
+            (
+                "Do I need to be able to dance?",
+                "No. There is nothing to get right and nobody is watching — most "
+                "people dance with their eyes half closed. Walking, stretching or "
+                "lying down at the edge of the room all count.",
+            ),
+            (
+                "What are the rules at an ecstatic dance?",
+                "Three, almost everywhere: no talking on the dance floor, no shoes, "
+                "and no alcohol or drugs. Dancing with someone else is welcome but "
+                "always invited rather than assumed — a hand raised palm-out is the "
+                "usual way to decline, and it isn't taken personally.",
+            ),
+        ],
+    },
+    "5rhythms": {
+        "label": "5Rhythms",
+        "seo_title": "5Rhythms classes in London",
+        "terms": ["5rhythms", "five rhythms", "5 rhythms"],
+        "deep": ["5rhythms"],
+        "intro": (
+            "5Rhythms is a moving meditation created by Gabrielle Roth: every "
+            "class travels through flowing, staccato, chaos, lyrical and "
+            "stillness, a wave that takes about two hours. A teacher holds the "
+            "room and offers a focus, but there are no steps to copy.",
+            "London has one of the largest 5Rhythms communities anywhere, with "
+            "weekly classes across the city, monthly longer waves and regular "
+            "weekend workshops. Drop in to any class marked open level.",
+        ),
+        "faq": [
+            (
+                "What are the five rhythms?",
+                "Flowing (continuous, circular, grounded), staccato (defined, "
+                "rhythmic, expressive), chaos (letting go of control), lyrical "
+                "(light and playful) and stillness (settling, breath). Danced in "
+                "sequence they make a wave, the basic form of every class.",
+            ),
+            (
+                "Is 5Rhythms suitable for beginners?",
+                "Yes — most weekly classes are open level and a good share of the "
+                "room is new. There is no technique to learn and no partner "
+                "needed; the teacher's instructions are invitations rather than "
+                "steps.",
+            ),
+            (
+                "How is 5Rhythms different from ecstatic dance?",
+                "5Rhythms is a taught practice with a fixed map and certified "
+                "teachers who guide the room through the wave. Ecstatic dance is "
+                "usually DJ-led and unguided. Both are sober, barefoot and "
+                "freeform.",
+            ),
+        ],
+    },
+    "breathwork": {
+        "label": "breathwork",
+        "seo_title": "Breathwork classes & workshops in London",
+        "terms": ["breathwork", "breathing workshop", "rebirthing", "holotropic"],
+        "deep": ["breathwork session", "conscious connected breathing"],
+        "intro": (
+            "Breathwork is a session where a facilitator guides you through a "
+            "specific breathing pattern — usually connected, mouth-led and "
+            "faster than normal — while you lie down with music playing. Thirty "
+            "to sixty minutes of it can bring tingling, strong emotion, "
+            "tears or a deep calm, and the session closes with rest and sharing.",
+            "London runs everything from lunchtime classes to weekend "
+            "intensives, in styles from gentle and somatic to the intense "
+            "holotropic lineage. Most are two hours and need no experience.",
+        ),
+        "faq": [
+            (
+                "What happens in a breathwork session?",
+                "You lie on a mat with an eye mask while the facilitator talks you "
+                "into a connected breathing rhythm — in through the mouth, no pause "
+                "at the top, out with a release. After twenty to forty minutes of "
+                "active breathing the music softens and you rest, then the group "
+                "usually shares what came up.",
+            ),
+            (
+                "Is breathwork safe?",
+                "For most people, yes, though tingling hands and a tight jaw are "
+                "common and harmless. Facilitators normally ask you to check in "
+                "first if you have epilepsy, cardiovascular problems, glaucoma, "
+                "severe asthma, a history of psychosis, or are pregnant — the "
+                "faster styles aren't recommended in those cases.",
+            ),
+            (
+                "Do I need any experience?",
+                "No. Almost every London session is open to first-timers and the "
+                "facilitator explains the pattern before anything starts. You can "
+                "stop and breathe normally whenever you want.",
+            ),
+        ],
+    },
+    "sound-bath": {
+        "label": "sound bath",
+        "seo_title": "Sound baths & gong baths in London",
+        # bare "gong" catches Jin Mai Gong (a qigong form), so the gong
+        # terms all name the session type
+        "terms": [
+            "sound bath", "gong bath", "sound healing", "sound journey",
+            "gong sound", "gong puja", "gongs",
+        ],
+        "deep": ["sound bath", "gong bath"],
+        "intro": (
+            "A sound bath is an hour lying on the floor while someone plays "
+            "gongs, singing bowls, chimes and voice around the room. There is "
+            "nothing to do: the sound is long and overlapping, and most people "
+            "drift between waking and sleep.",
+            "London's sound baths run in yoga studios, churches and railway "
+            "arches, often in the early evening. Bring warm socks — you cool "
+            "down quickly lying still — and expect to leave slightly dazed.",
+        ),
+        "faq": [
+            (
+                "What is a sound bath?",
+                "A group session where you lie down and listen to sustained "
+                "acoustic sound — usually gongs and crystal or Tibetan bowls — for "
+                "forty-five to sixty minutes. 'Bath' refers to being surrounded by "
+                "sound, not to water; nothing is asked of you beyond lying still.",
+            ),
+            (
+                "What should I bring to a sound bath?",
+                "Warm layers and socks, and a blanket if the listing doesn't say "
+                "one is provided. Most venues supply mats, bolsters and eye masks. "
+                "Arrive early enough to settle, as latecomers are often held at the "
+                "door once the gongs start.",
+            ),
+            (
+                "Is a gong bath the same as a sound bath?",
+                "A gong bath is a sound bath led mainly by gongs, which are louder "
+                "and more physical than bowls — you feel them in your chest. "
+                "Sessions billed as sound healing or sound journeys use a wider mix "
+                "of instruments and often voice.",
+            ),
+        ],
+    },
+    "somatics": {
+        "label": "somatic practice",
+        "seo_title": "Somatic workshops & embodiment in London",
+        # bare "embodiment" is a house word for half the scene — it was
+        # pulling in breathwork and tantra nights, so the terms name the
+        # practice itself
+        "terms": [
+            "somatic", "feldenkrais", "body-mind centering",
+            "embodiment lab", "embodiment practice", "embodied movement",
+        ],
+        "deep": ["somatic practice", "somatic therapy", "somatic experiencing"],
+        "intro": (
+            "Somatic work starts from the body rather than the story: slow "
+            "movement, attention to sensation, and pauses long enough to notice "
+            "what shifts. It's used for trauma, stress and plain disconnection, "
+            "and looks far less dramatic than it feels.",
+            "London's somatic scene spans trauma-informed workshops, "
+            "Feldenkrais classes, embodiment labs and movement research. Most "
+            "sessions are small, and touch — where it happens at all — is "
+            "always asked for first.",
+        ),
+        "faq": [
+            (
+                "What does somatic mean?",
+                "Somatic simply means 'of the body'. In practice it describes "
+                "approaches that work through felt sensation and movement rather "
+                "than talk alone — noticing where you brace, letting a movement "
+                "finish, following what the nervous system does next.",
+            ),
+            (
+                "Is somatic work therapy?",
+                "Some of it is: somatic experiencing and similar modalities are "
+                "clinical approaches delivered by trained practitioners. Group "
+                "workshops and embodiment classes are educational rather than "
+                "therapeutic, though they often touch the same ground.",
+            ),
+            (
+                "Will I have to be touched?",
+                "Not unless you choose to be. Most London sessions are solo or "
+                "guided in pairs with explicit consent, and 'I'd rather not' is a "
+                "complete answer.",
+            ),
+        ],
+    },
+    "contact-improvisation": {
+        "label": "contact improvisation",
+        "seo_title": "Contact improvisation jams & classes in London",
+        "terms": ["contact improv", "contact jam", "ci jam"],
+        "deep": ["contact improvisation"],
+        "intro": (
+            "Contact improvisation is a movement practice built on a shared "
+            "point of contact: two people lean, roll, lift and give weight, "
+            "following momentum rather than choreography. It's danced barefoot "
+            "and usually in silence or to quiet music.",
+            "London has weekly jams — open floors where anyone can dance with "
+            "anyone — plus classes for people who want the technique first. "
+            "Jams often ask for some prior experience; classes never do.",
+        ),
+        "faq": [
+            (
+                "What is contact improvisation?",
+                "A duet form developed by Steve Paxton in the 1970s in which "
+                "dancers share weight through a moving point of contact. Nothing "
+                "is set in advance: the dance follows physics — momentum, gravity "
+                "and the surface between two bodies.",
+            ),
+            (
+                "Is contact improv a beginner-friendly practice?",
+                "Classes are, and are the right place to start: you learn rolling, "
+                "giving weight and how to keep each other safe. Open jams assume "
+                "you already have those basics, so check the listing before turning "
+                "up to one.",
+            ),
+            (
+                "Is contact improvisation intimate?",
+                "It involves a lot of physical contact but is not romantic or "
+                "sexual, and consent is explicit throughout — you can decline a "
+                "dance or end one at any point without explanation.",
+            ),
+        ],
+    },
+    "qigong": {
+        "label": "qigong",
+        "seo_title": "Qigong classes in London",
+        "terms": ["qigong", "chi kung", "qi gong"],
+        "deep": ["qigong"],
+        "intro": (
+            "Qigong is a Chinese practice of slow, repeated movement "
+            "coordinated with breath and attention. Sequences are short and "
+            "undramatic — standing, shifting weight, opening and closing the "
+            "arms — and are meant to be repeated rather than perfected.",
+            "London classes run in parks, community halls and studios, often "
+            "early morning, and many are drop-in. Come in clothes you can move "
+            "in; nothing more is needed.",
+        ),
+        "faq": [
+            (
+                "What is qigong?",
+                "A practice from Chinese medicine combining gentle movement, "
+                "breathing and focused attention, usually done standing. Where tai "
+                "chi is a long martial form, qigong is a set of short repeatable "
+                "exercises.",
+            ),
+            (
+                "Is qigong suitable for beginners or older people?",
+                "Yes — it's low impact, done standing or seated, and can be scaled "
+                "to almost any level of mobility. Most London classes are mixed "
+                "ability and welcome complete beginners.",
+            ),
+            (
+                "What should I wear to a qigong class?",
+                "Loose, warm clothing and flat shoes, or bare feet indoors. Outdoor "
+                "classes carry on in most weather, so dress for standing still in "
+                "it.",
+            ),
+        ],
+    },
+}
+
+MIN_PRACTICE_EVENTS = 5
+
 TOPIC_INTROS = {
     "psychedelics": (
         "Talks, integration circles, community nights and careful "
@@ -356,6 +697,48 @@ def _excluded(event: dict, flt: dict) -> bool:
         re.search(r"(^|[^a-z0-9])" + re.escape(term), deep_hay)
         for term in text_terms
     )
+
+
+def _matches(hay: str, terms: list[str]) -> bool:
+    """Word-start matching, as _excluded() does it."""
+    return any(
+        re.search(r"(^|[^a-z0-9])" + re.escape(term), hay) for term in terms
+    )
+
+
+def practice_match(event: dict, spec: dict) -> bool:
+    """Whether this listing belongs on a practice page.
+
+    Same two tiers as the site filter's exclude terms: the safe fields
+    (title, organizer, tags) take any of the practice's terms, while the
+    description — long prose, where a bare substring catches passing
+    mentions — only takes the phrases listed as deep.
+    """
+    hay = " ".join(
+        p
+        for p in (
+            event.get("title") or "",
+            event.get("organizer_name") or "",
+            " ".join(event.get("tags") or []),
+        )
+        if p
+    ).lower()
+    if _matches(hay, spec.get("exclude") or []):
+        return False
+    if _matches(hay, spec["terms"]):
+        return True
+    deep = spec.get("deep") or []
+    return bool(deep) and _matches((event.get("description") or "").lower(), deep)
+
+
+def site_practices(events: list[dict]) -> list[tuple[str, dict, list[dict]]]:
+    """Each practice this site has enough listings for, with its events."""
+    out = []
+    for slug_, spec in PRACTICES.items():
+        matched = [e for e in events if practice_match(e, spec)]
+        if len(matched) >= MIN_PRACTICE_EVENTS:
+            out.append((slug_, spec, matched))
+    return out
 
 
 def _curated(event: dict) -> bool:
@@ -529,6 +912,10 @@ def topic_url(slug_: str) -> str:
 
 def category_url(key: str) -> str:
     return f"{BASE_URL}/c/{key}/"
+
+
+def practice_url(slug_: str) -> str:
+    return f"{BASE_URL}/p/{slug_}/"
 
 
 def esc(value) -> str:
@@ -868,12 +1255,19 @@ def seo_nav_html() -> str:
         if i:
             parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
         parts.append(f'<a href="{topic_url(slug_)}">{esc(key)}</a>')
+    for slug_, spec, _ in SITE_PRACTICES:
+        parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
+        parts.append(f'<a href="{practice_url(slug_)}">{esc(spec["label"])}</a>')
     return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
 
 
 # Upcoming events per topic, filled in by build() before listing pages
 # are written, so their topic chips can carry the same counts the SPA's do.
 TOPIC_COUNTS: dict[str, int] = {}
+
+# The practices this site has the listings for, filled in by build()
+# before any page is written: the footer links to them from everywhere.
+SITE_PRACTICES: list[tuple[str, dict, list[dict]]] = []
 
 
 def topic_nav_html(current: str | None) -> str:
@@ -981,6 +1375,12 @@ def topic_chips(event: dict) -> str:
             0,
             f'<a class="static-chip" href="{category_url(cat)}">{esc(cat)}</a>',
         )
+    for slug_, spec, _ in SITE_PRACTICES:
+        if practice_match(event, spec):
+            chips.append(
+                f'<a class="static-chip" href="{practice_url(slug_)}">'
+                f'{esc(spec["label"])}</a>'
+            )
     if not chips:
         return ""
     return f'<p class="static-chips">{"".join(chips)}</p>'
@@ -1162,6 +1562,8 @@ def listing_intro_paragraphs(key: str, kind: str, label: str, count: int) -> lis
     """Warm prose for listing pages, plus a light freshness line."""
     if kind == "category":
         paras = list(CATEGORY_INTROS.get(key) or ())
+    elif kind == "practice":
+        paras = list(PRACTICES[key]["intro"])
     else:
         paras = list(TOPIC_INTROS.get(key) or ())
     if not paras:
@@ -1177,6 +1579,64 @@ def listing_intro_paragraphs(key: str, kind: str, label: str, count: int) -> lis
         else "One upcoming right now — times, venue and tickets below."
     )
     return [*paras, freshness]
+
+
+def faq_html(faq: list[tuple[str, str]]) -> str:
+    """The questions people actually type, answered in prose. Marked up
+    as a definition list, and repeated as FAQPage JSON-LD."""
+    items = "".join(
+        f"<dt>{esc(q)}</dt><dd>{esc(a)}</dd>" for q, a in faq
+    )
+    return (
+        '<section class="static-faq">'
+        "<h2>Common questions</h2>"
+        f"<dl>{items}</dl>"
+        "</section>"
+    )
+
+
+def listing_json_ld(
+    seo_title: str, canonical: str, description: str,
+    events: list[dict], faq: list[tuple[str, str]],
+) -> dict:
+    """A collection page, the events on it, and its FAQ — one graph."""
+    graph: list[dict] = [
+        {
+            "@type": "CollectionPage",
+            "name": seo_title,
+            "description": description,
+            "url": canonical,
+        },
+        {
+            "@type": "ItemList",
+            "name": seo_title,
+            "numberOfItems": len(events),
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": i + 1,
+                    "url": event_url(e),
+                    "name": e["title"],
+                }
+                for i, e in enumerate(events[:20])
+            ],
+        },
+    ]
+    if faq:
+        graph.append(
+            {
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": q,
+                        "acceptedAnswer": {"@type": "Answer", "text": a},
+                    }
+                    for q, a in faq
+                ],
+            }
+        )
+    return {"@context": "https://schema.org", "@graph": graph}
 
 
 def listing_page(
@@ -1195,6 +1655,13 @@ def listing_page(
         meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
 
     groups = day_groups(events[:200])
+    spec = PRACTICES[key] if kind == "practice" else {}
+    faq = faq_html(spec["faq"]) if spec.get("faq") else ""
+    json_ld = (
+        listing_json_ld(seo_title, canonical, meta_desc, events, spec.get("faq") or [])
+        if kind == "practice"
+        else None
+    )
 
     body = f"""
   {topic_nav_html(key if kind == "topic" else None)}
@@ -1207,6 +1674,7 @@ def listing_page(
     </div>
   </header>
   {groups}
+  {faq}
   <p class="static-back">
     <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
   </p>"""
@@ -1216,6 +1684,7 @@ def listing_page(
         canonical,
         DEFAULT_OG_IMAGE,
         body,
+        json_ld=json_ld,
         css_prefix="../..",
         body_class="static-page static-listing",
     )
@@ -1470,6 +1939,9 @@ def build(outdir: Path) -> None:
     inject_startup_images(outdir)
     inject_theme_boot(outdir)
 
+    global SITE_PRACTICES
+    SITE_PRACTICES = site_practices(events)
+
     DEFAULT_OG_IMAGE = (
         f"{BASE_URL}/og-image.jpg" if (outdir / "og-image.jpg").exists() else None
     )
@@ -1555,6 +2027,22 @@ def build(outdir: Path) -> None:
             ),
         )
         write_html_redirect(outdir / "t" / f"{slug_}.html", canonical)
+        urls.append(canonical)
+
+    for slug_, spec, matched in SITE_PRACTICES:
+        canonical = practice_url(slug_)
+        write_index(
+            outdir / "p" / slug_,
+            listing_page(
+                slug_,
+                spec["label"],
+                spec["seo_title"],
+                canonical,
+                matched,
+                kind="practice",
+            ),
+        )
+        write_html_redirect(outdir / "p" / f"{slug_}.html", canonical)
         urls.append(canonical)
 
     today = datetime.now(timezone.utc).date().isoformat()
