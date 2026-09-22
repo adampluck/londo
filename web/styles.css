@@ -1880,15 +1880,27 @@ body.theme-night .blob { opacity: 0.35; }
   /* day headings float at the top while scrolling that day's events */
   .day-group { margin-top: 1.4rem; }
 
+  /* a slim bar rather than a headline: it only has to mark where one
+     day ends and the next begins, and it's on screen the whole way
+     down that day's events */
   .day-heading {
     position: sticky;
     top: env(safe-area-inset-top, 0);
     z-index: 5;
-    margin: 0 -1.5rem 0.9rem;
-    padding: 0.65rem 1.5rem 0.55rem;
+    margin: 0 -1.5rem 0.75rem;
+    padding: 0.4rem 1.5rem 0.35rem;
+    gap: 0.45rem;
+    font-size: 0.95rem;
     background: rgba(20, 16, 31, 0.88);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    /* a tinted hairline, so the band reads as a divider in both themes */
+    border-bottom: 1px solid rgba(227, 192, 141, 0.22);
+  }
+
+  /* the hairline does the work the trailing rule did */
+  .day-heading::after {
+    display: none;
   }
 }
 

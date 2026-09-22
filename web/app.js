@@ -1405,12 +1405,6 @@
         : day;
       h2.appendChild(name);
 
-      const count = document.createElement("span");
-      count.className = "count";
-      count.textContent =
-        dayEvents.length === 1 ? "one gathering" : `${dayEvents.length} gatherings`;
-      h2.appendChild(count);
-
       section.appendChild(h2);
 
       const grid = document.createElement("div");

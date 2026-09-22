@@ -1193,15 +1193,10 @@ def day_groups(events: list[dict]) -> str:
     sections = []
     for key, day_events in by_day.items():
         day = _start_london(day_events[0]).strftime("%A %-d %B")
-        count = (
-            "one gathering"
-            if len(day_events) == 1
-            else f"{len(day_events)} gatherings"
-        )
         cards = "".join(event_card(e) for e in day_events)
         sections.append(
             f'<section class="day-group" id="d-{key}"><h2 class="day-heading">'
-            f'<span>{esc(day)}</span><span class="count">{count}</span></h2>'
+            f"<span>{esc(day)}</span></h2>"
             f'<div class="grid">{cards}</div></section>'
         )
     return "".join(sections)
