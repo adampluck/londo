@@ -40,6 +40,10 @@ SITES = {
         "overlay": None,
         "config": ROOT / "web" / "config.js",
         "outdir": ROOT / "build",
+        # londo and psyconnect list the same events, so leaving both open
+        # to search would have them competing as duplicates. psyconnect is
+        # the one being optimised; londo asks to be left out of the index.
+        "noindex": True,
     },
     "psyconnect": {
         "base_url": "https://psyconnect.london",
@@ -136,6 +140,18 @@ def inject_theme_boot(outdir: Path) -> None:
     if end == -1:
         return
     index.write_text(text[:start] + theme_boot_tag() + text[end + len("-->") :])
+
+
+def inject_robots_meta(outdir: Path) -> None:
+    """The SPA shell is copied, not generated, so it needs the tag too."""
+    meta = robots_meta()
+    if not meta:
+        return
+    index = outdir / "index.html"
+    text = index.read_text()
+    if 'name="robots"' in text:
+        return
+    index.write_text(text.replace("<head>", f"<head>\n  {meta}", 1))
 
 
 # set from SITES by main(); the script builds one site per invocation
@@ -548,6 +564,15 @@ PRACTICES = {
 
 MIN_PRACTICE_EVENTS = 5
 
+# Turned away from a noindex site: these fetch to train or to answer,
+# not to rank, so a noindex meta means nothing to them.
+AI_CRAWLERS = [
+    "GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-User",
+    "anthropic-ai", "PerplexityBot", "Perplexity-User", "Google-Extended",
+    "Applebot-Extended", "Bytespider", "CCBot", "meta-externalagent",
+    "Amazonbot", "cohere-ai", "Diffbot", "Timpibot", "Omgilibot",
+]
+
 TOPIC_INTROS = {
     "psychedelics": (
         "Talks, integration circles, community nights and careful "
@@ -792,6 +817,19 @@ def site_match(event: dict) -> bool:
     if event.get("category") in (flt.get("categories") or []):
         return True
     return any(t in (flt.get("topics") or []) for t in topics)
+
+
+def robots_meta() -> str:
+    """On a site marked noindex, every page says so in its head.
+
+    The meta tag, not a robots.txt Disallow, is what actually removes a
+    page from an index: a disallowed page can't be fetched, so the
+    directive is never read and the URL can linger as a bare link.
+    robots.txt keeps the well-behaved AI crawlers off instead.
+    """
+    if not SITE.get("noindex"):
+        return ""
+    return '<meta name="robots" content="noindex, nofollow">'
 
 
 def goatcounter_snippet() -> str:
@@ -1182,7 +1220,7 @@ def page(
   <title>{esc(title)}</title>
   <meta name="description" content="{esc(description)}">
   <link rel="canonical" href="{esc(canonical)}">
-  {head_extra}
+  {robots_meta()}{head_extra}
   <meta property="og:site_name" content="{esc(display_name())}">
   <meta property="og:type" content="website">
   <meta property="og:title" content="{esc(title)}">
@@ -1938,6 +1976,7 @@ def build(outdir: Path) -> None:
     THEME_COLOR = shell_meta.group(1) if shell_meta else ""
     inject_startup_images(outdir)
     inject_theme_boot(outdir)
+    inject_robots_meta(outdir)
 
     global SITE_PRACTICES
     SITE_PRACTICES = site_practices(events)
@@ -2055,11 +2094,24 @@ def build(outdir: Path) -> None:
         )
         + "</urlset>\n"
     )
-    (outdir / "sitemap.xml").write_text(sitemap)
-    disallow = "Disallow: /join-community/\n" if has_join else ""
-    (outdir / "robots.txt").write_text(
-        f"User-agent: *\nAllow: /\n{disallow}Sitemap: {BASE_URL}/sitemap.xml\n"
-    )
+    if SITE.get("noindex"):
+        # No sitemap to invite anyone in. Search engines stay allowed so
+        # they can read the noindex meta and drop what they already have;
+        # the AI crawlers, which index rather than rank, are turned away
+        # outright.
+        (outdir / "robots.txt").write_text(
+            "User-agent: *\nAllow: /\n\n"
+            + "".join(
+                f"User-agent: {bot}\nDisallow: /\n\n"
+                for bot in AI_CRAWLERS
+            )
+        )
+    else:
+        (outdir / "sitemap.xml").write_text(sitemap)
+        disallow = "Disallow: /join-community/\n" if has_join else ""
+        (outdir / "robots.txt").write_text(
+            f"User-agent: *\nAllow: /\n{disallow}Sitemap: {BASE_URL}/sitemap.xml\n"
+        )
     print(f"Wrote {len(urls)} pages -> {outdir}")
 
 
