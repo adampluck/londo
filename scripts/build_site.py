@@ -1046,6 +1046,9 @@ HORIZON_DAYS = 30  # the date strip's window, as on the main page
 # and the month sits one click away, pointing its canonical back.
 LISTING_WINDOWS = (7, 30)
 MIN_WEEK_EVENTS = 3  # below this the week is too thin to lead with
+# Topics and categories are for "what's on this week"; a practice page
+# answers "where do I find one of these", which a month serves better.
+LEAD_WINDOW = {"topic": 7, "category": 7, "practice": 30}
 
 
 def placeholder_gradient(event: dict) -> str:
@@ -1130,12 +1133,15 @@ def date_strip_html(events: list[dict], days: int, other_url: str | None) -> str
     ticks = []
     for i in range(days):
         day = today + timedelta(days=i)
+        # the date is the sub-line throughout: over a week the weekday
+        # alone under "today"/"tmrw" left people guessing the date
         if i == 0:
-            main, sub = "today", day.strftime("%a").lower()
+            main = "today"
         elif i == 1:
-            main, sub = "tmrw", day.strftime("%a").lower()
+            main = "tmrw"
         else:
-            main, sub = day.strftime("%a").lower(), day.strftime("%-d")
+            main = day.strftime("%a").lower()
+        sub = day.strftime("%-d %b").lower() if days <= 7 else day.strftime("%-d")
         cell = f"{main}<small>{sub}</small>"
         if day in have:
             ticks.append(f'<a class="tick" href="#d-{day.isoformat()}">{cell}</a>')
@@ -1997,14 +2003,17 @@ def write_listing(
     """A listing at both ranges: the lead page at `parts`, the other one
     a directory below it.
 
-    The lead is the week unless the week is too thin to be worth landing
-    on, in which case the month leads instead. The second page is the
+    Which range leads depends on the family (see LEAD_WINDOW), except
+    that a week too thin to land on gives way to the month. The second
+    page is the
     same listing over a different range, so its canonical points at the
     lead and it stays out of the sitemap — one page competes for the
     query, the other is just a wider look.
     """
     week, month = (within_window(events, n) for n in LISTING_WINDOWS)
-    lead_days = 7 if len(week) >= MIN_WEEK_EVENTS else 30
+    lead_days = LEAD_WINDOW.get(kind, 7)
+    if lead_days == 7 and len(week) < MIN_WEEK_EVENTS:
+        lead_days = 30
     other_days = 30 if lead_days == 7 else 7
     by_days = {7: week, 30: month}
     other_url = f"{canonical}{other_days}-days/"
