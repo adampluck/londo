@@ -610,109 +610,129 @@ body {
 
 .token.spent .token-count { opacity: 0.75; }
 
-/* --- the bench: four dropdowns ---
-   One row in place of the day strip and the chip tapes it grew. Native
-   <select> so a phone gives its own picker and the keyboard works for
-   free; the keycap tokens do the styling so it still reads as part of
-   the same instrument. */
+/* --- refinements: one button, one panel ---
+   The date strip and search are the resting state; what / modality /
+   vibe live behind this, because most visits are a browse rather than a
+   refinement. What is chosen stays on screen as applied chips, so a
+   filtered list never looks like the whole list. */
 
-.controls-row.fields {
-  gap: 0.5rem;
-  align-items: flex-end;
-}
-
-/* with the ticker gone this row is empty on a filtered site */
-.controls-row.bench:empty {
-  display: none;
-}
-
-.field {
-  position: relative;
-  flex: 1 1 0;
-  max-width: 16rem;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.field .legend {
-  padding-left: 0.1rem;
-  opacity: 0.8;
-}
-
-.field select {
-  width: 100%;
-  min-width: 0;
-  height: 2.5rem;
-  padding: 0 1.7rem 0 0.7rem;
+.filters-key {
   font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--ink);
-  background: linear-gradient(180deg, var(--key-lit), var(--key-face));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  box-shadow:
-    0 3px 0 var(--key-side),
-    0 5px 12px -6px rgba(0, 0, 0, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-  text-overflow: ellipsis;
-  transition: color 0.12s, border-color 0.12s;
-}
-
-/* the caret, drawn rather than shipped: one less asset to cache */
-.field::after {
-  content: "";
-  position: absolute;
-  right: 0.65rem;
-  bottom: 1.05rem;
-  width: 0;
-  height: 0;
-  border-left: 3.5px solid transparent;
-  border-right: 3.5px solid transparent;
-  border-top: 4.5px solid currentColor;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--ink-dim);
-  pointer-events: none;
+  padding: 0.52rem 0.85rem;
 }
 
-.field select:focus-visible {
-  outline: 2px solid var(--mauve);
-  outline-offset: 2px;
+.filters-key:hover { color: var(--peach); }
+
+.filters-key.lit { color: var(--gold); }
+
+.filters-count { margin-left: 0.35rem; }
+
+/* the attribute would lose to display:flex, so say it explicitly */
+.applied-bar[hidden] { display: none; }
+
+/* the key and what it has applied travel together: inline at the end of
+   the search row on a desktop, a line of their own on a phone */
+.filters-bar {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-/* a field at rest is quiet; a narrowed one carries the accent */
-.field.lit select {
+.applied-bar {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.applied {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
   color: var(--gold);
-  border-color: rgba(227, 192, 141, 0.5);
+  background: rgba(227, 192, 141, 0.1);
+  border: 1px solid rgba(227, 192, 141, 0.5);
+  border-radius: 999px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
 }
 
-.field.lit::after {
-  color: var(--gold);
+.applied:hover { color: var(--ink); }
+
+.applied-x { opacity: 0.7; font-size: 0.9rem; line-height: 1; }
+
+.filters-panel {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+  padding: 0.2rem 0 0.1rem;
 }
 
-/* nothing behind this door in the current window — still choosable, it
-   opens the "try a wider look" path, just not advertised */
-.field option.spent {
+.facet-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.facet-legend {
+  flex: 0 0 4.5rem;
+  padding-top: 0.35rem;
+}
+
+.facet-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+/* 5Rhythms under ecstatic dance: a kind of it, not a peer */
+.token-child {
+  margin-left: 0.5rem;
+}
+
+.token-child::before {
+  content: "— ";
   opacity: 0.5;
 }
 
+@media (max-width: 640px) {
+  /* the filters key and what it has applied take the line under the
+     search box rather than squeezing it out of the row */
+  .filters-bar {
+    flex: 1 0 100%;
+  }
+
+  .filters-key {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.76rem;
+  }
+}
+
 @media (max-width: 560px) {
-  /* two by two rather than four squeezed columns */
-  .field {
-    flex: 1 1 calc(50% - 0.5rem);
-    max-width: none;
+  .facet-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.3rem;
   }
 
-  .field select {
-    height: 2.75rem; /* a thumb-sized target */
-    font-size: 0.8rem;
-  }
+  .facet-legend { flex: none; padding-top: 0; }
 
-  .field::after {
-    bottom: 1.15rem;
+  .facet-chips .token,
+  .applied {
+    padding: 0.5rem 0.7rem; /* thumb-sized */
   }
 }
 
@@ -1821,8 +1841,9 @@ body.theme-night .blob { opacity: 0.35; }
     gap: 0.55rem;
   }
 
-  /* search + free switch + reset stay on one line */
-  .controls > .controls-row:first-child { flex-wrap: nowrap; }
+  /* search, free, reset and the filters key stay on one line; the
+     applied chips wrap under them (see .applied-bar below) */
+  .controls > .controls-row:first-child { flex-wrap: wrap; }
 
   #search {
     flex: 1 1 120px;

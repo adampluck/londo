@@ -76,6 +76,10 @@
         <span class="legend">free</span>
       </div>
       <button class="key reset-key" id="reset-filters" title="clear every filter">reset</button>
+      <div class="filters-bar">
+        <button class="key filters-key" id="filters-toggle" type="button" aria-expanded="false" aria-controls="filters-panel" hidden>filters<span class="filters-count"></span></button>
+        <div class="applied-bar" id="filters-summary" hidden></div>
+      </div>
     </div>
 
     <div class="controls-row keys" id="category-pills" hidden>
@@ -119,25 +123,24 @@
           </div>
         </div>
       </div>
+
+      <div class="unit unit-grow">
+        <div class="ticker-shell">
+          <div class="ticker" id="week-strip">
+            <!-- day cells rendered from live data -->
+          </div>
+          <div class="ticker-fixed" id="range-ticks">
+            <button class="tick" data-day="7">7<small>days</small></button>
+            <button class="tick" data-day="30">30<small>days</small></button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
-    <div class="controls-row fields" id="filter-fields">
-      <label class="field" id="field-when">
-        <span class="legend">when</span>
-        <select id="filter-when" aria-label="when"></select>
-      </label>
-      <label class="field" id="field-topic" hidden>
-        <span class="legend">what</span>
-        <select id="filter-topic" aria-label="what it's about"></select>
-      </label>
-      <label class="field" id="field-modality" hidden>
-        <span class="legend">modality</span>
-        <select id="filter-modality" aria-label="modality"></select>
-      </label>
-      <label class="field" id="field-vibe" hidden>
-        <span class="legend">vibe</span>
-        <select id="filter-vibe" aria-label="vibe"></select>
-      </label>
+    <!-- refinements, shut until asked for: most visits are a browse -->
+    <div class="controls-row filters-panel" id="filters-panel" hidden>
+      <!-- one row of chips per facet, filled in from the loaded events -->
     </div>
   </div>
 

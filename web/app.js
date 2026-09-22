@@ -538,8 +538,8 @@
   }
 
   function baseFilter(e) {
-    // every facet but "when": browseEvents applies that as the window
-    return filtersExcept(e, "when");
+    // the day is the strip's, applied by browseEvents as the window
+    return filtersExcept(e, null);
   }
 
   // The day window on its own, so a facet can count against exactly the
@@ -636,13 +636,73 @@
 
   // ---------- controls ----------
 
-  // ---------- the bench: four dropdowns ----------
+  // ---------- controls ----------
+
+  function renderWeekStrip() {
+    const strip = document.getElementById("week-strip");
+    const cells = [];
+    const now = new Date();
+    const fmt = (d, opts) =>
+      d
+        .toLocaleDateString("en-GB", { ...opts, timeZone: "Europe/London" })
+        .toLowerCase();
+    for (let i = 0; i < HORIZON_DAYS; i++) {
+      const d = new Date(now.getTime() + i * 864e5);
+      const key = londonDate(d);
+      if (i === 0) cells.push(tick("today", fmt(d, { weekday: "short" }), key));
+      else if (i === 1)
+        cells.push(tick("tmrw", fmt(d, { weekday: "short" }), key));
+      else
+        cells.push(
+          tick(fmt(d, { weekday: "short" }), fmt(d, { day: "numeric" }), key)
+        );
+    }
+    strip.replaceChildren(...cells);
+    syncDayTicks(); // include the pinned 7/30 ticks on first paint
+
+    function tick(main, sub, key) {
+      const btn = document.createElement("button");
+      btn.className = "tick" + (key === state.day ? " cursor" : "");
+      btn.dataset.day = key;
+      btn.appendChild(document.createTextNode(main));
+      const small = document.createElement("small");
+      small.textContent = sub;
+      btn.appendChild(small);
+      btn.addEventListener("click", () => {
+        state.day = key;
+        state.surprise = null;
+        syncDayTicks();
+        renderWithoutCardAnim();
+        scrollToEvents();
+      });
+      return btn;
+    }
+  }
+
+  // A live search reaches past the chosen day (see browseEvents), so nothing
+  // in the strip is selected while one is running — leaving "tue" lit over a
+  // list of results four weeks out just misreports what you're looking at.
+  function syncDayTicks() {
+    const searching = !!state.query.trim();
+    document.querySelectorAll(".tick").forEach((t) => {
+      const on = !searching && t.dataset.day === state.day;
+      t.classList.toggle("cursor", on);
+      t.setAttribute("aria-pressed", String(on));
+    });
+    document
+      .querySelector(".ticker-shell")
+      .classList.toggle("standing-by", searching);
+  }
+
+  // ---------- refinements: what / modality / vibe ----------
   //
-  // One row, single-select, in place of the day strip and the two chip
-  // tapes it grew. Every option carries what it would yield on its own:
-  // the rest of the bench as it stands, minus this facet's own choice —
-  // counting past an active search or a lit "free" would be the lie the
-  // chips used to tell about the date.
+  // Most people come to see what's on, so the date strip and search are
+  // the whole resting state and these three live behind the filters
+  // button. Single-select: tapping the lit chip clears it. An option
+  // with nothing behind it in the current window is dimmed rather than
+  // hidden — a chip that vanished mid-scan would be worse — and it's
+  // counted against the rest of the bench, minus this facet's own
+  // choice, so it never counts past an active search or a lit "free".
 
   const VIBES = [
     ["beginner-friendly", "beginner-friendly"],
@@ -659,46 +719,17 @@
     ["sober", "sober"],
   ];
 
-  // Ranges first, then every day in the horizon: the strip could scan a
-  // particular Thursday and this has to be able to as well.
-  function whenOptions() {
-    const opts = [
-      ["today", "today"],
-      ["tomorrow", "tomorrow"],
-      ["weekend", "this weekend"],
-      ["7", "next 7 days"],
-      ["30", "next 30 days"],
-    ];
-    const days = [];
-    const now = Date.now();
-    for (let i = 0; i < HORIZON_DAYS; i++) {
-      const d = new Date(now + i * 864e5);
-      days.push([
-        londonDate(d),
-        d
-          .toLocaleDateString("en-GB", {
-            weekday: "short",
-            day: "numeric",
-            month: "short",
-            timeZone: "Europe/London",
-          })
-          .toLowerCase(),
-      ]);
-    }
-    return { opts, days };
-  }
-
-  // Mirror of inDayWindow's vocabulary — the named ranges resolve to a
-  // start and end in London time, a bare date to that one day.
+  // The day values the strip writes are a date or "7"/"30"; a URL may
+  // still carry the words the dropdown introduced.
   function dayRange(day) {
     const startOfToday = new Date(londonDate(new Date()) + "T00:00:00");
     const dayMs = 864e5;
-    if (day === "today") return [startOfToday, +startOfToday + dayMs];
+    if (day === "today") return [+startOfToday, +startOfToday + dayMs];
     if (day === "tomorrow")
       return [+startOfToday + dayMs, +startOfToday + 2 * dayMs];
     if (day === "weekend") {
-      // Saturday and Sunday of the week we're in: on a Sunday that's today
-      const dow = new Date(startOfToday).getDay(); // 0 Sun … 6 Sat
+      // Saturday and Sunday of the week we're in; on a Sunday, today
+      const dow = startOfToday.getDay(); // 0 Sun … 6 Sat
       const toSat = dow === 0 ? -1 : 6 - dow;
       const sat = +startOfToday + toSat * dayMs;
       return [sat, sat + 2 * dayMs];
@@ -735,19 +766,9 @@
   }
 
   const FACETS = {
-    when: {
-      state: "day",
-      blank: null, // "when" always has a value; 7 days is its rest state
-      test: (e, v) => matchesDay(e, v),
-      options: () => {
-        const { opts, days } = whenOptions();
-        return [...opts.map(([v, l]) => ({ value: v, label: l })),
-          { group: "a day", items: days.map(([v, l]) => ({ value: v, label: l })) }];
-      },
-    },
     topic: {
       state: "topic",
-      blank: "anything",
+      legend: "what",
       test: (e, v) => (e.topics || []).includes(v),
       options: () =>
         TOPICS.filter((t) =>
@@ -756,26 +777,27 @@
     },
     modality: {
       state: "modality",
-      blank: "anything",
+      legend: "modality",
       test: modalityMatch,
       options: () =>
         PRACTICES.filter((p) => !p.parent).flatMap((p) => [
           { value: p.slug, label: p.label },
           ...PRACTICES.filter((c) => c.parent === p.slug).map((c) => ({
             value: c.slug,
-            label: `— ${c.label}`,
+            label: c.label,
+            child: true,
           })),
         ]),
     },
     vibe: {
       state: "vibe",
-      blank: "anything",
+      legend: "vibe",
       test: (e, v) => (e.traits || []).includes(v),
       options: () =>
         VIBES.filter(
           ([key]) =>
-            state.events.filter((e) => (e.traits || []).includes(key)).length >=
-            5
+            state.events.filter((e) => (e.traits || []).includes(key))
+              .length >= 5
         ).map(([key, label]) => ({ value: key, label })),
     },
   };
@@ -793,79 +815,135 @@
     for (const [name, facet] of Object.entries(FACETS)) {
       if (name === skip) continue;
       const value = state[facet.state];
-      if (!value) continue;
-      // a live search reaches past the chosen day, as it always has
-      if (name === "when" && q) continue;
-      if (!facet.test(e, value)) return false;
+      if (value && !facet.test(e, value)) return false;
     }
     return true;
   }
 
   function renderFilters() {
+    const panel = document.getElementById("filters-panel");
+    const rows = [];
     for (const [name, facet] of Object.entries(FACETS)) {
-      const select = document.getElementById(`filter-${name}`);
       const items = facet.options();
-      if (facet.blank && !items.length) continue;
-      const frag = document.createDocumentFragment();
-      if (facet.blank) frag.appendChild(option("", facet.blank));
-      for (const item of items) {
-        if (item.group) {
-          const group = document.createElement("optgroup");
-          group.label = item.group;
-          item.items.forEach((o) => group.appendChild(option(o.value, o.label)));
-          frag.appendChild(group);
-        } else {
-          frag.appendChild(option(item.value, item.label));
-        }
-      }
-      select.replaceChildren(frag);
-      // a failed first load retries, and this runs again: bind once
-      if (select.dataset.bound) {
-        document.getElementById(`field-${name}`).hidden = false;
-        continue;
-      }
-      select.dataset.bound = "1";
-      select.addEventListener("change", () => {
-        clearLanding();
-        state[facet.state] = select.value || (name === "when" ? "7" : null);
-        state.surprise = null;
-        renderWithoutCardAnim();
-        if (name === "when") scrollToEvents();
-      });
-      document.getElementById(`field-${name}`).hidden = false;
+      if (!items.length) continue;
+      const row = document.createElement("div");
+      row.className = "facet-row";
+      row.dataset.facet = name;
+
+      const legend = document.createElement("span");
+      legend.className = "legend facet-legend";
+      legend.textContent = facet.legend;
+      row.appendChild(legend);
+
+      const chips = document.createElement("div");
+      chips.className = "facet-chips";
+      chips.appendChild(chip(name, facet, "", "anything", false));
+      for (const item of items)
+        chips.appendChild(
+          chip(name, facet, item.value, item.label, item.child)
+        );
+      row.appendChild(chips);
+      rows.push(row);
     }
+    panel.replaceChildren(...rows);
+    document.getElementById("filters-toggle").hidden = !rows.length;
     syncFilters();
 
-    function option(value, label) {
-      const o = document.createElement("option");
-      o.value = value;
-      o.textContent = label;
-      return o;
+    function chip(name, facet, value, label, child) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "token" + (child ? " token-child" : "");
+      btn.dataset.facet = name;
+      btn.dataset.value = value;
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        clearLanding();
+        // tapping the lit chip clears the facet
+        state[facet.state] = state[facet.state] === value ? null : value || null;
+        state.surprise = null;
+        renderWithoutCardAnim();
+      });
+      return btn;
     }
   }
 
-  // Counts and the chosen value, refreshed from render() so they always
-  // describe the list about to be drawn.
+  // Counts still decide what's a dead end; the number itself stays off
+  // the screen. Runs from render(), so it always describes the list
+  // about to be drawn.
   function syncFilters() {
+    let active = 0;
     for (const [name, facet] of Object.entries(FACETS)) {
-      const select = document.getElementById(`filter-${name}`);
-      const value = state[facet.state] || "";
-      for (const o of select.querySelectorAll("option")) {
-        if (!o.value) continue;
-        const n = state.events.filter(
-          (e) =>
-            !hasStarted(e) && facet.test(e, o.value) && filtersExcept(e, name)
-        ).length;
-        const label = o.dataset.label || (o.dataset.label = o.textContent);
-        o.textContent = n ? `${label} (${n})` : label;
-        o.classList.toggle("spent", n === 0);
-      }
-      select.value = value;
-      // the rest state isn't "chosen" — only a narrowed field lights up
-      const chosen = name === "when" ? value !== "7" : !!value;
-      document.getElementById(`field-${name}`).classList.toggle("lit", chosen);
+      const chosen = state[facet.state];
+      if (chosen) active += 1;
+      document
+        .querySelectorAll(`#filters-panel .token[data-facet="${name}"]`)
+        .forEach((t) => {
+          const value = t.dataset.value;
+          const lit = value ? chosen === value : !chosen;
+          t.classList.toggle("lit", lit);
+          t.setAttribute("aria-pressed", String(lit));
+          if (!value) return;
+          const n = state.events.filter(
+            (e) =>
+              !hasStarted(e) &&
+              inDayWindow(e) &&
+              facet.test(e, value) &&
+              filtersExcept(e, name)
+          ).length;
+          t.classList.toggle("spent", n === 0);
+          t.title = n ? `${n} in this window` : "nothing in this window";
+        });
     }
+    const toggle = document.getElementById("filters-toggle");
+    toggle.querySelector(".filters-count").textContent = active
+      ? `(${active})`
+      : "";
+    toggle.classList.toggle("lit", active > 0);
+    renderFilterSummary();
     renderPracticeGuide();
+  }
+
+  // What's on, in a line, so a filtered view never looks unfiltered
+  // while the panel is shut. Each one clears its own facet.
+  function renderFilterSummary() {
+    const bar = document.getElementById("filters-summary");
+    const chips = [];
+    for (const facet of Object.values(FACETS)) {
+      const value = state[facet.state];
+      if (!value) continue;
+      const option = facet
+        .options()
+        .find((o) => o.value === value) || { label: value };
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "applied";
+      btn.append(
+        document.createTextNode(option.label),
+        Object.assign(document.createElement("span"), {
+          className: "applied-x",
+          textContent: "×",
+          ariaHidden: "true",
+        })
+      );
+      btn.setAttribute("aria-label", `clear ${option.label}`);
+      btn.addEventListener("click", () => {
+        clearLanding();
+        state[facet.state] = null;
+        state.surprise = null;
+        renderWithoutCardAnim();
+      });
+      chips.push(btn);
+    }
+    bar.replaceChildren(...chips);
+    bar.hidden = !chips.length;
+  }
+
+  function toggleFilters(open) {
+    const panel = document.getElementById("filters-panel");
+    const toggle = document.getElementById("filters-toggle");
+    const show = open === undefined ? panel.hidden : open;
+    panel.hidden = !show;
+    toggle.setAttribute("aria-expanded", String(show));
   }
 
   function renderPracticeGuide() {
@@ -933,6 +1011,56 @@
 
   // let mouse users drag (and flick) the horizontal tapes — touch
   // already scrolls natively
+  function enableDragScroll(el) {
+    let down = false, moved = false;
+    let startX = 0, startLeft = 0, lastX = 0, lastT = 0, vel = 0, raf;
+    el.addEventListener("pointerdown", (ev) => {
+      if (ev.pointerType !== "mouse") return;
+      down = true;
+      moved = false;
+      startX = lastX = ev.clientX;
+      startLeft = el.scrollLeft;
+      lastT = performance.now();
+      vel = 0;
+      cancelAnimationFrame(raf);
+    });
+    window.addEventListener("pointermove", (ev) => {
+      if (!down) return;
+      const dx = ev.clientX - startX;
+      if (Math.abs(dx) > 4) moved = true;
+      el.scrollLeft = startLeft - dx;
+      const t = performance.now();
+      vel = (ev.clientX - lastX) / Math.max(1, t - lastT);
+      lastX = ev.clientX;
+      lastT = t;
+    });
+    window.addEventListener("pointerup", () => {
+      if (!down) return;
+      down = false;
+      let speed = -vel * 14; // carry the release velocity into a glide
+      const glide = () => {
+        if (Math.abs(speed) < 0.4) return;
+        el.scrollLeft += speed;
+        speed *= 0.92;
+        raf = requestAnimationFrame(glide);
+      };
+      glide();
+    });
+    // a drag shouldn't also press whatever it started on
+    el.addEventListener(
+      "click",
+      (ev) => {
+        if (!moved) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        moved = false;
+      },
+      true
+    );
+  }
+
+  // drift the topic tape gently until first touch — a quiet hint that
+  // there's more to the right
   function topicKeyFromSlug(slug) {
     if (!slug) return null;
     const s = slug.toLowerCase();
@@ -1118,6 +1246,7 @@
       .forEach((k) => k.classList.toggle("lit", k.dataset.category === "all"));
     setLens("all");
     syncCompass();
+    toggleFilters(false);
     render();
   }
 
@@ -1183,6 +1312,7 @@
     // chip counts, the day strip and the URL all describe the window we're
     // about to draw, so they're refreshed from the one place that always runs
     syncFilters();
+    syncDayTicks();
     syncUrl();
 
     mapView.hidden = state.view !== "map";
@@ -1216,6 +1346,7 @@
     if (state.day === "30") return;
     state.day = "30";
     state.surprise = null;
+    syncDayTicks();
     render();
   }
 
@@ -2056,6 +2187,23 @@
       render();
     });
 
+    // pinned 7/30 day ranges next to the date ticker
+    document.getElementById("range-ticks").addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".tick");
+      if (!btn) return;
+      if (state.day === btn.dataset.day) return;
+      state.day = btn.dataset.day;
+      state.surprise = null;
+      renderWithoutCardAnim();
+      scrollToEvents();
+    });
+
+    enableDragScroll(document.getElementById("week-strip"));
+
+    document
+      .getElementById("filters-toggle")
+      .addEventListener("click", () => toggleFilters());
+
     document.getElementById("free-toggle").addEventListener("change", (ev) => {
       state.freeOnly = ev.target.checked;
       state.surprise = null;
@@ -2409,6 +2557,7 @@
           el.hidden = true;
         });
     }
+    renderWeekStrip();
     setLens("all");
     const loadingTimer = startLoadingCycle();
     if (SUPABASE_URL.startsWith("YOUR_")) {
@@ -2444,6 +2593,7 @@
         .forEach((k) =>
           k.classList.toggle("lit", k.dataset.category === state.category)
         );
+      syncDayTicks();
       renderSpotlight();
       maybeShowEnrichedControls();
       renderLastUpdated();
