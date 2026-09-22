@@ -1041,6 +1041,11 @@ GRADIENTS = [
 ]
 PICK_THRESHOLD = 75  # quality_score at or above ⇒ "✦ pick"
 HORIZON_DAYS = 30  # the date strip's window, as on the main page
+# Listing pages come in the main page's two ranges. A month of a busy
+# topic is an enormous page, so the week is what a listing leads with
+# and the month sits one click away, pointing its canonical back.
+LISTING_WINDOWS = (7, 30)
+MIN_WEEK_EVENTS = 3  # below this the week is too thin to lead with
 
 
 def placeholder_gradient(event: dict) -> str:
@@ -1110,14 +1115,20 @@ def event_card(event: dict) -> str:
     )
 
 
-def date_strip_html(events: list[dict]) -> str:
+def within_window(events: list[dict], days: int) -> list[dict]:
+    """The events starting inside the next `days` days, London time."""
+    last = datetime.now(LONDON).date() + timedelta(days=days - 1)
+    return [e for e in events if _start_london(e).date() <= last]
+
+
+def date_strip_html(events: list[dict], days: int, other_url: str | None) -> str:
     """The main page's date strip, as anchors onto this page's day
     groups. A day this topic has nothing on is shown spent rather than
     hidden, so the shape of the month stays readable."""
     have = {_start_london(e).date() for e in events}
     today = datetime.now(LONDON).date()
     ticks = []
-    for i in range(HORIZON_DAYS):
+    for i in range(days):
         day = today + timedelta(days=i)
         if i == 0:
             main, sub = "today", day.strftime("%a").lower()
@@ -1130,9 +1141,18 @@ def date_strip_html(events: list[dict]) -> str:
             ticks.append(f'<a class="tick" href="#d-{day.isoformat()}">{cell}</a>')
         else:
             ticks.append(f'<span class="tick spent" aria-hidden="true">{cell}</span>')
+    # the main page's pinned ranges: here they're the two pages
+    ranges = []
+    for n in LISTING_WINDOWS:
+        cell = f"{n}<small>days</small>"
+        if n == days:
+            ranges.append(f'<span class="tick cursor" aria-current="page">{cell}</span>')
+        elif other_url:
+            ranges.append(f'<a class="tick" href="{other_url}">{cell}</a>')
     return (
         '<div class="static-ticker"><div class="ticker-shell">'
         f'<div class="ticker">{"".join(ticks)}</div>'
+        f'<div class="ticker-fixed">{"".join(ranges)}</div>'
         "</div></div>"
     )
 
@@ -1596,7 +1616,9 @@ def event_page(event: dict) -> str:
     )
 
 
-def listing_intro_paragraphs(key: str, kind: str, label: str, count: int) -> list[str]:
+def listing_intro_paragraphs(
+    key: str, kind: str, label: str, count: int, days: int = 7
+) -> list[str]:
     """Warm prose for listing pages, plus a light freshness line."""
     if kind == "category":
         paras = list(CATEGORY_INTROS.get(key) or ())
@@ -1609,12 +1631,12 @@ def listing_intro_paragraphs(key: str, kind: str, label: str, count: int) -> lis
             f"In-person {label} gatherings in London, collected on {display_name()} "
             f"so you can find the good rooms without scrolling forever."
         ]
-    n = count
+    window = "the next seven days" if days == 7 else f"the next {days} days"
     freshness = (
-        f"{n} upcoming right now — times, venues and tickets, "
+        f"{count} on in {window} — times, venues and tickets, "
         f"refreshed several times a day."
-        if n != 1
-        else "One upcoming right now — times, venue and tickets below."
+        if count != 1
+        else f"One on in {window} — times, venue and tickets below."
     )
     return [*paras, freshness]
 
@@ -1684,8 +1706,11 @@ def listing_page(
     canonical: str,
     events: list[dict],
     kind: str = "topic",
+    days: int = 7,
+    other_url: str | None = None,
+    css_prefix: str = NESTED_PREFIX,
 ) -> str:
-    paras = listing_intro_paragraphs(key, kind, label, len(events))
+    paras = listing_intro_paragraphs(key, kind, label, len(events), days)
     lead_html = "".join(f'<p class="static-lead">{esc(p)}</p>' for p in paras)
     # meta description: first paragraph, kept short
     meta_desc = paras[0]
@@ -1693,6 +1718,7 @@ def listing_page(
         meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
 
     groups = day_groups(events[:200])
+    strip = date_strip_html(events, days, other_url)
     spec = PRACTICES[key] if kind == "practice" else {}
     faq = faq_html(spec["faq"]) if spec.get("faq") else ""
     json_ld = (
@@ -1703,7 +1729,7 @@ def listing_page(
 
     body = f"""
   {topic_nav_html(key if kind == "topic" else None)}
-  {date_strip_html(events)}
+  {strip}
   <header class="static-list-head">
     <p class="static-kicker">in person · London</p>
     <h1 class="static-title">{esc(seo_title)}</h1>
@@ -1723,7 +1749,7 @@ def listing_page(
         DEFAULT_OG_IMAGE,
         body,
         json_ld=json_ld,
-        css_prefix="../..",
+        css_prefix=css_prefix,
         body_class="static-page static-listing",
     )
 
@@ -1957,6 +1983,51 @@ def join_community_page(join: dict) -> str:
     )
 
 
+def write_listing(
+    outdir: Path,
+    parts: tuple[str, ...],
+    canonical: str,
+    key: str,
+    label: str,
+    seo_title: str,
+    events: list[dict],
+    kind: str,
+    urls: list[str],
+) -> None:
+    """A listing at both ranges: the lead page at `parts`, the other one
+    a directory below it.
+
+    The lead is the week unless the week is too thin to be worth landing
+    on, in which case the month leads instead. The second page is the
+    same listing over a different range, so its canonical points at the
+    lead and it stays out of the sitemap — one page competes for the
+    query, the other is just a wider look.
+    """
+    week, month = (within_window(events, n) for n in LISTING_WINDOWS)
+    lead_days = 7 if len(week) >= MIN_WEEK_EVENTS else 30
+    other_days = 30 if lead_days == 7 else 7
+    by_days = {7: week, 30: month}
+    other_url = f"{canonical}{other_days}-days/"
+
+    write_index(
+        outdir.joinpath(*parts),
+        listing_page(
+            key, label, seo_title, canonical, by_days[lead_days],
+            kind=kind, days=lead_days, other_url=other_url,
+        ),
+    )
+    urls.append(canonical)
+
+    write_index(
+        outdir.joinpath(*parts, f"{other_days}-days"),
+        listing_page(
+            key, label, seo_title, canonical, by_days[other_days],
+            kind=kind, days=other_days, other_url=canonical,
+            css_prefix="../../..",
+        ),
+    )
+
+
 def build(outdir: Path) -> None:
     global _EVENT_SLUGS, DEFAULT_OG_IMAGE
     events = [e for e in fetch_events() if site_match(e)]
@@ -2042,14 +2113,11 @@ def build(outdir: Path) -> None:
             if not cat_events:
                 continue
             canonical = category_url(key)
-            write_index(
-                outdir / "c" / key,
-                listing_page(
-                    key, label, seo_title, canonical, cat_events, kind="category"
-                ),
+            write_listing(
+                outdir, ("c", key), canonical,
+                key, label, seo_title, cat_events, "category", urls,
             )
             write_html_redirect(outdir / "c" / f"{key}.html", canonical)
-            urls.append(canonical)
 
     site_topics = SITE_JSON.get("topics")
     for key, (slug_, seo_title) in TOPICS.items():
@@ -2059,30 +2127,19 @@ def build(outdir: Path) -> None:
         if not topic_events:
             continue
         canonical = topic_url(slug_)
-        write_index(
-            outdir / "t" / slug_,
-            listing_page(
-                key, key, seo_title, canonical, topic_events, kind="topic"
-            ),
+        write_listing(
+            outdir, ("t", slug_), canonical,
+            key, key, seo_title, topic_events, "topic", urls,
         )
         write_html_redirect(outdir / "t" / f"{slug_}.html", canonical)
-        urls.append(canonical)
 
     for slug_, spec, matched in SITE_PRACTICES:
         canonical = practice_url(slug_)
-        write_index(
-            outdir / "p" / slug_,
-            listing_page(
-                slug_,
-                spec["label"],
-                spec["seo_title"],
-                canonical,
-                matched,
-                kind="practice",
-            ),
+        write_listing(
+            outdir, ("p", slug_), canonical,
+            slug_, spec["label"], spec["seo_title"], matched, "practice", urls,
         )
         write_html_redirect(outdir / "p" / f"{slug_}.html", canonical)
-        urls.append(canonical)
 
     today = datetime.now(timezone.utc).date().isoformat()
     sitemap = (
