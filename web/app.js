@@ -133,6 +133,7 @@
     view: "browse", // browse | tonight | map
     category: "all",
     topics: new Set(), // multi-select; empty = anything
+    practices: new Set(), // slugs from practices.json; empty = anything
     lens: "all", // all | tech | beyond
     area: "all",
     day: "7", // "7", "30", or a London YYYY-MM-DD
@@ -493,6 +494,56 @@
     return topics.some((t) => (SITE.filter.topics || []).includes(t));
   }
 
+  // The practice chips: cacao, breathwork, 5Rhythms and the rest. The
+  // definitions are built into practices.json by scripts/build_site.py —
+  // the same table its /p/<slug>/ pages are built from, filtered to the
+  // ones this site has the listings for.
+  let PRACTICES = [];
+
+  async function loadPractices() {
+    try {
+      const resp = await fetch("practices.json", { cache: "no-cache" });
+      if (!resp.ok) return;
+      PRACTICES = await resp.json();
+    } catch (_) {
+      /* the chips are an extra; the listing must not wait on them */
+    }
+  }
+
+  function practiceSpec(slug) {
+    return PRACTICES.find((p) => p.slug === slug);
+  }
+
+  // Mirror of practice_match() in scripts/build_site.py — keep the two in
+  // step, or a chip and the page behind it would disagree about what
+  // counts. Terms hit title/organizer/tags at the start of a word; only
+  // the deep phrases are trusted against the description.
+  function practiceMatch(e, spec) {
+    const hay = [e.title, e.organizer_name, (e.tags || []).join(" ")]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const hits = (text, terms) =>
+      (terms || []).some((term) =>
+        new RegExp("(^|[^a-z0-9])" + escapeRe(term)).test(text)
+      );
+    if (hits(hay, spec.exclude)) return false;
+    if (hits(hay, spec.terms)) return true;
+    return hits((e.description || "").toLowerCase(), spec.deep);
+  }
+
+  function escapeRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function inPractices(e) {
+    if (!state.practices.size) return true;
+    return [...state.practices].some((slug) => {
+      const spec = practiceSpec(slug);
+      return spec && practiceMatch(e, spec);
+    });
+  }
+
   // Every filter except the topic tokens. Split out so a chip can count what
   // it would yield against the rest of the bench as it currently stands —
   // counting past an active search or a lit "free" would be the same lie the
@@ -514,6 +565,7 @@
       !(e.topics || []).some((t) => state.topics.has(t))
     )
       return false;
+    if (!inPractices(e)) return false;
     return filtersBesidesTopics(e);
   }
 
@@ -672,6 +724,83 @@
       .classList.toggle("standing-by", searching);
   }
 
+  // A practice chip counts what it would yield on its own, the way the
+  // topic chips do: the rest of the bench as it stands, minus any other
+  // practice selection.
+  function renderPracticeTokens() {
+    const tape = document.getElementById("practice-chips");
+    const tokens = [];
+    for (const spec of PRACTICES) {
+      if (!state.events.some((e) => practiceMatch(e, spec))) continue;
+      const btn = document.createElement("button");
+      btn.className = "token";
+      btn.dataset.practice = spec.slug;
+      btn.appendChild(document.createTextNode(spec.label));
+      const n = document.createElement("small");
+      n.className = "token-count";
+      btn.append(" ", n);
+      btn.addEventListener("click", () => {
+        clearLanding();
+        if (state.practices.has(spec.slug)) state.practices.delete(spec.slug);
+        else state.practices.add(spec.slug);
+        state.surprise = null;
+        render();
+      });
+      tokens.push(btn);
+    }
+    tape.replaceChildren(...tokens);
+    return tokens.length;
+  }
+
+  function syncPracticeTokens() {
+    const others = new Set(state.practices);
+    document.querySelectorAll("#practice-chips .token").forEach((t) => {
+      const slug = t.dataset.practice;
+      const spec = practiceSpec(slug);
+      if (!spec) return;
+      const lit = state.practices.has(slug);
+      t.classList.toggle("lit", lit);
+      t.setAttribute("aria-pressed", String(lit));
+      others.delete(slug);
+      const n = state.events.filter(
+        (e) =>
+          practiceMatch(e, spec) &&
+          !hasStarted(e) &&
+          inDayWindow(e) &&
+          filtersBesidesTopics(e)
+      ).length;
+      others.add(slug);
+      t.querySelector(".token-count").textContent = String(n);
+      t.classList.toggle("spent", n === 0);
+      t.title = n ? `${n} in this window` : "nothing in this window";
+    });
+    renderPracticeGuide();
+  }
+
+  // One practice lit: offer the page that explains it. Two or more and
+  // there's no single guide to point at, so the line stands down.
+  function renderPracticeGuide() {
+    const line = document.getElementById("practice-guide");
+    if (state.practices.size !== 1) {
+      line.hidden = true;
+      return;
+    }
+    const spec = practiceSpec([...state.practices][0]);
+    if (!spec || location.protocol === "file:") {
+      line.hidden = true;
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = new URL(
+      `p/${spec.slug}/`,
+      document.baseURI
+    ).toString();
+    a.textContent = `read about ${spec.title.toLowerCase()}`;
+    a.dataset.goatcounterClick = `practice/${spec.slug}`;
+    line.replaceChildren(document.createTextNode("new to this? "), a);
+    line.hidden = false;
+  }
+
   function maybeShowEnrichedControls() {
     // These instruments only make sense once events are classified.
     const withCategory = state.events.filter((e) => e.category).length;
@@ -691,6 +820,11 @@
         setLens(state.lens);
       }
       startTapeDrift();
+    }
+    if (PRACTICES.length && FEATURES.practices !== false) {
+      if (renderPracticeTokens()) {
+        document.getElementById("practice-unit").hidden = false;
+      }
     }
   }
 
@@ -940,6 +1074,10 @@
         .map(topicKeyFromSlug)
         .filter((k) => k && TOPICS.includes(k));
       if (keys.length) state.topics = new Set(keys);
+      const practices = (params.get("practice") || "")
+        .split(",")
+        .filter(Boolean);
+      if (practices.length) state.practices = new Set(practices);
       const cat = params.get("category");
       if (cat && CATEGORIES[cat]) state.category = cat;
     }
@@ -957,6 +1095,8 @@
         "topic",
         [...state.topics].map((t) => TOPIC_SLUGS[t] || t).join(",")
       );
+    if (state.practices.size)
+      params.set("practice", [...state.practices].join(","));
     if (state.category !== "all") params.set("category", state.category);
     if (state.day !== "7") params.set("day", state.day);
     if (state.freeOnly) params.set("free", "1");
@@ -1034,6 +1174,7 @@
   function resetFilters() {
     clearLanding();
     state.category = "all";
+    state.practices.clear();
     state.topics.clear();
     state.area = "all";
     state.day = "7";
@@ -1114,6 +1255,7 @@
     // chip counts, the day strip and the URL all describe the window we're
     // about to draw, so they're refreshed from the one place that always runs
     syncTopicTokens();
+    syncPracticeTokens();
     syncDayTicks();
     syncUrl();
 
@@ -2003,6 +2145,7 @@
 
     enableDragScroll(document.getElementById("week-strip"));
     enableDragScroll(document.getElementById("topic-chips"));
+    enableDragScroll(document.getElementById("practice-chips"));
 
     document.getElementById("free-toggle").addEventListener("change", (ev) => {
       state.freeOnly = ev.target.checked;
@@ -2076,6 +2219,21 @@
         ? `t/${encodeURIComponent(slug)}/`
         : `?topic=${encodeURIComponent(slug)}`;
       a.textContent = topic;
+      frag.appendChild(a);
+    }
+    // the practice pages, after the topics — same set the static pages
+    // carry in their own footer
+    for (const spec of PRACTICES) {
+      const sep = document.createElement("span");
+      sep.className = "seo-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "·";
+      frag.appendChild(sep);
+      const a = document.createElement("a");
+      a.href = staticPages
+        ? `p/${encodeURIComponent(spec.slug)}/`
+        : `?practice=${encodeURIComponent(spec.slug)}`;
+      a.textContent = spec.label;
       frag.appendChild(a);
     }
     nav.replaceChildren(frag);
@@ -2362,8 +2520,14 @@
 
   async function attemptLoad(loadingTimer) {
     try {
-      state.events = (await fetchEventsWithRetry()).filter(siteMatch);
+      const [events] = await Promise.all([
+        fetchEventsWithRetry(),
+        loadPractices(),
+      ]);
+      state.events = events.filter(siteMatch);
       clearInterval(loadingTimer);
+      // the footer ran before practices.json arrived; redraw it with them
+      renderSeoNav();
       applyLandingFromUrl();
       applyStateFromUrl();
       // sync chrome to any landing filter (topic chips / category / day)

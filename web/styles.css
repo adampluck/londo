@@ -610,6 +610,44 @@ body {
 
 .token.spent .token-count { opacity: 0.75; }
 
+/* --- practice tape: the /p/ pages, as a filter --- */
+
+#practice-unit .tape {
+  mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
+}
+
+/* a shade cooler than the topic tokens: same instrument, narrower subject */
+#practice-unit .token {
+  border-color: rgba(157, 127, 209, 0.28);
+}
+
+#practice-unit .token.lit {
+  color: var(--mauve);
+  border-color: rgba(157, 127, 209, 0.7);
+  background: rgba(157, 127, 209, 0.12);
+}
+
+/* "new to this? read about cacao ceremonies" under the bench */
+.practice-guide {
+  max-width: var(--page-max);
+  margin: 0.2rem auto 0;
+  padding: 0 1.5rem;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--ink-dim);
+}
+
+.practice-guide a {
+  color: var(--mauve);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(157, 127, 209, 0.4);
+}
+
+.practice-guide a:hover {
+  color: var(--ink);
+}
+
 /* a live search reaches past the chosen day, so the strip stands down */
 .ticker-shell.standing-by {
   opacity: 0.45;

@@ -237,6 +237,7 @@ TOPICS = {
 PRACTICES = {
     "cacao-ceremony": {
         "label": "cacao ceremony",
+        "chip": "cacao",
         "seo_title": "Cacao ceremonies in London",
         "terms": ["cacao", "cocoa ceremony"],
         "deep": ["cacao ceremony", "cacao circle"],
@@ -445,6 +446,7 @@ PRACTICES = {
     },
     "somatics": {
         "label": "somatic practice",
+        "chip": "somatic",
         "seo_title": "Somatic workshops & embodiment in London",
         # bare "embodiment" is a house word for half the scene — it was
         # pulling in breathwork and tantra nights, so the terms name the
@@ -489,6 +491,7 @@ PRACTICES = {
     },
     "contact-improvisation": {
         "label": "contact improvisation",
+        "chip": "contact improv",
         "seo_title": "Contact improvisation jams & classes in London",
         "terms": ["contact improv", "contact jam", "ci jam"],
         "deep": ["contact improvisation"],
@@ -2149,6 +2152,25 @@ def build(outdir: Path) -> None:
             slug_, spec["label"], spec["seo_title"], matched, "practice", urls,
         )
         write_html_redirect(outdir / "p" / f"{slug_}.html", canonical)
+
+    # The home page's practice chips read this: same definitions, same
+    # per-site set, so the app filters by exactly what the pages list.
+    (outdir / "practices.json").write_text(
+        json.dumps(
+            [
+                {
+                    "slug": slug_,
+                    "label": spec.get("chip") or spec["label"],
+                    "title": spec["seo_title"],
+                    "url": practice_url(slug_),
+                    "terms": spec["terms"],
+                    "deep": spec.get("deep") or [],
+                    "exclude": spec.get("exclude") or [],
+                }
+                for slug_, spec, _ in SITE_PRACTICES
+            ]
+        )
+    )
 
     today = datetime.now(timezone.utc).date().isoformat()
     sitemap = (
