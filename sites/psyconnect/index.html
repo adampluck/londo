@@ -138,7 +138,11 @@
     <div class="controls-row filters-panel" id="filters-panel" hidden>
       <!-- one row of chips per facet, filled in from the loaded events -->
       <div class="filters-foot">
-        <button class="key reset-key" id="reset-filters" title="clear every filter">clear all</button>
+        <button class="filters-expand" id="filters-expand" type="button" hidden>expand to next 30 days</button>
+        <span class="filters-foot-keys">
+          <button class="key reset-key" id="reset-filters" title="clear every filter">clear all</button>
+          <button class="key filters-close" id="filters-close" type="button">close</button>
+        </span>
       </div>
     </div>
   </div>

@@ -640,8 +640,32 @@ body {
 
 .filters-foot {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.2rem;
 }
+
+.filters-foot-keys {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto; /* holds the right edge when the link is hidden */
+}
+
+/* a text link, not a key: it widens the view rather than filtering it */
+.filters-expand {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--mauve);
+  border-bottom: 1px solid rgba(157, 127, 209, 0.4);
+  cursor: pointer;
+}
+
+.filters-expand:hover { color: var(--ink); }
 
 .facet-row {
   display: flex;

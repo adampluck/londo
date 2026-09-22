@@ -896,6 +896,9 @@
           t.title = n ? `${n} in this window` : "nothing in this window";
         });
     }
+    // the wider look is offered from inside the panel too, unless the
+    // strip is already on it
+    document.getElementById("filters-expand").hidden = state.day === "30";
     const toggle = document.getElementById("filters-toggle");
     toggle.querySelector(".filters-count").textContent = active
       ? `(${active})`
@@ -2163,6 +2166,15 @@
     document
       .getElementById("filters-toggle")
       .addEventListener("click", () => toggleFilters());
+
+    document
+      .getElementById("filters-close")
+      .addEventListener("click", () => toggleFilters(false));
+
+    document.getElementById("filters-expand").addEventListener("click", () => {
+      expandTo30();
+      scrollToEvents();
+    });
 
     document.getElementById("free-toggle").addEventListener("change", (ev) => {
       state.freeOnly = ev.target.checked;
