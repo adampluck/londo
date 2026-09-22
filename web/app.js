@@ -2299,6 +2299,18 @@
       a.textContent = spec.label;
       frag.appendChild(a);
     }
+    // the /o/ index of hosts (build_site.py writes it when this is on)
+    if (FEATURES.organizerPages) {
+      const sep = document.createElement("span");
+      sep.className = "seo-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "·";
+      frag.appendChild(sep);
+      const a = document.createElement("a");
+      a.href = staticPages ? "o/" : "o/index.html";
+      a.textContent = "hosts";
+      frag.appendChild(a);
+    }
     nav.replaceChildren(frag);
     renderChannelLink();
   }

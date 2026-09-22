@@ -69,7 +69,8 @@ self.LONDO_CONFIG = {
       "map": false,
       "compass": false,
       "topics": true,
-      "animateDayChange": false
+      "animateDayChange": false,
+      "organizerPages": true
     },
     "mapTiles": "light_all",
     "featured": {

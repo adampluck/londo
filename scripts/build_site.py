@@ -639,6 +639,79 @@ TOPIC_INTROS = {
 # Nested static pages live at e/<id>/index.html → css/assets two levels up.
 NESTED_PREFIX = "../.."
 
+# Organiser pages (/o/<slug>/) answer the searches made by name. Anyone
+# hosting at least MIN_ORGANIZER_EVENTS events — upcoming plus the last
+# PAST_WINDOW_DAYS — gets one under the name the source reports. An entry
+# here merges the variants sources report for one host, tidies a name that
+# arrived as a bio, and may carry intro copy of its own. Aliases match the
+# raw organizer_name exactly, ignoring case.
+ORGANIZERS: dict[str, dict] = {
+    "psyconnect": {
+        "label": "PsyConnect",
+        "aliases": ["PsyConnect", "PsyConnect London"],
+    },
+    "unseen": {
+        "label": "Unseen",
+        "aliases": ["Unseen", "Unseen London"],
+    },
+    "ecstatic-dance-london": {
+        "label": "Ecstatic Dance London",
+        "aliases": [
+            "Ecstatic Dance London",
+            "Ecstatic Dance London & URUBU Wellbeing Events",
+        ],
+    },
+    "roy-graff": {
+        "label": "Roy Graff",
+        "aliases": ["Roy Graff", "Roy Graff, Envokari"],
+    },
+    "kat-pugowska": {
+        "label": "Kat Pugowska",
+        "aliases": [
+            "Kat Pugowska Acreditated 5Rhythms Teacher, Heartbeat level; "
+            "Arts Therapists and Psychologist",
+        ],
+    },
+    "andy-rohkraehmer": {
+        "label": "Andy Rohkraehmer",
+        "aliases": ["Andy Rohkraehmer, Jungian Psychology practicioner"],
+    },
+    "baphomets-book-club": {
+        "label": "Baphomet's Book Club",
+        "aliases": ["Baphomet's Book Club", "BaphometsBookClub"],
+    },
+    "the-offline-club-london": {
+        "label": "The Offline Club",
+        "aliases": ["The Offline Club | London"],
+    },
+    "younited-breath-space": {
+        "label": "YOUnited Breath Space",
+        "aliases": ["YOUnited_Breath_Space"],
+    },
+    "inner-rainbow-rise": {
+        "label": "Inner Rainbow Rise",
+        "aliases": ["Inner_Rainbow_Rise"],
+    },
+    "majik-moments": {"label": "Majik Moments", "aliases": ["majikmoments"]},
+    "the-healing-journeys": {
+        "label": "The Healing Journeys",
+        "aliases": ["thehealingjourneys"],
+    },
+    "undercurrent": {"label": "Undercurrent", "aliases": ["undercurrent"]},
+    "city-daze": {"label": "City Daze", "aliases": ["City Daze Calendar"]},
+}
+# Names that aren't a host: Luma calls every unnamed calendar "Personal",
+# so unrelated events share it.
+ORGANIZER_SKIP = {"personal"}
+MIN_ORGANIZER_EVENTS = 3
+PAST_WINDOW_DAYS = 365  # a host quiet for longer than this loses its page
+PAST_SHOWN = 12  # "recently hosted" lines on an organiser page
+_ORGANIZER_ALIASES = {
+    alias.lower(): slug_
+    for slug_, spec in ORGANIZERS.items()
+    for alias in spec["aliases"]
+}
+
 # /about/ page copy, per site id. A site with no entry here gets no about
 # page — londo doesn't have one yet. Deliberately impersonal: no name, no
 # contact address, just what the site is and how an event ends up on it.
@@ -880,6 +953,50 @@ def fetch_events() -> list[dict]:
             "hidden": "is.false",
         }
     )
+    return _rest_get(supabase_url, anon_key, query)
+
+
+def fetch_past_events(days: int = PAST_WINDOW_DAYS) -> list[dict]:
+    """Events from the last `days` days, newest first — for organiser
+    pages' history only. A past event stops being re-scraped once it's
+    over, so staleness is judged as the upcoming list judges it, at the
+    time it started: one gone from its source more than three days before
+    was likely withdrawn. Paged, since a year of the whole city is more
+    than one response."""
+    supabase_url, anon_key = read_config()
+    now = datetime.now(timezone.utc)
+    rows: list[dict] = []
+    page_size = 1000
+    while True:
+        query = urllib.parse.urlencode(
+            [
+                ("select", "*"),
+                # unique tiebreak, or offset paging can skip/repeat rows
+                ("order", "start_at.desc,source.asc,source_id.asc"),
+                ("limit", str(page_size)),
+                ("offset", str(len(rows))),
+                ("start_at", f"gte.{(now - timedelta(days=days)).isoformat()}"),
+                ("start_at", f"lt.{now.isoformat()}"),
+                ("duplicate_of", "is.null"),
+                ("is_online", "eq.false"),
+                ("hidden", "is.false"),
+            ]
+        )
+        batch = _rest_get(supabase_url, anon_key, query)
+        rows.extend(batch)
+        if len(batch) < page_size:
+            break
+    return [
+        e for e in rows
+        if _parse_ts(e["last_seen_at"]) >= _parse_ts(e["start_at"]) - timedelta(days=3)
+    ]
+
+
+def _parse_ts(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _rest_get(supabase_url: str, anon_key: str, query: str) -> list[dict]:
     req = urllib.request.Request(
         f"{supabase_url}/rest/v1/events?{query}",
         headers={"apikey": anon_key, "Authorization": f"Bearer {anon_key}"},
@@ -910,6 +1027,18 @@ def organizer_slug(name: str | None) -> str:
     they came from the SPA or a static page."""
     slug = re.sub(r"[^a-z0-9]+", "-", (name or "unknown").lower()).strip("-")
     return slug or "unknown"
+
+
+def organizer_key(event: dict) -> tuple[str, str] | None:
+    """(slug, display name) of the host an organiser page is keyed on —
+    ORGANIZERS merges and renames first, else the name as reported."""
+    name = (event.get("organizer_name") or "").strip()
+    if not name or name.lower() in ORGANIZER_SKIP:
+        return None
+    slug_ = _ORGANIZER_ALIASES.get(name.lower())
+    if slug_:
+        return slug_, ORGANIZERS[slug_]["label"]
+    return organizer_slug(name), name
 
 
 def legacy_event_id(event: dict) -> str:
@@ -975,6 +1104,20 @@ def category_url(key: str) -> str:
 
 def practice_url(slug_: str) -> str:
     return f"{BASE_URL}/p/{slug_}/"
+
+
+def organizer_page_url(slug_: str) -> str:
+    return f"{BASE_URL}/o/{slug_}/"
+
+
+def organizers_index_url() -> str:
+    return f"{BASE_URL}/o/"
+
+
+def organizer_page_for(event: dict) -> tuple[str, str] | None:
+    """(slug, display name) when this event's host has a page here."""
+    key = organizer_key(event)
+    return key if key and key[0] in SITE_ORGANIZERS else None
 
 
 def esc(value) -> str:
@@ -1338,6 +1481,9 @@ def seo_nav_html() -> str:
     for slug_, spec, _ in SITE_PRACTICES:
         parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
         parts.append(f'<a href="{practice_url(slug_)}">{esc(spec["label"])}</a>')
+    if SITE_ORGANIZERS:
+        parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
+        parts.append(f'<a href="{organizers_index_url()}">hosts</a>')
     return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
 
 
@@ -1348,6 +1494,33 @@ TOPIC_COUNTS: dict[str, int] = {}
 # The practices this site has the listings for, filled in by build()
 # before any page is written: the footer links to them from everywhere.
 SITE_PRACTICES: list[tuple[str, dict, list[dict]]] = []
+
+# Hosts with an organiser page, filled in by build() before any page is
+# written: event pages link their host here. slug -> {label, url,
+# upcoming, past}.
+SITE_ORGANIZERS: dict[str, dict] = {}
+
+
+def site_organizers(upcoming: list[dict], past: list[dict]) -> dict[str, dict]:
+    """Hosts with enough on, or recently on, to be worth a page — past
+    events count, so a host between seasons keeps its page."""
+    found: dict[str, dict] = {}
+    for when, evs in (("upcoming", upcoming), ("past", past)):
+        for e in evs:
+            key = organizer_key(e)
+            if not key:
+                continue
+            slug_, label = key
+            org = found.setdefault(
+                slug_, {"label": label, "url": None, "upcoming": [], "past": []}
+            )
+            org[when].append(e)
+            org["url"] = org["url"] or e.get("organizer_url")
+    return {
+        slug_: org
+        for slug_, org in found.items()
+        if len(org["upcoming"]) + len(org["past"]) >= MIN_ORGANIZER_EVENTS
+    }
 
 
 def filters_nav_html(current: str | None, kind: str) -> str:
@@ -1393,6 +1566,21 @@ def filters_nav_html(current: str | None, kind: str) -> str:
             )
     if modalities:
         rows.append(("modality", modalities))
+
+    # who: the hosts index, and on a host's own page, that host lit
+    # beneath it — so the key says where you are there too
+    if SITE_ORGANIZERS:
+        who = [_nav_chip("hosts", organizers_index_url(), kind == "hosts")]
+        if kind == "organizer" and current in SITE_ORGANIZERS:
+            who.append(
+                _nav_chip(
+                    esc(SITE_ORGANIZERS[current]["label"]),
+                    organizer_page_url(current),
+                    True,
+                    child=True,
+                )
+            )
+        rows.append(("who", who))
 
     if not rows:
         return ""
@@ -1559,8 +1747,11 @@ def event_page(event: dict) -> str:
         json_ld["description"] = re.sub(r"\s+", " ", event["description"])[:500]
     elif event.get("hook"):
         json_ld["description"] = event["hook"]
+    host_page = organizer_page_for(event)
     if org:
         json_ld["organizer"] = {"@type": "Organization", "name": org}
+        if event.get("organizer_url"):
+            json_ld["organizer"]["url"] = event["organizer_url"]
     if event.get("is_free"):
         json_ld["isAccessibleForFree"] = True
         json_ld["offers"] = {
@@ -1590,7 +1781,15 @@ def event_page(event: dict) -> str:
         facts.append(
             f'<div class="static-fact"><dt>Price</dt><dd>{esc(price)}</dd></div>'
         )
-    if org:
+    if host_page:
+        host_slug, host_label = host_page
+        facts.append(
+            f'<div class="static-fact"><dt>Host</dt><dd>'
+            f'<a href="{organizer_page_url(host_slug)}" '
+            f'data-goatcounter-click="host/{esc(host_slug)}">{esc(host_label)}</a>'
+            f"</dd></div>"
+        )
+    elif org:
         facts.append(
             f'<div class="static-fact"><dt>Host</dt><dd>{esc(org)}</dd></div>'
         )
@@ -1655,10 +1854,16 @@ def event_page(event: dict) -> str:
     if event.get("category") and not SITE_JSON.get("filter"):
         kicker_bits.append(event["category"])
 
+    host_crumb = (
+        f'\n    <a href="{organizer_page_url(host_page[0])}">{esc(host_page[1])}</a>'
+        '\n    <span aria-hidden="true">/</span>'
+        if host_page
+        else ""
+    )
     body = f"""
   <nav class="static-crumbs" aria-label="breadcrumb">
     <a href="{BASE_URL}/">{esc(display_name())}</a>
-    <span aria-hidden="true">/</span>
+    <span aria-hidden="true">/</span>{host_crumb}
     <span>event</span>
   </nav>
   <article class="static-event">
@@ -1692,6 +1897,11 @@ def listing_intro_paragraphs(
         paras = list(CATEGORY_INTROS.get(key) or ())
     elif kind == "practice":
         paras = list(PRACTICES[key]["intro"])
+    elif kind == "organizer":
+        paras = list(ORGANIZERS.get(key, {}).get("intro") or ()) or [
+            f"In-person gatherings hosted by {label} in London, collected on "
+            f"{display_name()} with the rest of what's on."
+        ]
     else:
         paras = list(TOPIC_INTROS.get(key) or ())
     if not paras:
@@ -1700,6 +1910,17 @@ def listing_intro_paragraphs(
             f"so you can find the good rooms without scrolling forever."
         ]
     window = "the next seven days" if days == 7 else f"the next {days} days"
+    if kind == "organizer":
+        return [
+            *paras,
+            f"{count} coming up — times, venues and tickets, "
+            "refreshed several times a day."
+            if count > 1
+            else "One coming up — time, venue and tickets below."
+            if count
+            else f"Nothing on from {label} right now — "
+            "here's what they've hosted recently.",
+        ]
     freshness = (
         f"{count} on in {window} — times, venues and tickets, "
         f"refreshed several times a day."
@@ -1786,14 +2007,33 @@ def listing_page(
         meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
 
     groups = day_groups(events[:200])
-    strip = date_strip_html(events, days, other_url)
+    # a host's page is their whole diary, not a range of the calendar
+    strip = "" if kind == "organizer" else date_strip_html(events, days, other_url)
     spec = PRACTICES[key] if kind == "practice" else {}
     faq = faq_html(spec["faq"]) if spec.get("faq") else ""
     json_ld = (
         listing_json_ld(seo_title, canonical, meta_desc, events, spec.get("faq") or [])
-        if kind == "practice"
+        if kind in ("practice", "organizer")
         else None
     )
+    org = SITE_ORGANIZERS.get(key) if kind == "organizer" else None
+    own_site = past = ""
+    back_hosts = ""
+    if org:
+        node = {"@type": "Organization", "name": label}
+        if org["url"]:
+            node["url"] = org["url"]
+            own_site = (
+                f'<p class="static-back static-org-site"><a href="{esc(org["url"])}" '
+                f'rel="noopener" data-goatcounter-click="org-site/{esc(key)}">'
+                f"{esc(label)}'s own page ↗</a></p>"
+            )
+        json_ld["@graph"].append(node)
+        past = past_events_html(org["past"])
+        back_hosts = (
+            f'\n  <p class="static-back">'
+            f'<a href="{organizers_index_url()}">← all hosts on {esc(display_name())}</a></p>'
+        )
 
     body = f"""
   {filters_nav_html(key, kind)}
@@ -1804,9 +2044,11 @@ def listing_page(
     <div class="static-intro">
       {lead_html}
     </div>
+    {own_site}
   </header>
   {groups}
-  {faq}
+  {past}
+  {faq}{back_hosts}
   <p class="static-back">
     <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
   </p>"""
@@ -1818,6 +2060,80 @@ def listing_page(
         body,
         json_ld=json_ld,
         css_prefix=css_prefix,
+        body_class="static-page static-listing",
+    )
+
+
+def past_events_html(past: list[dict]) -> str:
+    """A host's recent history: plain muted lines, no cards or links, so
+    nothing here reads as something you could still go to."""
+    if not past:
+        return ""
+    this_year = datetime.now(LONDON).year
+    items = []
+    for e in past[:PAST_SHOWN]:
+        start = _start_london(e)
+        when = start.strftime(
+            "%a %-d %b" if start.year == this_year else "%a %-d %b %Y"
+        )
+        bits = [esc(e["title"])]
+        if e.get("venue_name"):
+            bits.append(esc(e["venue_name"]))
+        items.append(
+            f'<li><time datetime="{start.date().isoformat()}">{esc(when)}</time>'
+            f' · {" · ".join(bits)}</li>'
+        )
+    return (
+        '<section class="static-past"><h2>Recently hosted</h2>'
+        f'<ul>{"".join(items)}</ul></section>'
+    )
+
+
+def organizers_index_page() -> str:
+    """Every host with a page, busiest first."""
+    canonical = organizers_index_url()
+    intro = (
+        f"The organisers, teachers and communities whose gatherings appear "
+        f"on {display_name()} — each with what's coming up and what "
+        f"they've hosted recently."
+    )
+    rows = sorted(
+        SITE_ORGANIZERS.items(),
+        key=lambda kv: (-len(kv[1]["upcoming"]), kv[1]["label"].lower()),
+    )
+    items = "".join(
+        f'<li><a href="{organizer_page_url(slug_)}">{esc(org["label"])}</a>'
+        f'<span class="static-hosts-count">'
+        f'{len(org["upcoming"]) or "nothing"} coming up</span></li>'
+        for slug_, org in rows
+    )
+    body = f"""
+  {filters_nav_html(None, "hosts")}
+  <header class="static-list-head">
+    <p class="static-kicker">in person · London</p>
+    <h1 class="static-title">Hosts &amp; organisers</h1>
+    <div class="static-intro">
+      <p class="static-lead">{esc(intro)}</p>
+    </div>
+  </header>
+  <ul class="static-hosts">{items}</ul>
+  <p class="static-back">
+    <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
+  </p>"""
+    return page(
+        f"Hosts & organisers — {display_name()}",
+        intro,
+        canonical,
+        DEFAULT_OG_IMAGE,
+        body,
+        json_ld={
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "name": "Hosts & organisers",
+            "description": intro,
+            "url": canonical,
+        },
+        css_prefix="..",
         body_class="static-page static-listing",
     )
 
@@ -2072,6 +2388,16 @@ def write_listing(
     lead and it stays out of the sitemap — one page competes for the
     query, the other is just a wider look.
     """
+    if kind == "organizer":
+        # one host's diary is short: everything ahead on one page, and a
+        # quiet host still has their page
+        write_index(
+            outdir.joinpath(*parts),
+            listing_page(key, label, seo_title, canonical, events, kind=kind),
+        )
+        urls.append(canonical)
+        return
+
     week, month = (within_window(events, n) for n in LISTING_WINDOWS)
     lead_days = LEAD_WINDOW.get(kind, 7)
     if lead_days == 7 and len(week) < MIN_WEEK_EVENTS:
@@ -2120,8 +2446,14 @@ def build(outdir: Path) -> None:
     inject_theme_boot(outdir)
     inject_robots_meta(outdir)
 
-    global SITE_PRACTICES
+    global SITE_PRACTICES, SITE_ORGANIZERS
     SITE_PRACTICES = site_practices(events)
+    # before the event pages: their Host line links to these
+    SITE_ORGANIZERS = (
+        site_organizers(events, [e for e in fetch_past_events() if site_match(e)])
+        if (SITE_JSON.get("features") or {}).get("organizerPages")
+        else {}
+    )
 
     DEFAULT_OG_IMAGE = (
         f"{BASE_URL}/og-image.jpg" if (outdir / "og-image.jpg").exists() else None
@@ -2211,6 +2543,16 @@ def build(outdir: Path) -> None:
             slug_, spec["label"], spec["seo_title"], matched, "practice", urls,
         )
         write_html_redirect(outdir / "p" / f"{slug_}.html", canonical)
+
+    for slug_, org in SITE_ORGANIZERS.items():
+        write_listing(
+            outdir, ("o", slug_), organizer_page_url(slug_),
+            slug_, org["label"], f"{org['label']} events in London",
+            org["upcoming"], "organizer", urls,
+        )
+    if SITE_ORGANIZERS:
+        write_index(outdir / "o", organizers_index_page())
+        urls.append(organizers_index_url())
 
     # The home page's practice chips read this: same definitions, same
     # per-site set, so the app filters by exactly what the pages list.

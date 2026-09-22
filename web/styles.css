@@ -1685,6 +1685,80 @@ body.static-page {
   color: var(--peach);
 }
 
+/* organiser pages: the host's own site, under the intro; and the two
+   way-out links at the foot sit together */
+.static-listing .static-org-site,
+.static-listing .static-back + .static-back {
+  margin-top: 0.9rem;
+}
+
+/* organiser pages: what they've hosted — quiet lines, not cards, so
+   nothing here reads as something still on */
+.static-past {
+  max-width: 38rem;
+  margin: 3rem 0 0;
+  color: var(--ink-dim);
+}
+
+.static-past h2 {
+  margin: 0 0 0.8rem;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.static-past ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+.static-past li {
+  padding: 0.35rem 0;
+  border-top: 1px solid var(--edge-soft, rgba(127, 127, 127, 0.18));
+}
+
+.static-past time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* /o/: every host, busiest first */
+.static-hosts {
+  max-width: 38rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.static-hosts li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--edge-soft, rgba(127, 127, 127, 0.18));
+}
+
+.static-hosts a {
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.static-hosts a:hover {
+  color: var(--peach);
+}
+
+.static-hosts-count {
+  flex: none;
+  color: var(--ink-dim);
+  font-size: 0.85rem;
+}
+
 .static-list-head {
   margin-bottom: 1.6rem;
 }
