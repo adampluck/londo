@@ -1355,25 +1355,71 @@ TOPIC_COUNTS: dict[str, int] = {}
 SITE_PRACTICES: list[tuple[str, dict, list[dict]]] = []
 
 
-def topic_nav_html(current: str | None) -> str:
-    """The main page's topic chips as links: "anything" (home) then each
-    of the site's topics, the current page lit. Static pages have no
-    filter state, so this is the navigation."""
+def filters_nav_html(current: str | None, kind: str) -> str:
+    """The home page's filters key and panel, as navigation.
+
+    Same shape as the SPA's bench — a key that opens a panel of chips —
+    but built from <details>, so a static page needs no script. The
+    chips are links to the other listings, and the one you're on is lit.
+    """
+    rows = []
     site_topics = SITE_JSON.get("topics")
-    keys = [k for k in TOPICS if site_topics is None or k in site_topics]
-    parts = [f'<a class="token" href="{BASE_URL}/">anything</a>']
-    for key in keys:
-        n = TOPIC_COUNTS.get(key, 0)
-        if not n:
+    topics = []
+    for key in (k for k in TOPICS if site_topics is None or k in site_topics):
+        if not TOPIC_COUNTS.get(key):
             continue
         slug_, _ = TOPICS[key]
-        lit = " lit" if key == current else ""
-        current_attr = ' aria-current="page"' if key == current else ""
-        parts.append(
-            f'<a class="token{lit}" href="{topic_url(slug_)}"{current_attr}>'
-            f'{esc(key)} <small class="token-count">{n}</small></a>'
+        topics.append(
+            _nav_chip(esc(key), topic_url(slug_), kind == "topic" and key == current)
         )
-    return f'<nav class="static-topics" aria-label="topics">{"".join(parts)}</nav>'
+    if topics:
+        rows.append(("what", topics))
+
+    modalities = []
+    for slug_, spec, _ in SITE_PRACTICES:
+        if spec.get("parent"):
+            continue
+        here = kind == "practice" and slug_ == current
+        modalities.append(
+            _nav_chip(
+                esc(spec.get("chip") or spec["label"]), practice_url(slug_), here
+            )
+        )
+        for child_slug, child, _c in SITE_PRACTICES:
+            if child.get("parent") != slug_:
+                continue
+            modalities.append(
+                _nav_chip(
+                    esc(child.get("chip") or child["label"]),
+                    practice_url(child_slug),
+                    kind == "practice" and child_slug == current,
+                    child=True,
+                )
+            )
+    if modalities:
+        rows.append(("modality", modalities))
+
+    if not rows:
+        return ""
+    body = "".join(
+        f'<div class="facet-row"><span class="legend facet-legend">{label}</span>'
+        f'<div class="facet-chips">{"".join(chips)}</div></div>'
+        for label, chips in rows
+    )
+    # open on the page you're on: the lit chip says where you are
+    return (
+        '<details class="static-filters">'
+        '<summary class="key filters-key">filters</summary>'
+        f'<div class="filters-panel">'
+        f'<a class="token" href="{BASE_URL}/">everything on</a>{body}'
+        "</div></details>"
+    )
+
+
+def _nav_chip(label: str, href: str, here: bool, child: bool = False) -> str:
+    classes = "token" + (" token-child" if child else "") + (" lit" if here else "")
+    current = ' aria-current="page"' if here else ""
+    return f'<a class="{classes}" href="{href}"{current}>{label}</a>'
 
 
 def display_name() -> str:
@@ -1755,7 +1801,7 @@ def listing_page(
     )
 
     body = f"""
-  {topic_nav_html(key if kind == "topic" else None)}
+  {filters_nav_html(key, kind)}
   {strip}
   <header class="static-list-head">
     <p class="static-kicker">in person · London</p>

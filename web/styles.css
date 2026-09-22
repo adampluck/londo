@@ -631,52 +631,16 @@ body {
 
 .filters-count { margin-left: 0.35rem; }
 
-/* the attribute would lose to display:flex, so say it explicitly */
-.applied-bar[hidden] { display: none; }
-
-/* the key and what it has applied travel together: inline at the end of
-   the search row on a desktop, a line of their own on a phone */
-.filters-bar {
-  display: flex;
-  flex: 0 1 auto;
-  min-width: 0;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.applied-bar {
-  display: flex;
-  flex: 0 1 auto;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  align-items: center;
-}
-
-.applied {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--gold);
-  background: rgba(227, 192, 141, 0.1);
-  border: 1px solid rgba(227, 192, 141, 0.5);
-  border-radius: 999px;
-  padding: 0.3rem 0.6rem;
-  cursor: pointer;
-}
-
-.applied:hover { color: var(--ink); }
-
-.applied-x { opacity: 0.7; font-size: 0.9rem; line-height: 1; }
-
 .filters-panel {
   flex-direction: column;
   align-items: stretch;
   gap: 0.6rem;
   padding: 0.2rem 0 0.1rem;
+}
+
+.filters-foot {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .facet-row {
@@ -709,12 +673,8 @@ body {
 }
 
 @media (max-width: 640px) {
-  /* the filters key and what it has applied take the line under the
-     search box rather than squeezing it out of the row */
-  .filters-bar {
-    flex: 1 0 100%;
-  }
-
+  /* room for the filters key on the top row: the search box gives it
+     up, and "clear all" moved inside the panel */
   .filters-key {
     padding: 0.4rem 0.7rem;
     font-size: 0.76rem;
@@ -1364,6 +1324,33 @@ body.static-page {
 }
 
 /* the main page's topic chips, as links */
+/* the home page's filters key and panel, in <details> form */
+.static-filters {
+  margin: 0.2rem 0 1.2rem;
+}
+
+.static-filters > summary {
+  display: inline-block;
+  list-style: none;
+  user-select: none;
+}
+
+.static-filters > summary::-webkit-details-marker {
+  display: none;
+}
+
+.static-filters[open] > summary {
+  color: var(--gold);
+}
+
+.static-filters .filters-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.9rem 0 0.2rem;
+}
+
 .static-topics {
   display: flex;
   flex-wrap: wrap;
@@ -1373,16 +1360,21 @@ body.static-page {
 
 .static-topics .token,
 .static-topics .token:link,
-.static-topics .token:visited {
+.static-topics .token:visited,
+.static-filters .token,
+.static-filters .token:link,
+.static-filters .token:visited {
   display: inline-block;
   text-decoration: none;
 }
 
+.static-filters .token:hover,
 .static-topics .token:hover {
   color: var(--ink);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.static-filters .token.lit:hover,
 .static-topics .token.lit:hover {
   color: var(--gold);
 }
@@ -1846,7 +1838,7 @@ body.theme-night .blob { opacity: 0.35; }
   .controls > .controls-row:first-child { flex-wrap: wrap; }
 
   #search {
-    flex: 1 1 120px;
+    flex: 1 1 90px;
     min-width: 0;
     font-size: 1rem; /* >=16px stops iOS zooming on focus */
     height: 2.25rem;

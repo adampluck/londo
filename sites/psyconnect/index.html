@@ -75,11 +75,7 @@
         </label>
         <span class="legend">free</span>
       </div>
-      <button class="key reset-key" id="reset-filters" title="clear every filter">reset</button>
-      <div class="filters-bar">
-        <button class="key filters-key" id="filters-toggle" type="button" aria-expanded="false" aria-controls="filters-panel" hidden>filters<span class="filters-count"></span></button>
-        <div class="applied-bar" id="filters-summary" hidden></div>
-      </div>
+      <button class="key filters-key" id="filters-toggle" type="button" aria-expanded="false" aria-controls="filters-panel" hidden>filters<span class="filters-count"></span></button>
     </div>
 
     <div class="controls-row keys" id="category-pills" hidden>
@@ -141,6 +137,9 @@
     <!-- refinements, shut until asked for: most visits are a browse -->
     <div class="controls-row filters-panel" id="filters-panel" hidden>
       <!-- one row of chips per facet, filled in from the loaded events -->
+      <div class="filters-foot">
+        <button class="key reset-key" id="reset-filters" title="clear every filter">clear all</button>
+      </div>
     </div>
   </div>
 

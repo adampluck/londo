@@ -845,7 +845,9 @@
       row.appendChild(chips);
       rows.push(row);
     }
-    panel.replaceChildren(...rows);
+    // "clear all" lives in the panel's markup — keep it below the rows
+    const foot = panel.querySelector(".filters-foot");
+    panel.replaceChildren(...rows, ...(foot ? [foot] : []));
     document.getElementById("filters-toggle").hidden = !rows.length;
     syncFilters();
 
@@ -899,43 +901,7 @@
       ? `(${active})`
       : "";
     toggle.classList.toggle("lit", active > 0);
-    renderFilterSummary();
     renderPracticeGuide();
-  }
-
-  // What's on, in a line, so a filtered view never looks unfiltered
-  // while the panel is shut. Each one clears its own facet.
-  function renderFilterSummary() {
-    const bar = document.getElementById("filters-summary");
-    const chips = [];
-    for (const facet of Object.values(FACETS)) {
-      const value = state[facet.state];
-      if (!value) continue;
-      const option = facet
-        .options()
-        .find((o) => o.value === value) || { label: value };
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "applied";
-      btn.append(
-        document.createTextNode(option.label),
-        Object.assign(document.createElement("span"), {
-          className: "applied-x",
-          textContent: "×",
-          ariaHidden: "true",
-        })
-      );
-      btn.setAttribute("aria-label", `clear ${option.label}`);
-      btn.addEventListener("click", () => {
-        clearLanding();
-        state[facet.state] = null;
-        state.surprise = null;
-        renderWithoutCardAnim();
-      });
-      chips.push(btn);
-    }
-    bar.replaceChildren(...chips);
-    bar.hidden = !chips.length;
   }
 
   function toggleFilters(open) {
