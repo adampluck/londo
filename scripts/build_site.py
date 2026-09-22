@@ -615,6 +615,7 @@ GRADIENTS = [
     ("#d97706", "#dc2626"), ("#db2777", "#9333ea"), ("#475569", "#1e293b"),
 ]
 PICK_THRESHOLD = 75  # quality_score at or above ⇒ "✦ pick"
+HORIZON_DAYS = 30  # the date strip's window, as on the main page
 
 
 def placeholder_gradient(event: dict) -> str:
@@ -684,13 +685,42 @@ def event_card(event: dict) -> str:
     )
 
 
+def date_strip_html(events: list[dict]) -> str:
+    """The main page's date strip, as anchors onto this page's day
+    groups. A day this topic has nothing on is shown spent rather than
+    hidden, so the shape of the month stays readable."""
+    have = {_start_london(e).date() for e in events}
+    today = datetime.now(LONDON).date()
+    ticks = []
+    for i in range(HORIZON_DAYS):
+        day = today + timedelta(days=i)
+        if i == 0:
+            main, sub = "today", day.strftime("%a").lower()
+        elif i == 1:
+            main, sub = "tmrw", day.strftime("%a").lower()
+        else:
+            main, sub = day.strftime("%a").lower(), day.strftime("%-d")
+        cell = f"{main}<small>{sub}</small>"
+        if day in have:
+            ticks.append(f'<a class="tick" href="#d-{day.isoformat()}">{cell}</a>')
+        else:
+            ticks.append(f'<span class="tick spent" aria-hidden="true">{cell}</span>')
+    return (
+        '<div class="static-ticker"><div class="ticker-shell">'
+        f'<div class="ticker">{"".join(ticks)}</div>'
+        "</div></div>"
+    )
+
+
 def day_groups(events: list[dict]) -> str:
-    """Events as the SPA's day-grouped card grids."""
+    """Events as the SPA's day-grouped card grids, each day an anchor
+    the date strip above can jump to."""
     by_day: dict[str, list[dict]] = {}
     for e in events:
-        by_day.setdefault(_start_london(e).strftime("%A %-d %B"), []).append(e)
+        by_day.setdefault(_start_london(e).date().isoformat(), []).append(e)
     sections = []
-    for day, day_events in by_day.items():
+    for key, day_events in by_day.items():
+        day = _start_london(day_events[0]).strftime("%A %-d %B")
         count = (
             "one gathering"
             if len(day_events) == 1
@@ -698,7 +728,7 @@ def day_groups(events: list[dict]) -> str:
         )
         cards = "".join(event_card(e) for e in day_events)
         sections.append(
-            f'<section class="day-group"><h2 class="day-heading">'
+            f'<section class="day-group" id="d-{key}"><h2 class="day-heading">'
             f'<span>{esc(day)}</span><span class="count">{count}</span></h2>'
             f'<div class="grid">{cards}</div></section>'
         )
@@ -1168,6 +1198,7 @@ def listing_page(
 
     body = f"""
   {topic_nav_html(key if kind == "topic" else None)}
+  {date_strip_html(events)}
   <header class="static-list-head">
     <p class="static-kicker">in person · London</p>
     <h1 class="static-title">{esc(seo_title)}</h1>

@@ -1241,6 +1241,32 @@ body.static-page {
   color: var(--gold);
 }
 
+/* date strip: the same instrument as the main page, its ticks jumping
+   to this page's day groups */
+.static-ticker {
+  display: flex;
+  margin: 0 0 1.6rem;
+}
+
+.static-ticker .ticker-shell {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.static-ticker .tick {
+  display: block;
+  text-decoration: none;
+  scroll-margin-top: 1rem;
+}
+
+.static-ticker .tick.spent {
+  opacity: 0.35;
+}
+
+.static-listing .day-group {
+  scroll-margin-top: 1rem;
+}
+
 .static-listing .day-group:first-of-type .day-heading {
   margin-top: 1.6rem;
 }
