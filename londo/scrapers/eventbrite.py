@@ -10,9 +10,12 @@ from londo.scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)
 
-SHOWMORE_URL = (
-    "https://www.eventbrite.co.uk/org/{org_id}/showmore/"
-    "?page_size=50&type=future&page={page}"
+# The organizer profile page's own listing API. The older
+# /org/{id}/showmore/ endpoint now answers every request with a CloudFront
+# 403, whatever the user agent or TLS fingerprint.
+LISTINGS_URL = (
+    "https://www.eventbrite.com/organizer-profile/api/organizers/{org_id}/events/"
+    "?page={page}&pageSize=50"
 )
 DEST_API = (
     "https://www.eventbrite.co.uk/api/v3/destination/events/"
@@ -94,21 +97,26 @@ class EventbriteOrganizerScraper(BaseScraper):
         return events
 
     def _fetch_listings(self) -> dict[str, dict]:
-        """Map event id -> listing extras (image, description) from showmore."""
+        """Map event id -> listing extras (image) from the organizer profile.
+
+        Series appear once, as their parent; the destination API expands
+        them into occurrences. Descriptions aren't listed here (summary is
+        blank), so _build_base falls back to the destination API's summary.
+        """
         listings: dict[str, dict] = {}
         page = 1
         while True:
-            url = SHOWMORE_URL.format(org_id=self.org_id, page=page)
-            data = self.get(url).json().get("data", {})
+            url = LISTINGS_URL.format(org_id=self.org_id, page=page)
+            data = self.get(url).json()
             for ev in data.get("events", []):
-                desc = ev.get("description") or {}
                 listings[str(ev["id"])] = {
-                    "image_url": (ev.get("logo") or {}).get("url"),
-                    "description": desc.get("text") or ev.get("summary"),
+                    "image_url": (ev.get("image") or {}).get("url"),
+                    "description": None,
                 }
-            if not data.get("has_next_page"):
+            if not data.get("hasMore"):
                 return listings
             page += 1
+
 
 class NuminityScraper(EventbriteOrganizerScraper):
     source_name = "numinity"
