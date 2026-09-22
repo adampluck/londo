@@ -1204,6 +1204,27 @@ body.static-page {
   font-size: 0.85rem;
 }
 
+/* topic and category listings lay events out as the main page does —
+   the same day-grouped card grid at the same width; the intro copy
+   keeps its reading measure (.static-intro) */
+.static-listing .static-header,
+.static-listing .static-main,
+.static-listing .static-footer {
+  max-width: var(--page-max);
+}
+
+.static-listing .static-list-head {
+  margin-bottom: 0.5rem;
+}
+
+.static-listing .day-group:first-of-type .day-heading {
+  margin-top: 1.6rem;
+}
+
+.static-listing .static-back {
+  margin-top: 2.5rem;
+}
+
 .static-footer-home a {
   color: var(--peach);
   text-decoration: none;

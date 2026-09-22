@@ -581,6 +581,130 @@ def fmt_when_short(event: dict) -> str:
     return start.strftime("%a %-d %b · %H:%M")
 
 
+def fmt_time_range(event: dict) -> str:
+    """Card time line, as the SPA's formatTime: "19:00 – 21:30"."""
+    if event.get("is_all_day"):
+        return "All day"
+    start = _start_london(event).strftime("%H:%M")
+    if not event.get("end_at"):
+        return start
+    end = datetime.fromisoformat(event["end_at"].replace("Z", "+00:00"))
+    return f"{start} – {end.astimezone(LONDON).strftime('%H:%M')}"
+
+
+def time_of_day_class(event: dict) -> str:
+    hour = _start_london(event).hour
+    if hour < 12:
+        return "dot-morning"
+    if hour < 17:
+        return "dot-afternoon"
+    return "dot-evening"
+
+
+# Mirrors CATEGORIES colours / GRADIENTS / hash() in web/app.js so a
+# card without an image gets the same placeholder here as on the SPA.
+CATEGORY_COLOURS = {
+    "move": ("#e8836f", "#d96a9e"),
+    "connect": ("#e3c08d", "#e8836f"),
+    "expand": ("#9d7fd1", "#6f5bb5"),
+    "think": ("#5fb5a2", "#3d8fa8"),
+    "make": ("#d96a9e", "#9d7fd1"),
+}
+GRADIENTS = [
+    ("#4f46e5", "#9333ea"), ("#0891b2", "#2563eb"), ("#059669", "#0d9488"),
+    ("#d97706", "#dc2626"), ("#db2777", "#9333ea"), ("#475569", "#1e293b"),
+]
+PICK_THRESHOLD = 75  # quality_score at or above ⇒ "✦ pick"
+
+
+def placeholder_gradient(event: dict) -> str:
+    cat = event.get("category")
+    if cat in CATEGORY_COLOURS:
+        c1, c2 = CATEGORY_COLOURS[cat]
+    else:
+        h = 0
+        for ch in event.get("title") or "?":
+            h = (h * 31 + ord(ch)) & 0xFFFFFFFF
+        c1, c2 = GRADIENTS[h % len(GRADIENTS)]
+    return f"linear-gradient(135deg, {c1}, {c2})"
+
+
+def event_card(event: dict) -> str:
+    """The SPA's card (web/app.js card()) as static markup, linking to
+    the event's own page here rather than out to the ticket page."""
+    title = esc(event.get("title") or "")
+    if event.get("image_url"):
+        art = event["image_url"]
+        fallback = esc(art.replace("'", "%27"))
+        banner = (
+            f'<img alt="" loading="lazy" src="{esc(thumb(art, 600))}" '
+            f"onerror=\"this.onerror=null;this.src='{fallback}'\">"
+        )
+        banner_style = ""
+    else:
+        banner = f'<span class="placeholder-initial">{title}</span>'
+        banner_style = f' style="background:{placeholder_gradient(event)}"'
+    cat = event.get("category")
+    if cat in CATEGORIES and not SITE_JSON.get("filter"):
+        banner += f'<span class="badge badge-cat badge-cat-{cat}">{cat}</span>'
+    if (event.get("quality_score") or 0) >= PICK_THRESHOLD:
+        banner += (
+            '<span class="pick-mark" title="one of the richer listings this week">'
+            "✦ pick</span>"
+        )
+
+    body = [
+        f'<p class="time"><span class="dot {time_of_day_class(event)}"></span>'
+        f"{esc(fmt_time_range(event))}</p>",
+        f"<h3>{title}</h3>",
+    ]
+    if event.get("hook"):
+        body.append(f'<p class="hook">{esc(event["hook"])}</p>')
+    place = event.get("venue_name") or event.get("address")
+    if place:
+        body.append(f'<p class="venue">{esc(place)}</p>')
+    meta = []
+    if event.get("is_free"):
+        meta.append('<span class="free-tag">free</span>')
+    elif fmt_price(event):
+        meta.append(esc(fmt_price(event)))
+    for key in ("organizer_name", "area"):
+        if event.get(key):
+            meta.append(esc(event[key]))
+    if meta:
+        body.append(f'<p class="meta">{" · ".join(meta)}</p>')
+    if not event.get("hook") and event.get("description"):
+        blurb = " ".join(event["description"].split())[:220]
+        body.append(f'<p class="blurb">{esc(blurb)}</p>')
+
+    return (
+        f'<a class="card instant" href="{event_url(event)}">'
+        f'<div class="banner"{banner_style}>{banner}</div>'
+        f'<div class="card-body">{"".join(body)}</div></a>'
+    )
+
+
+def day_groups(events: list[dict]) -> str:
+    """Events as the SPA's day-grouped card grids."""
+    by_day: dict[str, list[dict]] = {}
+    for e in events:
+        by_day.setdefault(_start_london(e).strftime("%A %-d %B"), []).append(e)
+    sections = []
+    for day, day_events in by_day.items():
+        count = (
+            "one gathering"
+            if len(day_events) == 1
+            else f"{len(day_events)} gatherings"
+        )
+        cards = "".join(event_card(e) for e in day_events)
+        sections.append(
+            f'<section class="day-group"><h2 class="day-heading">'
+            f'<span>{esc(day)}</span><span class="count">{count}</span></h2>'
+            f'<div class="grid">{cards}</div></section>'
+        )
+    return "".join(sections)
+
+
 def write_index(path: Path, html_text: str) -> None:
     path.mkdir(parents=True, exist_ok=True)
     (path / "index.html").write_text(html_text)
@@ -615,6 +739,7 @@ def page(
     json_ld: dict | None = None,
     css_prefix: str = NESTED_PREFIX,
     head_extra: str = "",
+    body_class: str = "static-page",
 ) -> str:
     # "</" must not appear inside a <script> block: a scraped description
     # containing "</script>" would otherwise break out and execute (XSS)
@@ -654,7 +779,7 @@ def page(
   {ld}
   {goatcounter_snippet()}
 </head>
-<body class="static-page">
+<body class="{body_class}">
   <div class="sky" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div><div class="grain"></div></div>
   <header class="static-header">
     {theme_toggle_html()}<a class="static-brand" href="{BASE_URL}/">{site_wordmark(css_prefix)}</a>
@@ -1013,28 +1138,7 @@ def listing_page(
     if len(meta_desc) > 160:
         meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
 
-    items = []
-    for e in events[:60]:
-        when = fmt_when_short(e)
-        place = e.get("venue_name") or e.get("address") or "London"
-        hook = (
-            f'<p class="static-list-hook">{esc(e["hook"])}</p>'
-            if e.get("hook")
-            else ""
-        )
-        org = (
-            f'<span class="static-list-org">{esc(e["organizer_name"])}</span>'
-            if e.get("organizer_name")
-            else ""
-        )
-        items.append(
-            f"""
-    <li class="static-list-item">
-      <a class="static-list-title" href="{event_url(e)}">{esc(e["title"])}</a>
-      <p class="static-list-meta">{esc(when)} · {esc(place)}{(' · ' + org) if org else ''}</p>
-      {hook}
-    </li>"""
-        )
+    groups = day_groups(events[:200])
 
     body = f"""
   <nav class="static-crumbs" aria-label="breadcrumb">
@@ -1049,9 +1153,7 @@ def listing_page(
       {lead_html}
     </div>
   </header>
-  <ol class="static-list">
-    {"".join(items)}
-  </ol>
+  {groups}
   <p class="static-back">
     <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
   </p>"""
@@ -1062,6 +1164,7 @@ def listing_page(
         DEFAULT_OG_IMAGE,
         body,
         css_prefix="../..",
+        body_class="static-page static-listing",
     )
 
 
