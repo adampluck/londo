@@ -610,16 +610,44 @@ body {
 
 .token.spent .token-count { opacity: 0.75; }
 
-/* --- practice tape: the /p/ pages, as a filter --- */
+/* --- practice tape: the /p/ pages, as a filter ---
+   Topics are the broad lenses and read as raised keys; a practice is a
+   narrower thing you'd go and do, so the row sits behind its own label
+   and its chips are rounder, flatter and unfilled until chosen. The
+   shapes have to differ at a glance, or two rows of identical pills
+   just look like one wrapped row. */
+
+.practice-legend {
+  align-self: center;
+  padding: 0 0.6rem 0 0.1rem;
+  /* the accent, not a white tint: it has to read on the light theme too */
+  border-right: 1px solid rgba(157, 127, 209, 0.35);
+  margin-right: 0.55rem;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+/* a clear step down from the topic tape rather than a second row of it */
+#practice-unit {
+  margin-top: 0.15rem;
+}
 
 #practice-unit .tape {
   mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
   -webkit-mask-image: linear-gradient(to right, black calc(100% - 22px), transparent);
 }
 
-/* a shade cooler than the topic tokens: same instrument, narrower subject */
 #practice-unit .token {
-  border-color: rgba(157, 127, 209, 0.28);
+  border-radius: 999px;
+  background: none;
+  border-color: rgba(157, 127, 209, 0.3);
+  padding: 0.3rem 0.7rem;
+}
+
+@media (hover: hover) {
+  #practice-unit .token:hover {
+    border-color: rgba(157, 127, 209, 0.45);
+  }
 }
 
 #practice-unit .token.lit {
