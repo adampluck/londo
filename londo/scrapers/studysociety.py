@@ -71,6 +71,9 @@ class StudySocietyScraper(BaseScraper):
         self._dandelion = DandelionScraper(rate_limit=rate_limit)
         self._tickettailor = TicketTailorClient(rate_limit=rate_limit)
         self._ticket_prices: dict[str, tuple[list[PriceTier], bool] | None] = {}
+        # Ticket Tailor refuses datacentre IPs (CI) outright; once it has,
+        # stop asking — each refusal burns ~10s of host × profile retries
+        self._ticket_pages_blocked = False
 
     def _widget_id(self) -> str:
         """The calendar widget's id from the What's On page, or the last
@@ -164,7 +167,7 @@ class StudySocietyScraper(BaseScraper):
         widget descriptions that never state a price. One fetch per ticket
         page per run; a refused or missing page just leaves it unpriced."""
         m = TICKETTAILOR_RE.match(url)
-        if not m:
+        if not m or self._ticket_pages_blocked:
             return None
         path = f"{m.group(1)}/{m.group(2)}"
         if path not in self._ticket_prices:
@@ -173,7 +176,11 @@ class StudySocietyScraper(BaseScraper):
                 self._ticket_prices[path] = offer_prices(
                     BeautifulSoup(html, "html.parser")
                 )
-            except (Blocked, NotFound) as exc:
+            except Blocked as exc:
+                logger.warning("Ticket Tailor refused us (%s); no ticket-page prices this run", exc)
+                self._ticket_pages_blocked = True
+                return None
+            except NotFound as exc:
                 logger.warning("No ticket prices for %s: %s", url, exc)
                 self._ticket_prices[path] = None
         return self._ticket_prices[path]
