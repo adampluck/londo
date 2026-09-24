@@ -338,10 +338,57 @@ def _co_listed(a: Event, b: Event) -> bool:
     )
 
 
+# Ends further apart than this are two sessions, not one night relisted.
+_END_DRIFT = timedelta(minutes=30)
+
+
+def _same_host(a: Event, b: Event) -> bool:
+    """One organiser name inside the other ("Ecstatic Dance London" vs
+    "Ecstatic Dance London & URUBU Wellbeing Events")."""
+    if not a.organizer or not b.organizer:
+        return False
+    sa, sb = _title_slug(a.organizer.name or ""), _title_slug(b.organizer.name or "")
+    shorter, longer = (sa, sb) if len(sa) <= len(sb) else (sb, sa)
+    return len(shorter) >= 8 and shorter in longer
+
+
+# "Holiday workshops: Kitchen Lab (Year 1 & 2)" — a programme name, then
+# the session.
+_PROGRAMME_RE = re.compile(r"^(.{6,}?)\s*(?::|\s[-–—]\s)")
+
+
+def _programme_siblings(a: Event, b: Event) -> bool:
+    """Two named sessions of one programme, run side by side in different
+    rooms (the Royal Institution's holiday workshops by year group). Only
+    within one source: across sources a shared programme name is the same
+    night cross-posted ("System Reset - …" on Dandelion and Eventbrite)."""
+    if a.source != b.source:
+        return False
+    ma, mb = _PROGRAMME_RE.match(a.title), _PROGRAMME_RE.match(b.title)
+    return bool(ma and mb and _title_slug(ma.group(1)) == _title_slug(mb.group(1)))
+
+
+def _host_relisted(a: Event, b: Event) -> bool:
+    """One host selling the same night twice under different names — a
+    Dandelion listing and a themed Eventbrite one, or two Eventbrite pages
+    for one party. Same host, place and start, and both give an end within
+    half an hour of each other: a host running parallel rooms (the Study
+    Society at Colet House) differs on the end, or leaves one out."""
+    sa, sb = _start_utc(a), _start_utc(b)
+    if sa is None or sa != sb:
+        return False
+    ea, eb = a.end_datetime, b.end_datetime
+    if ea is None or eb is None:
+        return False
+    if abs(ea.astimezone(timezone.utc) - eb.astimezone(timezone.utc)) > _END_DRIFT:
+        return False
+    return _same_host(a, b) and _same_place(a, b) and not _programme_siblings(a, b)
+
+
 def _near_duplicate(a: Event, b: Event) -> bool:
     """Same-day near-duplicates across sources with slightly different titles."""
     if not _titles_similar(a.title, b.title) and not _chat_title_contained(a, b):
-        return _co_listed(a, b)
+        return _co_listed(a, b) or _host_relisted(a, b)
     if not _starts_compatible(a, b):
         return False
     # If both name a venue and they clearly disagree, keep them separate

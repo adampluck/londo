@@ -15,8 +15,14 @@ from londo.scrapers.dandelion import DandelionScraper
 from londo.scrapers.dandelion import external_ref as dandelion_ref
 from londo.scrapers.eventbrite import BROWSER_UA
 from londo.scrapers.tickettailor import EVENT_URL_RE as TICKETTAILOR_RE
+from londo.scrapers.tickettailor import (
+    Blocked,
+    NotFound,
+    TicketTailorClient,
+    offer_prices,
+    price_from_text,
+)
 from londo.scrapers.tickettailor import external_ref as tickettailor_ref
-from londo.scrapers.tickettailor import price_from_text
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +69,8 @@ class StudySocietyScraper(BaseScraper):
         super().__init__(rate_limit=rate_limit)
         self.session.headers.update({"User-Agent": BROWSER_UA})
         self._dandelion = DandelionScraper(rate_limit=rate_limit)
+        self._tickettailor = TicketTailorClient(rate_limit=rate_limit)
+        self._ticket_prices: dict[str, tuple[list[PriceTier], bool] | None] = {}
 
     def _widget_id(self) -> str:
         """The calendar widget's id from the What's On page, or the last
@@ -105,6 +113,10 @@ class StudySocietyScraper(BaseScraper):
             base = _build_event(item, locations, types)
             if base is None:
                 continue
+            if not base.price_tiers and not base.is_free:
+                prices = self._ticket_page_prices(base.source_url)
+                if prices:
+                    base.price_tiers, base.is_free = prices
             if item.get("repeatPeriod", "noRepeat") == "noRepeat":
                 if base.start_datetime and base.start_datetime < cutoff:
                     continue
@@ -144,6 +156,27 @@ class StudySocietyScraper(BaseScraper):
 
         logger.info("Kept %d upcoming events", len(events))
         return events
+
+    def _ticket_page_prices(
+        self, url: str
+    ) -> tuple[list[PriceTier], bool] | None:
+        """Ticket types from the event's Ticket Tailor page, for the many
+        widget descriptions that never state a price. One fetch per ticket
+        page per run; a refused or missing page just leaves it unpriced."""
+        m = TICKETTAILOR_RE.match(url)
+        if not m:
+            return None
+        path = f"{m.group(1)}/{m.group(2)}"
+        if path not in self._ticket_prices:
+            try:
+                html = self._tickettailor.fetch_path(path)
+                self._ticket_prices[path] = offer_prices(
+                    BeautifulSoup(html, "html.parser")
+                )
+            except (Blocked, NotFound) as exc:
+                logger.warning("No ticket prices for %s: %s", url, exc)
+                self._ticket_prices[path] = None
+        return self._ticket_prices[path]
 
     def _with_ticket_ref(self, event: Event, day: date | None) -> Event:
         """Key the row by its ticket-page occurrence so the same date reached

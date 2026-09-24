@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
@@ -44,8 +45,9 @@ EVENT_PATH_RE = re.compile(r"/(\d+)(?:\?date=(\d{4}-\d{2}-\d{2}))?")
 # 30-day window so it never runs dry between scrapes
 HORIZON_DAYS = 35
 
-# Ticket prices live in the checkout widget, not the page: the best the
-# HTML gives is any £ amount the organiser wrote into the description.
+# The page's schema.org offers carry the ticket types and prices
+# (offer_prices); failing those, any £ amount the organiser wrote into the
+# description.
 PRICE_RE = re.compile(r"£\s*(\d+(?:\.\d{1,2})?)")
 # descriptions here use "free" loosely ("free movement", a host surnamed
 # Free), so only an explicit no-charge phrasing counts
@@ -301,8 +303,45 @@ def _parse_detail(html: str) -> dict | None:
         "location": loc.get_text(" ", strip=True) if loc else None,
         "image": _image_url(hero.get("src")) if hero else None,
         "organizer": organizer,
+        "prices": offer_prices(soup),
         "slots": [{"start": parsed[0], "end": parsed[1]}] if parsed else None,
     }
+
+
+def offer_prices(soup: BeautifulSoup) -> tuple[list[PriceTier], bool] | None:
+    """Ticket types from the page's schema.org Event offers, or None when
+    it gives none. Recurring events repeat one Event per date with the
+    same offers, so each (name, price) counts once."""
+    seen: dict[tuple[str, Decimal], PriceTier] = {}
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or "")
+        except json.JSONDecodeError:
+            continue
+        for node in data if isinstance(data, list) else [data]:
+            if not isinstance(node, dict) or node.get("@type") != "Event":
+                continue
+            offers = node.get("offers") or []
+            for offer in [offers] if isinstance(offers, dict) else offers:
+                try:
+                    amount = Decimal(str(offer["price"]))
+                except (KeyError, TypeError, ArithmeticError):
+                    continue
+                name = str(offer.get("name") or "Ticket")
+                seen.setdefault(
+                    (name, amount),
+                    PriceTier(
+                        name=name,
+                        amount=amount,
+                        currency=offer.get("priceCurrency") or "GBP",
+                    ),
+                )
+    if not seen:
+        return None
+    tiers = sorted(seen.values(), key=lambda t: t.amount)
+    if all(t.amount == 0 for t in tiers):
+        return [], True
+    return tiers, False
 
 
 def _parse_select_date(html: str) -> list[dict]:
@@ -330,7 +369,9 @@ def _build_events(slug: str, event_id: str, detail: dict, slots: list[dict]) -> 
         city="London",
         country="GB",
     )
-    price_tiers, is_free = price_from_text(detail.get("description"))
+    price_tiers, is_free = detail.get("prices") or price_from_text(
+        detail.get("description")
+    )
     organizer = detail.get("organizer")
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=1)

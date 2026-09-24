@@ -613,6 +613,63 @@ footer,
   .reset-key { font-size: 0.76rem; padding: 0.4rem 0.7rem; }
 }
 
+/* ---------- phone listings: compact rows ----------
+   A full-width 16:9 card showed about two events per screen, so a week
+   (~80 events) was 25+ screens of thumb. On phones each listing becomes a
+   row — art as a square thumbnail, then time, title, place and price —
+   and a week fits in about a third of the scroll. The picks strip above
+   keeps the big art. The hook is left out here: it is what made a card
+   tall, and the tap goes to the full listing anyway. */
+@media (max-width: 640px) {
+  .grid { gap: 0.55rem; }
+
+  .card {
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 6rem;
+  }
+
+  .card .banner {
+    flex: 0 0 5.75rem;
+    aspect-ratio: auto;
+    align-self: stretch;
+  }
+
+  .card .badge { display: none; }
+  .card .placeholder-initial { display: none; }
+  .card .pick-mark {
+    bottom: 0.35rem;
+    right: 0.4rem;
+    font-size: 0.58rem;
+  }
+
+  .card .card-body {
+    flex: 1;
+    min-width: 0; /* lets the one-line venue/meta ellipsise */
+    padding: 0.6rem 0.8rem 0.65rem;
+  }
+
+  .card .card-body h3 {
+    margin: 0.2rem 0 0.15rem;
+    font-size: 0.98rem;
+    line-height: 1.28;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card .hook { display: none; }
+
+  .card .venue,
+  .card .meta {
+    margin-top: 0.08rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 /* ---------- spotlight: our next event + this week's picks ----------
    One 4-column grid row on desktop: heading row, then card row. "Our next
    event" heads column 1 when a featured event is live; "Our top picks

@@ -1779,6 +1779,9 @@
     if (maxTotal <= 0) return [];
     const now = Date.now();
     const excludeTerms = (cfg.exclude || []).map((t) => t.toLowerCase());
+    // today's events head the list straight below the strip, so a pick
+    // from today only repeats the first cards; picks look further ahead
+    const today = londonDate(now);
     // state.events is start_at-ascending, so candidates stay in date order.
     const within = (days) => {
       const horizon = now + days * 86400000;
@@ -1787,6 +1790,7 @@
         if (excludeSourceUrl && e.source_url === excludeSourceUrl) return false;
         const t = new Date(e.start_at).getTime();
         if (!(t > now && t <= horizon)) return false;
+        if (londonDate(e.start_at) === today) return false;
         const title = (e.title || "").toLowerCase();
         return !excludeTerms.some((term) => title.includes(term));
       });
