@@ -533,6 +533,14 @@ SCRAPE ALL SOURCES (what the 6-hourly GitHub Action runs)
 {sources}
   (Supabase-only: {supabase_only})
 
+TICKET TAILOR PRICES (run from home every week or two)
+  londo scrape --store supabase
+  Ticket Tailor refuses GitHub's servers, so the Action can't read the
+  Study Society's ticket prices. A full run from home can, stores them,
+  and the Action keeps them from then on. Run all sources, not -s
+  studysociety: a one-source run can't see the other sources' copies,
+  so it un-marks duplicates until the next full run.
+
 BUILD / PREVIEW THE SITES
   python3 scripts/build_site.py build                          londo
   python3 scripts/build_site.py --site psyconnect build-psyconnect

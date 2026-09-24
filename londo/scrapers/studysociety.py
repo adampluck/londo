@@ -23,6 +23,7 @@ from londo.scrapers.tickettailor import (
     price_from_text,
 )
 from londo.scrapers.tickettailor import external_ref as tickettailor_ref
+from londo.storage import SupabaseStore
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +73,10 @@ class StudySocietyScraper(BaseScraper):
         self._tickettailor = TicketTailorClient(rate_limit=rate_limit)
         self._ticket_prices: dict[str, tuple[list[PriceTier], bool] | None] = {}
         # Ticket Tailor refuses datacentre IPs (CI) outright; once it has,
-        # stop asking — each refusal burns ~10s of host × profile retries
+        # stop asking — each refusal burns ~10s of host × profile retries —
+        # and fall back to the prices already stored for each ticket page
         self._ticket_pages_blocked = False
+        self._stored_prices: dict[str, tuple[list[PriceTier], bool]] | None = None
 
     def _widget_id(self) -> str:
         """The calendar widget's id from the What's On page, or the last
@@ -167,9 +170,11 @@ class StudySocietyScraper(BaseScraper):
         widget descriptions that never state a price. One fetch per ticket
         page per run; a refused or missing page just leaves it unpriced."""
         m = TICKETTAILOR_RE.match(url)
-        if not m or self._ticket_pages_blocked:
+        if not m:
             return None
         path = f"{m.group(1)}/{m.group(2)}"
+        if self._ticket_pages_blocked:
+            return self._stored_price(path)
         if path not in self._ticket_prices:
             try:
                 html = self._tickettailor.fetch_path(path)
@@ -177,13 +182,37 @@ class StudySocietyScraper(BaseScraper):
                     BeautifulSoup(html, "html.parser")
                 )
             except Blocked as exc:
-                logger.warning("Ticket Tailor refused us (%s); no ticket-page prices this run", exc)
+                logger.warning(
+                    "Ticket Tailor refused us (%s); using stored prices this run", exc
+                )
                 self._ticket_pages_blocked = True
-                return None
+                return self._stored_price(path)
             except NotFound as exc:
                 logger.warning("No ticket prices for %s: %s", url, exc)
                 self._ticket_prices[path] = None
         return self._ticket_prices[path]
+
+    def _stored_price(self, path: str) -> tuple[list[PriceTier], bool] | None:
+        """The price a run that could reach Ticket Tailor (one from home —
+        `londo scrape -s studysociety --store supabase`) stored for this
+        ticket page, so a refused run doesn't blank it. Every occurrence
+        of a class shares its ticket page, so any priced row will do."""
+        if self._stored_prices is None:
+            self._stored_prices = {}
+            try:
+                stored = SupabaseStore().fetch_upcoming_events(self.source_name)
+            except (ValueError, requests.RequestException) as exc:
+                logger.warning("No stored prices to fall back on: %s", exc)
+                stored = []
+            for event in stored:
+                m = TICKETTAILOR_RE.match(event.source_url)
+                if m and (event.price_tiers or event.is_free):
+                    self._stored_prices.setdefault(
+                        f"{m.group(1)}/{m.group(2)}",
+                        (event.price_tiers, event.is_free),
+                    )
+            logger.info("Loaded stored prices for %d ticket pages", len(self._stored_prices))
+        return self._stored_prices.get(path)
 
     def _with_ticket_ref(self, event: Event, day: date | None) -> Event:
         """Key the row by its ticket-page occurrence so the same date reached
