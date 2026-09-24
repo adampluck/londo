@@ -58,6 +58,30 @@ def is_london(text: str) -> bool:
     return any(word in LONDON_PLACES for word in _WORD_RE.findall(lowered))
 
 
+# Generous Greater London bounding box (south, north, west, east).
+LONDON_BBOX = (51.25, 51.75, -0.6, 0.35)
+
+
+def is_elsewhere(event: Event) -> bool:
+    """Whether an in-person event is shown to sit outside London.
+
+    For links shared in the chat, which usually but not always point at
+    London events. Only rejects on evidence against — coordinates outside
+    the box, or a named city that isn't London — so a link with no
+    location details still gets through.
+    """
+    loc = event.location
+    if event.is_online or loc is None:
+        return False
+    text = " ".join(p for p in (loc.venue_name, loc.address, loc.city) if p)
+    if loc.latitude is not None and loc.longitude is not None:
+        s, n, w, e = LONDON_BBOX
+        if s <= loc.latitude <= n and w <= loc.longitude <= e:
+            return False
+        return not is_london(text)
+    return bool(loc.city) and not is_london(text)
+
+
 def assign_area(event: Event) -> str | None:
     """Deterministic London area from postcode (preferred) or lat/lng."""
     loc = event.location

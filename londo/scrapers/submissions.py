@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 import re
 
-from londo.geo import POSTCODE_RE
+from londo.geo import LONDON_BBOX, POSTCODE_RE
 from londo.links import LinkFetcher, classify_url
 from londo.models import Event
 from londo.scrapers.base import BaseScraper
@@ -14,8 +14,6 @@ from londo.storage import SupabaseStore
 logger = logging.getLogger(__name__)
 
 LONDON_RE = re.compile(r"\blondon\b", re.I)
-# generous Greater London bounding box
-LONDON_BBOX = (51.25, 51.75, -0.6, 0.35)
 
 
 def _in_london(event: Event) -> bool:

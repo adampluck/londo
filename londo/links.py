@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 import requests
 from bs4 import BeautifulSoup
 
+from londo.geo import is_elsewhere
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
 from londo.scrapers.dandelion import EVENT_URL_RE as DANDELION_RE
@@ -117,21 +118,28 @@ class LinkFetcher(BaseScraper):
             return []
         kind, key = classified
         try:
-            if kind == "luma":
-                return self._fetch_luma(key)
-            if kind == "eventbrite":
-                return self._fetch_eventbrite(key)
-            if kind == "dandelion":
-                return [self._dandelion.scrape_event_url(url)]
-            if kind == "tickettailor":
-                return self._tickettailor.scrape_event_url(url)
-            return self._fetch_generic(url)
+            events = self._fetch(kind, key, url)
         except (requests.RequestException, Blocked, NotFound) as exc:
             logger.warning("Could not fetch %s link %s: %s", kind, url, exc)
             return []
         except Exception:
             logger.exception("Failed to fetch %s link: %s", kind, url)
             return []
+        kept = [e for e in events if not is_elsewhere(e)]
+        if len(kept) < len(events):
+            logger.info("Skipping out-of-London event at %s", url)
+        return kept
+
+    def _fetch(self, kind: str, key: str, url: str) -> list[Event]:
+        if kind == "luma":
+            return self._fetch_luma(key)
+        if kind == "eventbrite":
+            return self._fetch_eventbrite(key)
+        if kind == "dandelion":
+            return [self._dandelion.scrape_event_url(url)]
+        if kind == "tickettailor":
+            return self._tickettailor.scrape_event_url(url)
+        return self._fetch_generic(url)
 
     def _fetch_luma(self, slug: str) -> list[Event]:
         data = self.get(LUMA_EVENT_API.format(slug=slug)).json().get("data") or {}
