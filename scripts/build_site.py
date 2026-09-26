@@ -1748,33 +1748,45 @@ def event_page(event: dict) -> str:
     json_ld["location"]["address"] = {k: v for k, v in addr.items() if v}
     if event.get("end_at"):
         json_ld["endDate"] = event["end_at"]
-    if event.get("image_url"):
-        json_ld["image"] = [event["image_url"]]
+    # the site's share card stands in when a listing has no picture
+    image = event.get("image_url") or DEFAULT_OG_IMAGE
+    if image:
+        json_ld["image"] = [image]
     if event.get("description"):
         json_ld["description"] = re.sub(r"\s+", " ", event["description"])[:500]
     elif event.get("hook"):
         json_ld["description"] = event["hook"]
     host_page = organizer_page_for(event)
     if org:
+        # the host's own site, else their page here
+        org_url = event.get("organizer_url") or (
+            organizer_page_url(host_page[0]) if host_page else None
+        )
         json_ld["organizer"] = {"@type": "Organization", "name": org}
-        if event.get("organizer_url"):
-            json_ld["organizer"]["url"] = event["organizer_url"]
+        if org_url:
+            json_ld["organizer"]["url"] = org_url
+        # these are hosted sessions — the host is who leads the room
+        json_ld["performer"] = dict(json_ld["organizer"])
+    # no price, no offer: a bare ticket link only trades Google's
+    # "missing offers" warning for "missing price"
+    offer: dict = {}
     if event.get("is_free"):
         json_ld["isAccessibleForFree"] = True
-        json_ld["offers"] = {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "GBP",
-            "availability": "https://schema.org/InStock",
-            **({"url": event["source_url"]} if event.get("source_url") else {}),
-        }
+        offer = {"price": "0", "priceCurrency": "GBP"}
     elif event.get("price_min") is not None:
+        offer = {"price": str(event["price_min"]), "priceCurrency": "GBP"}
+    if offer:
         json_ld["offers"] = {
             "@type": "Offer",
-            "price": str(event["price_min"]),
-            "priceCurrency": "GBP",
+            **offer,
             "availability": "https://schema.org/InStock",
             **({"url": event["source_url"]} if event.get("source_url") else {}),
+            # on sale no later than when we first saw it listed
+            **(
+                {"validFrom": event["first_seen_at"]}
+                if event.get("first_seen_at")
+                else {}
+            ),
         }
 
     facts = []
