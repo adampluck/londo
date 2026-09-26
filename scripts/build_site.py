@@ -1291,11 +1291,14 @@ def within_window(events: list[dict], days: int) -> list[dict]:
 def date_strip_html(events: list[dict], days: int, other_url: str | None) -> str:
     """The main page's date strip, as anchors onto this page's day
     groups. A day this topic has nothing on is shown spent rather than
-    hidden, so the shape of the month stays readable."""
+    hidden, so the shape of the month stays readable. `events` is the
+    whole month: the strip always runs the full horizon, and on the
+    7-day page a day past the week jumps into the 30-day page instead
+    of leaving the rest of the bar empty."""
     have = {_start_london(e).date() for e in events}
     today = datetime.now(LONDON).date()
     ticks = []
-    for i in range(days):
+    for i in range(max(LISTING_WINDOWS)):
         day = today + timedelta(days=i)
         # the date is the sub-line throughout: over a week the weekday
         # alone under "today"/"tmrw" left people guessing the date
@@ -1305,10 +1308,14 @@ def date_strip_html(events: list[dict], days: int, other_url: str | None) -> str
             main = "tmrw"
         else:
             main = day.strftime("%a").lower()
-        sub = day.strftime("%-d %b").lower() if days <= 7 else day.strftime("%-d")
+        sub = day.strftime("%-d")
         cell = f"{main}<small>{sub}</small>"
-        if day in have:
+        if day in have and i < days:
             ticks.append(f'<a class="tick" href="#d-{day.isoformat()}">{cell}</a>')
+        elif day in have and other_url:
+            ticks.append(
+                f'<a class="tick" href="{other_url}#d-{day.isoformat()}">{cell}</a>'
+            )
         else:
             ticks.append(f'<span class="tick spent" aria-hidden="true">{cell}</span>')
     # the main page's pinned ranges: here they're the two pages
@@ -1998,6 +2005,7 @@ def listing_page(
     days: int = 7,
     other_url: str | None = None,
     css_prefix: str = NESTED_PREFIX,
+    strip_events: list[dict] | None = None,
 ) -> str:
     paras = listing_intro_paragraphs(key, kind, label, len(events), days)
     lead_html = "".join(f'<p class="static-lead">{esc(p)}</p>' for p in paras)
@@ -2008,7 +2016,11 @@ def listing_page(
 
     groups = day_groups(events[:200])
     # a host's page is their whole diary, not a range of the calendar
-    strip = "" if kind == "organizer" else date_strip_html(events, days, other_url)
+    strip = (
+        ""
+        if kind == "organizer"
+        else date_strip_html(strip_events or events, days, other_url)
+    )
     spec = PRACTICES[key] if kind == "practice" else {}
     faq = faq_html(spec["faq"]) if spec.get("faq") else ""
     json_ld = (
@@ -2410,7 +2422,7 @@ def write_listing(
         outdir.joinpath(*parts),
         listing_page(
             key, label, seo_title, canonical, by_days[lead_days],
-            kind=kind, days=lead_days, other_url=other_url,
+            kind=kind, days=lead_days, other_url=other_url, strip_events=month,
         ),
     )
     urls.append(canonical)
@@ -2420,7 +2432,7 @@ def write_listing(
         listing_page(
             key, label, seo_title, canonical, by_days[other_days],
             kind=kind, days=other_days, other_url=canonical,
-            css_prefix="../../..",
+            css_prefix="../../..", strip_events=month,
         ),
     )
 
