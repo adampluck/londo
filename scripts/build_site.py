@@ -1288,6 +1288,27 @@ def within_window(events: list[dict], days: int) -> list[dict]:
     return [e for e in events if _start_london(e).date() <= last]
 
 
+def _tick_cell(i: int, day) -> str:
+    # the date is the sub-line throughout: over a week the weekday
+    # alone under "today"/"tmrw" left people guessing the date
+    if i == 0:
+        main = "today"
+    elif i == 1:
+        main = "tmrw"
+    else:
+        main = day.strftime("%a").lower()
+    return f"{main}<small>{day.strftime('%-d')}</small>"
+
+
+def _strip(ticks: list[str], ranges: list[str]) -> str:
+    return (
+        '<div class="static-ticker"><div class="ticker-shell">'
+        f'<div class="ticker">{"".join(ticks)}</div>'
+        f'<div class="ticker-fixed">{"".join(ranges)}</div>'
+        "</div></div>"
+    )
+
+
 def date_strip_html(events: list[dict], days: int, other_url: str | None) -> str:
     """The main page's date strip, as anchors onto this page's day
     groups. A day this topic has nothing on is shown spent rather than
@@ -1300,16 +1321,7 @@ def date_strip_html(events: list[dict], days: int, other_url: str | None) -> str
     ticks = []
     for i in range(max(LISTING_WINDOWS)):
         day = today + timedelta(days=i)
-        # the date is the sub-line throughout: over a week the weekday
-        # alone under "today"/"tmrw" left people guessing the date
-        if i == 0:
-            main = "today"
-        elif i == 1:
-            main = "tmrw"
-        else:
-            main = day.strftime("%a").lower()
-        sub = day.strftime("%-d")
-        cell = f"{main}<small>{sub}</small>"
+        cell = _tick_cell(i, day)
         if day in have and i < days:
             ticks.append(f'<a class="tick" href="#d-{day.isoformat()}">{cell}</a>')
         elif day in have and other_url:
@@ -1326,12 +1338,34 @@ def date_strip_html(events: list[dict], days: int, other_url: str | None) -> str
             ranges.append(f'<span class="tick cursor" aria-current="page">{cell}</span>')
         elif other_url:
             ranges.append(f'<a class="tick" href="{other_url}">{cell}</a>')
-    return (
-        '<div class="static-ticker"><div class="ticker-shell">'
-        f'<div class="ticker">{"".join(ticks)}</div>'
-        f'<div class="ticker-fixed">{"".join(ranges)}</div>'
-        "</div></div>"
-    )
+    return _strip(ticks, ranges)
+
+
+def home_date_strip_html(event: dict) -> str:
+    """The date strip on an event page, which has no day groups of its
+    own: each tick opens the main page on that day, and the event's own
+    day is lit so the strip says where in the month it falls."""
+    have = {_start_london(e).date() for e in SITE_EVENTS}
+    own = _start_london(event).date()
+    today = datetime.now(LONDON).date()
+    ticks = []
+    for i in range(max(LISTING_WINDOWS)):
+        day = today + timedelta(days=i)
+        cell = _tick_cell(i, day)
+        href = f"{BASE_URL}/?day={day.isoformat()}"
+        if day == own:
+            ticks.append(
+                f'<a class="tick cursor" href="{href}" aria-current="date">{cell}</a>'
+            )
+        elif day in have:
+            ticks.append(f'<a class="tick" href="{href}">{cell}</a>')
+        else:
+            ticks.append(f'<span class="tick spent" aria-hidden="true">{cell}</span>')
+    ranges = [
+        f'<a class="tick" href="{BASE_URL}/?day={n}">{n}<small>days</small></a>'
+        for n in LISTING_WINDOWS
+    ]
+    return _strip(ticks, ranges)
 
 
 def day_groups(events: list[dict]) -> str:
@@ -1493,6 +1527,10 @@ def seo_nav_html() -> str:
         parts.append(f'<a href="{organizers_index_url()}">hosts</a>')
     return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
 
+
+# The site's upcoming events, filled in by build() before event pages
+# are written: their date strip shows which days have something on.
+SITE_EVENTS: list[dict] = []
 
 # Upcoming events per topic, filled in by build() before listing pages
 # are written, so their topic chips can carry the same counts the SPA's do.
@@ -1880,6 +1918,8 @@ def event_page(event: dict) -> str:
         else ""
     )
     body = f"""
+  {filters_nav_html(None, "event")}
+  {home_date_strip_html(event)}
   <nav class="static-crumbs" aria-label="breadcrumb">
     <a href="{BASE_URL}/">{esc(display_name())}</a>
     <span aria-hidden="true">/</span>{host_crumb}
@@ -2470,8 +2510,14 @@ def build(outdir: Path) -> None:
     inject_theme_boot(outdir)
     inject_robots_meta(outdir)
 
-    global SITE_PRACTICES, SITE_ORGANIZERS
+    global SITE_PRACTICES, SITE_ORGANIZERS, SITE_EVENTS
     SITE_PRACTICES = site_practices(events)
+    SITE_EVENTS = events
+    # before the event pages: their filters key carries these
+    TOPIC_COUNTS.clear()
+    for e in events:
+        for t in e.get("topics") or []:
+            TOPIC_COUNTS[t] = TOPIC_COUNTS.get(t, 0) + 1
     # before the event pages: their Host line links to these
     SITE_ORGANIZERS = (
         site_organizers(events, [e for e in fetch_past_events() if site_match(e)])
@@ -2526,11 +2572,6 @@ def build(outdir: Path) -> None:
             )
         write_html_redirect(outdir / "e" / f"{slug}.html", canonical)
         urls.append(canonical)
-
-    TOPIC_COUNTS.clear()
-    for e in events:
-        for t in e.get("topics") or []:
-            TOPIC_COUNTS[t] = TOPIC_COUNTS.get(t, 0) + 1
 
     # category pages only make sense when the site spans all categories;
     # on a filtered site one of them would just mirror the homepage
