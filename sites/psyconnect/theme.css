@@ -194,13 +194,21 @@ body {
 }
 
 /* repeating pattern in the fixed backdrop; the body's time-of-day
-   gradient tints through the transparency */
+   gradient tints through the transparency. It's decoration, so it waits
+   for the page's load (theme-boot.js sets .bg-ready) and fades in, rather
+   than competing with the first screen's images and fonts for the
+   connection. bg.jpg is kept as gen_icons.py's source. */
 .sky::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: url("bg.jpg") repeat;
+  background-repeat: repeat;
   background-size: 512px 512px;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.bg-ready .sky::before {
+  background-image: url("bg.webp");
   opacity: 0.4;
 }
 

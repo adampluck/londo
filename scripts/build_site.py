@@ -142,6 +142,35 @@ def inject_theme_boot(outdir: Path) -> None:
     index.write_text(text[:start] + theme_boot_tag() + text[end + len("-->") :])
 
 
+def inline_shell_css(outdir: Path) -> None:
+    """Inline the SPA shell's own stylesheets into its index.html, so the
+    first paint doesn't wait on three more round trips (PageSpeed's
+    "render-blocking requests"). Only the shell: the static pages share
+    the linked, cacheable files. url()s are rewritten from the sheet's
+    folder to the page's — fonts.css points at ../fonts/, which from the
+    page (at londo's /londo/ subpath, too) is fonts/."""
+    index = outdir / "index.html"
+    text = index.read_text()
+
+    def inline(m: re.Match) -> str:
+        href = m.group(1)
+        sheet = outdir / href
+        if "//" in href or not sheet.is_file():
+            return m.group(0)
+        css = sheet.read_text()
+        folder = Path(href).parent
+        if str(folder) != ".":
+            css = re.sub(
+                r"url\((['\"]?)\.\./",
+                lambda u: f"url({u.group(1)}",
+                css,
+            )
+        return f"<style>/* {href} */\n{css}</style>"
+
+    text = re.sub(r'<link rel="stylesheet" href="([^"]+)">', inline, text)
+    index.write_text(text)
+
+
 def inject_robots_meta(outdir: Path) -> None:
     """The SPA shell is copied, not generated, so it needs the tag too."""
     meta = robots_meta()
@@ -218,6 +247,11 @@ def _pick_curated(
     return sorted(picks, key=lambda e: _parse_ts(e["start_at"]))
 
 
+# Mirror of THUMB_WIDTHS / SPOTLIGHT_SIZES in web/app.js.
+SPOTLIGHT_WIDTHS = (360, 480, 640, 800)
+SPOTLIGHT_SIZES = "(max-width: 640px) 66vw, 270px"
+
+
 def spotlight_key(featured: dict | None, picks: list[dict]) -> str:
     """Mirror of spotlightKey() in web/app.js: which cards the row holds,
     so the SPA can keep the static row when the live data agrees."""
@@ -260,11 +294,14 @@ def _spotlight_card(e: dict, kind: str, index: int, style: str, extra: bool) -> 
     if e.get("image_url"):
         art = e["image_url"]
         fallback = esc(art.replace("'", "%27"))
-        priority = ' fetchpriority="high"' if index < 2 else ""
+        priority = ' fetchpriority="high"' if index < 2 else ' loading="lazy"'
+        srcset = ", ".join(f"{thumb(art, w)} {w}w" for w in SPOTLIGHT_WIDTHS)
         # thumb first, then the original, then drop the figure — as setThumb()
         parts.append(
-            f'<div class="spotlight-media"><img alt=""{priority} src="{esc(thumb(art, 700))}" '
-            f"onerror=\"this.onerror=function(){{this.parentNode.remove()}};this.src='{fallback}'\">"
+            f'<div class="spotlight-media"><img alt=""{priority} '
+            f'sizes="{SPOTLIGHT_SIZES}" srcset="{esc(srcset)}" src="{esc(thumb(art, 700))}" '
+            "onerror=\"this.onerror=function(){this.parentNode.remove()};"
+            f"this.removeAttribute('srcset');this.src='{fallback}'\">"
             "</div>"
         )
     body = []
@@ -2729,6 +2766,7 @@ def build(outdir: Path) -> None:
     inject_startup_images(outdir)
     inject_theme_boot(outdir)
     inject_robots_meta(outdir)
+    inline_shell_css(outdir)
     inject_spotlight(outdir, events)
 
     global SITE_PRACTICES, SITE_ORGANIZERS, SITE_EVENTS

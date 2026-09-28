@@ -62,7 +62,10 @@
       <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.6 12h2.2M19.2 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
     </button>
-    <nav class="views" id="view-tabs" aria-label="views">
+    <!-- hidden from the start: psyconnect is single-view (config views:false),
+         and app.js hiding it later wrapped the header shut by a line on
+         tablets — a layout shift that dragged the spotlight up with it -->
+    <nav class="views" id="view-tabs" aria-label="views" hidden>
       <button class="key view-key lit" data-view="browse">browse</button>
       <button class="key view-key" data-view="tonight">tonight</button>
       <button class="key view-key" data-view="map">map</button>
@@ -79,7 +82,9 @@
         </label>
         <span class="legend">free</span>
       </div>
-      <button class="key filters-key" id="filters-toggle" type="button" aria-expanded="false" aria-controls="filters-panel" hidden>filters<span class="filters-count"></span></button>
+      <!-- shown from the start (app.js hides it only if no facet has any
+           events), so its arrival can't re-wrap the controls on a tablet -->
+      <button class="key filters-key" id="filters-toggle" type="button" aria-expanded="false" aria-controls="filters-panel">filters<span class="filters-count"></span></button>
     </div>
 
     <div class="controls-row keys" id="category-pills" hidden>
@@ -200,7 +205,7 @@
     <p>Made by your friendly <a href="https://www.digitalhandyman.london" rel="noopener">digital handyman</a> · <a href="about/">about</a> · <a href="privacy/">privacy</a></p>
   </footer>
 
-  <nav class="bottom-tabs" id="bottom-tabs" aria-label="views">
+  <nav class="bottom-tabs" id="bottom-tabs" aria-label="views" hidden>
     <button class="key view-key lit" data-view="browse">browse</button>
     <button class="key view-key" data-view="tonight">tonight</button>
     <button class="key view-key" data-view="map">map</button>

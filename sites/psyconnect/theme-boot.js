@@ -60,4 +60,9 @@
 
   // while no explicit choice is stored we follow the system live
   media.addEventListener("change", sync);
+
+  // the backdrop pattern loads once the page has (see .bg-ready in theme.css)
+  window.addEventListener("load", function () {
+    root.classList.add("bg-ready");
+  });
 })();

@@ -80,7 +80,9 @@
   // Point an <img> at the proxied art, falling back to the original once
   // before handing over to the caller's give-up path (gradient placeholder,
   // drop the figure, …).
-  function setThumb(img, url, width, onGiveUp) {
+  // `sizes` opts into a srcset of THUMB_WIDTHS, so a phone fetches the art
+  // at the width it paints rather than the largest one.
+  function setThumb(img, url, width, onGiveUp, sizes) {
     // an explicit flag, not an img.src comparison: the DOM hands back a
     // resolved URL, so a mismatch there would retry the same dead image
     // forever
@@ -88,10 +90,20 @@
     img.onerror = () => {
       if (fellBack) return onGiveUp();
       fellBack = true;
+      img.removeAttribute("srcset"); // or it would outrank the src below
       img.src = url; // proxy missed — try the organiser's CDN directly
     };
+    if (sizes) {
+      img.sizes = sizes;
+      img.srcset = THUMB_WIDTHS.map((w) => `${thumb(url, w)} ${w}w`).join(", ");
+    }
     img.src = thumb(url, width);
   }
+
+  // Mirror of SPOTLIGHT_WIDTHS / SPOTLIGHT_SIZES in build_site.py. The strip
+  // card is about two thirds of a phone's width; on desktop a quarter row.
+  const THUMB_WIDTHS = [360, 480, 640, 800];
+  const SPOTLIGHT_SIZES = "(max-width: 640px) 66vw, 270px";
 
   // Mirror of slugify_title() in scripts/build_site.py — keep the two in
   // step: a listing with no ticket page (a flyer shared in the community
@@ -1879,9 +1891,11 @@
       media.className = "spotlight-media";
       const img = document.createElement("img");
       img.alt = "";
-      // the first cards are the page's largest paint (LCP) on first load
+      // the first cards are the page's largest paint (LCP) on first load;
+      // past them, a phone's strip is off-screen until swiped
       if (index < 2) img.fetchPriority = "high";
-      setThumb(img, e.image_url, 700, () => media.remove());
+      else img.loading = "lazy";
+      setThumb(img, e.image_url, 700, () => media.remove(), SPOTLIGHT_SIZES);
       media.appendChild(img);
       card.appendChild(media);
     }

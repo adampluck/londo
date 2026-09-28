@@ -101,6 +101,6 @@ self.LONDO_CONFIG = {
       "passphraseHint": ""
     },
     "logo": "logo.png",
-    "shellExtras": ["theme.css", "bg.jpg", "logo.png"]
+    "shellExtras": ["theme.css", "bg.webp", "logo.png"]
   } /*END-SITE-JSON*/,
 };
