@@ -211,8 +211,8 @@ body {
   transition: opacity 0.8s ease;
 }
 .bg-ready .sky::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512'%3E%3Cfilter id='w' filterUnits='userSpaceOnUse' x='-256' y='-256' width='1024' height='1024'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0078' numOctaves='2' seed='3' stitchTiles='stitch' x='0' y='0' width='512' height='512'/%3E%3CfeTile/%3E%3CfeDisplacementMap in='SourceGraphic' scale='190' xChannelSelector='R' yChannelSelector='B'/%3E%3C/filter%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0059' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .62  0 0 0 0 .5  0 0 0 0 .78  0 -1.6 0 0 .9'/%3E%3C/filter%3E%3Cpattern id='l' width='512' height='11' patternUnits='userSpaceOnUse'%3E%3Cpath d='M0 1H512' stroke='%238a76bd' stroke-width='1.1' opacity='.7'/%3E%3Cpath d='M0 5H512' stroke='%23cf8199' stroke-width='.9' opacity='.45'/%3E%3Cpath d='M0 8.5H512' stroke='%237a95c6' stroke-width='.8' opacity='.35'/%3E%3C/pattern%3E%3Crect width='512' height='512' filter='url(%23c)' opacity='.55'/%3E%3Crect x='-256' y='-256' width='1024' height='1024' fill='url(%23l)' filter='url(%23w)'/%3E%3C/svg%3E");
-  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512'%3E%3Cfilter id='w' filterUnits='userSpaceOnUse' x='-256' y='-256' width='1024' height='1024'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0078' numOctaves='2' seed='3' stitchTiles='stitch' x='0' y='0' width='512' height='512'/%3E%3CfeTile/%3E%3CfeDisplacementMap in='SourceGraphic' scale='190' xChannelSelector='R' yChannelSelector='B'/%3E%3CfeGaussianBlur stdDeviation='0.9'/%3E%3C/filter%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0059' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .62  0 0 0 0 .5  0 0 0 0 .78  0 -1.6 0 0 .9'/%3E%3C/filter%3E%3Cpattern id='l' width='512' height='11' patternUnits='userSpaceOnUse'%3E%3Cpath d='M0 1H512' stroke='%238a76bd' stroke-width='1.1' opacity='.7'/%3E%3Cpath d='M0 5H512' stroke='%23cf8199' stroke-width='.9' opacity='.45'/%3E%3Cpath d='M0 8.5H512' stroke='%237a95c6' stroke-width='.8' opacity='.35'/%3E%3C/pattern%3E%3Crect width='512' height='512' filter='url(%23c)' opacity='.55'/%3E%3Crect x='-256' y='-256' width='1024' height='1024' fill='url(%23l)' filter='url(%23w)'/%3E%3C/svg%3E");
+  opacity: 0.32;
 }
 
 /* softer daylight in the sky */
@@ -1048,7 +1048,7 @@ body.theme-night .blob { opacity: 0.3; }
    spelled out: the system query minus an explicit light choice, and the
    explicit dark choice. Keep the two lists identical. */
 
-:root[data-theme="dark"] .sky::before { opacity: 0.18; }
+:root[data-theme="dark"] .sky::before { opacity: 0.15; }
 :root[data-theme="dark"] .blob { opacity: 0.3; }
 :root[data-theme="dark"] .grain { opacity: 0.055; }
 :root[data-theme="dark"] .banner img,
@@ -1064,7 +1064,7 @@ body.theme-night .blob { opacity: 0.3; }
 :root[data-theme="dark"] .theme-sun { display: block; }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .sky::before { opacity: 0.18; }
+  :root:not([data-theme="light"]) .sky::before { opacity: 0.15; }
   :root:not([data-theme="light"]) .blob { opacity: 0.3; }
   :root:not([data-theme="light"]) .grain { opacity: 0.055; }
   :root:not([data-theme="light"]) .banner img,
