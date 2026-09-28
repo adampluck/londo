@@ -1879,6 +1879,8 @@
       media.className = "spotlight-media";
       const img = document.createElement("img");
       img.alt = "";
+      // the first cards are the page's largest paint (LCP) on first load
+      if (index < 2) img.fetchPriority = "high";
       setThumb(img, e.image_url, 700, () => media.remove());
       media.appendChild(img);
       card.appendChild(media);
@@ -1972,8 +1974,18 @@
     }
   }
 
+  // #spotlight can start .spotlight-pending (psyconnect's index.html), holding
+  // its space against layout shift until the events arrive
+  function releaseSpotlightSpace() {
+    const section = document.getElementById("spotlight");
+    if (!section.classList.contains("spotlight-pending")) return;
+    section.classList.remove("spotlight-pending");
+    section.hidden = true;
+  }
+
   function renderSpotlight() {
     const section = document.getElementById("spotlight");
+    section.classList.remove("spotlight-pending");
     if (spotlightDismissed()) {
       section.hidden = true;
       return;
@@ -2546,19 +2558,26 @@
     showSplash();
     initInstallHint();
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js").catch(() => {});
+      // registered after load so the first visit's shell precache
+      // (addAll in sw.js) doesn't compete with the page's own fonts/images
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
       // A cache-version bump (sw.js CACHE) installs a new worker that takes
       // over via skipWaiting+clients.claim, but the *already-open* tab keeps
       // running the JS it loaded under the old one until it navigates again
       // — so a deploy fix can sit invisible behind "your last visit" for
-      // days on an installed PWA. controllerchange fires exactly when that
-      // handover happens (never on a page's first-ever install, since
-      // there's no prior controller to change from), so a single reload
-      // here is enough to pick up the new shell without a manual hard
-      // refresh. `reloaded` guards against a reload loop.
+      // days on an installed PWA. controllerchange fires when that handover
+      // happens, so a single reload picks up the new shell without a manual
+      // hard refresh. It ALSO fires on a first-ever visit, when clients.claim
+      // takes an uncontrolled page — that page already runs the current JS,
+      // and reloading it there cost every new visitor (and PageSpeed) a
+      // whole second page load, so only reload a page that already had a
+      // worker. `reloaded` guards against a reload loop.
+      const hadController = !!navigator.serviceWorker.controller;
       let reloaded = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (reloaded) return;
+        if (!hadController || reloaded) return;
         reloaded = true;
         window.location.reload();
       });
@@ -2581,6 +2600,8 @@
     }
     renderWeekStrip();
     setLens("all");
+    // a dismissed spotlight won't render, so don't hold room for it
+    if (spotlightDismissed()) releaseSpotlightSpace();
     const loadingTimer = startLoadingCycle();
     if (SUPABASE_URL.startsWith("YOUR_")) {
       clearInterval(loadingTimer);
@@ -2626,6 +2647,7 @@
     } catch (err) {
       clearInterval(loadingTimer);
       hideSplash();
+      releaseSpotlightSpace();
       const events = document.getElementById("events");
       if (events) {
         events.innerHTML =

@@ -773,6 +773,9 @@ main {
   gap: 1.35rem;
   padding: 4rem 0 3.5rem;
   animation: none;
+  /* keeps the footer below the fold until events arrive, so the list
+     growing in doesn't count as the footer jumping (layout shift) */
+  min-height: 100vh;
 }
 
 .loading-msg {

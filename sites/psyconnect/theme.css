@@ -689,6 +689,20 @@ footer,
   padding: 0 1.5rem;
 }
 
+/* Room held for the spotlight while events load (index.html starts it
+   .spotlight-pending, renderSpotlight drops the class). Without it the row
+   arrives above an already-painted list and shoves everything down — a
+   0.8 layout shift, most of PageSpeed's complaint. Heights are the rendered
+   row's: the mobile strip is fixed, desktop varies a little with wrapping. */
+#spotlight.spotlight-pending {
+  min-height: 371px;
+}
+@media (max-width: 640px) {
+  #spotlight.spotlight-pending {
+    min-height: 242px;
+  }
+}
+
 .spotlight-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

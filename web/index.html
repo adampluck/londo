@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- warm the two origins the first screen waits on: the events API
+       (config.js SUPABASE_URL; CORS, hence crossorigin) and the image proxy -->
+  <link rel="preconnect" href="https://nhjovwymgfsukpdgvajd.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://wsrv.nl">
   <title>londo — the other london, in person</title>
   <meta name="theme-color" content="#14101f">
   <meta name="description" content="The other london, in person — gatherings that connect and inspire, from ecstatic dance to AI salons, breathwork to philosophy nights.">
