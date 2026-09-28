@@ -689,6 +689,12 @@ footer,
   padding: 0 1.5rem;
 }
 
+.spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.7rem 1rem;
+}
+
 /* The picks wrapper is transparent on desktop — its cards rejoin the grid via
    their inline grid-column. On mobile it becomes a horizontal swipe strip. */
 .spotlight-picks {
