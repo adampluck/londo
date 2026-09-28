@@ -154,27 +154,224 @@ def inject_robots_meta(outdir: Path) -> None:
     index.write_text(text.replace("<head>", f"<head>\n  {meta}", 1))
 
 
-def mark_spotlight_featured(outdir: Path, events: list[dict]) -> None:
-    """The shell starts #spotlight .spotlight-pending, holding the row's
-    height against layout shift until the SPA's events arrive. A live
-    featured event makes that row taller (on a phone its card stacks above
-    the picks strip), so flag it here; the daily scrape rebuilds keep it
-    current. 30 days is the SPA's HORIZON_DAYS (web/app.js)."""
-    featured = [
-        o.lower() for o in (SITE_JSON.get("featured") or {}).get("organizers") or []
-    ]
-    horizon = datetime.now(timezone.utc) + timedelta(days=30)
-    if not any(
-        (e.get("organizer_name") or "").lower() in featured
-        and _parse_ts(e["start_at"]) <= horizon
-        for e in events
-    ):
+def _is_ours(event: dict) -> bool:
+    """Mirror of isOurs() in web/app.js — keep the two in step."""
+    org = (event.get("organizer_name") or "").lower()
+    featured = SITE_JSON.get("featured") or {}
+    return any(org == o.lower() for o in featured.get("organizers") or [])
+
+
+def _pick_curated(
+    events: list[dict], now: datetime, exclude_source_url: str | None, limit: int
+) -> list[dict]:
+    """Mirror of pickCurated() in web/app.js — keep the two in step (see
+    there for why the window widens against max(maxTotal, maxMobile), not
+    `limit`). A drift doesn't break anything, it just costs the static
+    spotlight: the SPA rebuilds the row when its picks key differs."""
+    cfg = SITE_JSON.get("curated")
+    if not cfg or limit <= 0:
+        return []
+    exclude_terms = [t.lower() for t in cfg.get("exclude") or []]
+    today = now.astimezone(LONDON).date()
+
+    def within(days: int) -> list[dict]:
+        horizon = now + timedelta(days=days)
+        out = []
+        for e in events:
+            if not _curated(e):
+                continue
+            if exclude_source_url and e.get("source_url") == exclude_source_url:
+                continue
+            start = _parse_ts(e["start_at"])
+            if not (now < start <= horizon) or start.astimezone(LONDON).date() == today:
+                continue
+            title = (e.get("title") or "").lower()
+            if any(term in title for term in exclude_terms):
+                continue
+            out.append(e)
+        return out
+
+    stages = cfg.get("windowStages") or [cfg.get("windowDays") or 7]
+    widen_threshold = max(cfg.get("maxTotal") or 3, cfg.get("maxMobile") or 0)
+    candidates: list[dict] = []
+    for days in stages:
+        candidates = within(days)
+        if len(candidates) >= widen_threshold:
+            break
+    if not candidates:
+        return []
+
+    by_org: dict[str, list[dict]] = {}
+    for e in candidates:
+        by_org.setdefault((e.get("organizer_name") or "").lower(), []).append(e)
+    org_order = sorted(by_org, key=lambda o: _parse_ts(by_org[o][0]["start_at"]))
+    picks: list[dict] = []
+    for org in org_order:
+        if len(picks) >= limit:
+            break
+        picks.append(by_org[org][0])
+    for e in candidates:
+        if len(picks) >= limit:
+            break
+        if not any(e is p for p in picks):
+            picks.append(e)
+    return sorted(picks, key=lambda e: _parse_ts(e["start_at"]))
+
+
+def spotlight_key(featured: dict | None, picks: list[dict]) -> str:
+    """Mirror of spotlightKey() in web/app.js: which cards the row holds,
+    so the SPA can keep the static row when the live data agrees."""
+    keys = [e.get("dedupe_key") or "" for e in picks]
+    if featured:
+        keys.insert(0, "featured:" + (featured.get("dedupe_key") or ""))
+    return "|".join(keys)
+
+
+def _spotlight_heading(label: str, accent: str, cls: str, col_start: int, col_end: int) -> str:
+    """Mirror of spotlightHeading() in web/app.js."""
+    idx = label.find(accent) if accent else -1
+    if idx == -1:
+        inner = esc(label)
+    else:
+        inner = (
+            esc(label[:idx])
+            + f'<span class="when">{esc(accent)}</span>'
+            + esc(label[idx + len(accent):])
+        )
+    return (
+        f'<h2 class="day-heading spotlight-heading {cls}" '
+        f'style="grid-column: {col_start} / {col_end};">{inner}</h2>'
+    )
+
+
+def _spotlight_card(e: dict, kind: str, index: int, style: str, extra: bool) -> str:
+    """Mirror of spotlightCard() in web/app.js. Always .instant: the
+    settle animation starts at opacity 0, which would hold back the LCP."""
+    cls = f"spotlight-card spotlight-{kind} instant" + (" spotlight-pick-extra" if extra else "")
+    href = with_utm(e["source_url"]) if e.get("source_url") else f"e/{slugify_title(e.get('title'))}/"
+    attrs = [f'class="{cls}"', f'href="{esc(href)}"', 'target="_blank"', 'rel="noopener"']
+    if style:
+        attrs.append(f'style="{style}"')
+    if e.get("source_url"):
+        attrs.append(f'data-goatcounter-click="out/{kind}/{esc(organizer_slug(e.get("organizer_name")))}"')
+    attrs.append(f'data-goatcounter-title="{esc(e.get("title") or "")}"')
+
+    parts = []
+    if e.get("image_url"):
+        art = e["image_url"]
+        fallback = esc(art.replace("'", "%27"))
+        priority = ' fetchpriority="high"' if index < 2 else ""
+        # thumb first, then the original, then drop the figure — as setThumb()
+        parts.append(
+            f'<div class="spotlight-media"><img alt=""{priority} src="{esc(thumb(art, 700))}" '
+            f"onerror=\"this.onerror=function(){{this.parentNode.remove()}};this.src='{fallback}'\">"
+            "</div>"
+        )
+    body = []
+    if kind == "pick" and e.get("organizer_name"):
+        body.append(f'<p class="spotlight-eyebrow">{esc(e["organizer_name"])}</p>')
+    body.append(f"<h3>{esc(e.get('title') or '')}</h3>")
+    start = _start_london(e)
+    # toLocaleDateString("en-GB") spells September "Sept"
+    day = start.strftime("%a %-d %b").replace(" Sep", " Sept")
+    when = " · ".join(x for x in (day, fmt_time_range(e)) if x)
+    venue = (
+        f'<span class="spotlight-venue"> · {esc(e["venue_name"])}</span>'
+        if e.get("venue_name")
+        else ""
+    )
+    body.append(f'<p class="spotlight-when">{esc(when)}{venue}</p>')
+    blurb = (e.get("hook") or e.get("description") or "").strip()
+    if blurb:
+        if len(blurb) > 200:
+            blurb = blurb[:197].rstrip() + "…"
+        body.append(f'<p class="spotlight-blurb">{esc(blurb)}</p>')
+    cue = (
+        "(opens the ticket page in a new tab)"
+        if e.get("source_url")
+        else "(opens the event page in a new tab)"
+    )
+    body.append(f'<span class="sr-only">{cue}</span>')
+    parts.append(f'<div class="spotlight-body">{"".join(body)}</div>')
+    return f'<a {" ".join(attrs)}>{"".join(parts)}</a>'
+
+
+def spotlight_html(events: list[dict], now: datetime) -> str:
+    """Mirror of renderSpotlight() in web/app.js, as static markup for the
+    SPA shell: the row (and its images, the page's largest paint) show from
+    the HTML itself instead of waiting on app.js and the events API. Empty
+    when there's nothing to spotlight."""
+    horizon = now + timedelta(days=HORIZON_DAYS)
+    live = [e for e in events if _parse_ts(e["start_at"]) <= horizon]
+    featured = None
+    if SITE_JSON.get("featured"):
+        featured = next(
+            (e for e in live if _is_ours(e) and _parse_ts(e["start_at"]) > now), None
+        )
+    curated = SITE_JSON.get("curated") or {}
+    max_total = curated.get("maxTotal") or 3
+    desktop_limit = max_total - 1 if featured else max_total
+    pick_limit = max(max_total, curated.get("maxMobile") or 0) if curated else 0
+    exclude = featured.get("source_url") if featured else None
+    picks = _pick_curated(live, now, exclude, pick_limit) if pick_limit else []
+    if not featured and not picks:
+        return ""
+
+    grid = []
+    pick_start = 2 if featured else 1
+    desktop_picks = min(len(picks), desktop_limit)
+    pick_end = pick_start + max(desktop_picks, 0 if featured else 1)
+    feat_cfg = SITE_JSON.get("featured") or {}
+    if featured:
+        grid.append(_spotlight_heading(
+            feat_cfg.get("label") or "Our next event",
+            feat_cfg.get("accent") or "next event",
+            "spotlight-heading-featured", 1, 2,
+        ))
+    if picks:
+        grid.append(_spotlight_heading(
+            curated.get("label") or "Our top picks this week",
+            curated.get("accent") or "top picks",
+            "spotlight-heading-picks", pick_start, pick_end,
+        ))
+    if featured:
+        grid.append(_spotlight_card(featured, "featured", 0, "grid-column: 1;", False))
+    if picks:
+        desktop_set = (
+            _pick_curated(live, now, exclude, desktop_limit)
+            if len(picks) > desktop_limit
+            else picks
+        )
+        cards = []
+        col = pick_start
+        for i, e in enumerate(picks):
+            on_desktop = any(e is d for d in desktop_set)
+            style = f"grid-column: {col};" if on_desktop else ""
+            if on_desktop:
+                col += 1
+            cards.append(_spotlight_card(e, "pick", i + 1 if featured else i, style, not on_desktop))
+        grid.append(f'<div class="spotlight-picks">{"".join(cards)}</div>')
+
+    section_cls = "" if featured else ' class="no-featured"'
+    return (
+        f'<div id="spotlight"{section_cls} data-key="{esc(spotlight_key(featured, picks))}">'
+        '<button class="spotlight-close" type="button" aria-label="hide the picks" '
+        'title="hide the picks">&times;</button>'
+        f'<div class="spotlight-grid">{"".join(grid)}</div></div>'
+    )
+
+
+def inject_spotlight(outdir: Path, events: list[dict]) -> None:
+    """Swap the shell's empty #spotlight for the built row (or hide it when
+    there's none). Only for sites that spotlight anything."""
+    if not (SITE_JSON.get("featured") or SITE_JSON.get("curated")):
         return
     index = outdir / "index.html"
     text = index.read_text()
-    index.write_text(
-        text.replace('class="spotlight-pending"', 'class="spotlight-pending has-featured"', 1)
-    )
+    row = spotlight_html(events, datetime.now(timezone.utc)) or '<div id="spotlight" hidden></div>'
+    text, n = re.subn(r'<div id="spotlight"[^>]*></div>', lambda _: row, text, count=1)
+    if n:
+        index.write_text(text)
 
 
 # set from SITES by main(); the script builds one site per invocation
@@ -2532,7 +2729,7 @@ def build(outdir: Path) -> None:
     inject_startup_images(outdir)
     inject_theme_boot(outdir)
     inject_robots_meta(outdir)
-    mark_spotlight_featured(outdir, events)
+    inject_spotlight(outdir, events)
 
     global SITE_PRACTICES, SITE_ORGANIZERS, SITE_EVENTS
     SITE_PRACTICES = site_practices(events)

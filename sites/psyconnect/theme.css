@@ -689,36 +689,6 @@ footer,
   padding: 0 1.5rem;
 }
 
-/* Room held for the spotlight while events load (index.html starts it
-   .spotlight-pending, renderSpotlight drops the class). Without it the row
-   arrives above an already-painted list and shoves everything down — a
-   0.8 layout shift, most of PageSpeed's complaint. Heights are the rendered
-   row's: the phone strip is fixed, wider screens vary a little with text
-   wrapping. .has-featured is stamped by build_site.py when "our next event"
-   will show, which on a phone stacks a whole card above the strip. */
-#spotlight.spotlight-pending {
-  min-height: 371px;
-}
-@media (min-width: 641px) and (max-width: 960px) {
-  #spotlight.spotlight-pending {
-    min-height: 400px;
-  }
-}
-@media (max-width: 640px) {
-  #spotlight.spotlight-pending {
-    min-height: 242px;
-  }
-  #spotlight.spotlight-pending.has-featured {
-    min-height: 382px;
-  }
-}
-
-.spotlight-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.7rem 1rem;
-}
-
 /* The picks wrapper is transparent on desktop — its cards rejoin the grid via
    their inline grid-column. On mobile it becomes a horizontal swipe strip. */
 .spotlight-picks {

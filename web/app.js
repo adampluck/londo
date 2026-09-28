@@ -1974,18 +1974,18 @@
     }
   }
 
-  // #spotlight can start .spotlight-pending (psyconnect's index.html), holding
-  // its space against layout shift until the events arrive
-  function releaseSpotlightSpace() {
-    const section = document.getElementById("spotlight");
-    if (!section.classList.contains("spotlight-pending")) return;
-    section.classList.remove("spotlight-pending");
-    section.hidden = true;
+  // Which cards the row holds — mirror of spotlight_key() in build_site.py,
+  // which stamps it on a row built into the page (psyconnect), so a static
+  // row the live data agrees with is kept rather than rebuilt: rebuilding
+  // would restart its images and push the page's largest paint back.
+  function spotlightKey(featured, picks) {
+    const keys = picks.map((e) => e.dedupe_key || "");
+    if (featured) keys.unshift("featured:" + (featured.dedupe_key || ""));
+    return keys.join("|");
   }
 
   function renderSpotlight() {
     const section = document.getElementById("spotlight");
-    section.classList.remove("spotlight-pending");
     if (spotlightDismissed()) {
       section.hidden = true;
       return;
@@ -2013,6 +2013,14 @@
 
     if (!featured && !picks.length) {
       section.hidden = true;
+      return;
+    }
+
+    const key = spotlightKey(featured, picks);
+    if (section.dataset.key === key && section.querySelector(".spotlight-grid")) {
+      bindSpotlightClose(section);
+      section.hidden = false;
+      rebindClickTracking();
       return;
     }
 
@@ -2089,18 +2097,24 @@
     close.setAttribute("aria-label", "hide the picks");
     close.title = "hide the picks";
     close.innerHTML = "&times;";
-    close.addEventListener("click", () => {
+
+    section.replaceChildren(close, grid);
+    section.dataset.key = key;
+    bindSpotlightClose(section);
+    section.hidden = false;
+    rebindClickTracking();
+  }
+
+  // onclick, not addEventListener: a kept row is re-adopted on every render
+  function bindSpotlightClose(section) {
+    section.querySelector(".spotlight-close").onclick = () => {
       try {
         localStorage.setItem(storeKey(SPOTLIGHT_KEY), String(Date.now()));
       } catch (_) {
         /* it still hides for this visit */
       }
       section.hidden = true;
-    });
-
-    section.replaceChildren(close, grid);
-    section.hidden = false;
-    rebindClickTracking();
+    };
   }
 
   // ---------- analytics (GoatCounter: open source, cookieless) ----------
@@ -2600,8 +2614,6 @@
     }
     renderWeekStrip();
     setLens("all");
-    // a dismissed spotlight won't render, so don't hold room for it
-    if (spotlightDismissed()) releaseSpotlightSpace();
     const loadingTimer = startLoadingCycle();
     if (SUPABASE_URL.startsWith("YOUR_")) {
       clearInterval(loadingTimer);
@@ -2647,7 +2659,6 @@
     } catch (err) {
       clearInterval(loadingTimer);
       hideSplash();
-      releaseSpotlightSpace();
       const events = document.getElementById("events");
       if (events) {
         events.innerHTML =

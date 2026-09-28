@@ -155,9 +155,12 @@
   <!-- "new to this? read about …" when one practice chip is lit -->
   <p class="practice-guide" id="practice-guide" hidden></p>
 
-  <!-- not hidden: .spotlight-pending holds the picks' space while events
-       load; renderSpotlight fills or hides it (see theme.css) -->
-  <div id="spotlight" class="spotlight-pending"></div>
+  <!-- build_site.py swaps in the row, built from that day's events, so it
+       paints from the HTML (renderSpotlight keeps it if the live data agrees) -->
+  <div id="spotlight" hidden></div>
+  <!-- hidden before first paint for anyone who dismissed it this week;
+       mirrors spotlightDismissed() in app.js -->
+  <script>try{var t=+localStorage.getItem("psyconnect:spotlight-dismissed");if(t&&Date.now()-t<6048e5)document.getElementById("spotlight").hidden=true}catch(e){}</script>
 
   <main id="events">
     <noscript>
