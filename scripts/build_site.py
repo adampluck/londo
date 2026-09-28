@@ -154,6 +154,29 @@ def inject_robots_meta(outdir: Path) -> None:
     index.write_text(text.replace("<head>", f"<head>\n  {meta}", 1))
 
 
+def mark_spotlight_featured(outdir: Path, events: list[dict]) -> None:
+    """The shell starts #spotlight .spotlight-pending, holding the row's
+    height against layout shift until the SPA's events arrive. A live
+    featured event makes that row taller (on a phone its card stacks above
+    the picks strip), so flag it here; the daily scrape rebuilds keep it
+    current. 30 days is the SPA's HORIZON_DAYS (web/app.js)."""
+    featured = [
+        o.lower() for o in (SITE_JSON.get("featured") or {}).get("organizers") or []
+    ]
+    horizon = datetime.now(timezone.utc) + timedelta(days=30)
+    if not any(
+        (e.get("organizer_name") or "").lower() in featured
+        and _parse_ts(e["start_at"]) <= horizon
+        for e in events
+    ):
+        return
+    index = outdir / "index.html"
+    text = index.read_text()
+    index.write_text(
+        text.replace('class="spotlight-pending"', 'class="spotlight-pending has-featured"', 1)
+    )
+
+
 # set from SITES by main(); the script builds one site per invocation
 BASE_URL = SITES["londo"]["base_url"]
 SITE = SITES["londo"]
@@ -2509,6 +2532,7 @@ def build(outdir: Path) -> None:
     inject_startup_images(outdir)
     inject_theme_boot(outdir)
     inject_robots_meta(outdir)
+    mark_spotlight_featured(outdir, events)
 
     global SITE_PRACTICES, SITE_ORGANIZERS, SITE_EVENTS
     SITE_PRACTICES = site_practices(events)
