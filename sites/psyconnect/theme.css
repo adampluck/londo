@@ -194,10 +194,13 @@ body {
 }
 
 /* repeating pattern in the fixed backdrop; the body's time-of-day
-   gradient tints through the transparency. It's decoration, so it waits
-   for the page's load (theme-boot.js sets .bg-ready) and fades in, rather
-   than competing with the first screen's images and fonts for the
-   connection. bg.jpg is kept as gen_icons.py's source. */
+   gradient tints through the transparency. Drawn in SVG rather than
+   downloaded: bands of lavender, rose and blue lines swirled by a noise
+   field (feTile repeats the noise so the tile edges meet), over a soft
+   colour wash — the feel of the old illustrated bg.jpg (kept only as
+   gen_icons.py's source) for ~1KB and no request. Still applied after the
+   page's load (theme-boot.js sets .bg-ready) and faded in, so rasterising
+   the filters never holds up the first paint. */
 .sky::before {
   content: "";
   position: absolute;
@@ -208,7 +211,7 @@ body {
   transition: opacity 0.8s ease;
 }
 .bg-ready .sky::before {
-  background-image: url("bg.webp");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512'%3E%3Cfilter id='w' filterUnits='userSpaceOnUse' x='-256' y='-256' width='1024' height='1024'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0078' numOctaves='2' seed='3' stitchTiles='stitch' x='0' y='0' width='512' height='512'/%3E%3CfeTile/%3E%3CfeDisplacementMap in='SourceGraphic' scale='190' xChannelSelector='R' yChannelSelector='B'/%3E%3C/filter%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0059' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .62  0 0 0 0 .5  0 0 0 0 .78  0 -1.6 0 0 .9'/%3E%3C/filter%3E%3Cpattern id='l' width='512' height='11' patternUnits='userSpaceOnUse'%3E%3Cpath d='M0 1H512' stroke='%238a76bd' stroke-width='1.1' opacity='.7'/%3E%3Cpath d='M0 5H512' stroke='%23cf8199' stroke-width='.9' opacity='.45'/%3E%3Cpath d='M0 8.5H512' stroke='%237a95c6' stroke-width='.8' opacity='.35'/%3E%3C/pattern%3E%3Crect width='512' height='512' filter='url(%23c)' opacity='.55'/%3E%3Crect x='-256' y='-256' width='1024' height='1024' fill='url(%23l)' filter='url(%23w)'/%3E%3C/svg%3E");
   opacity: 0.4;
 }
 
