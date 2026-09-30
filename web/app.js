@@ -70,11 +70,52 @@
   // fallback, so a proxy outage costs sharpness, not the image.
   function thumb(url, width) {
     if (!url) return url;
+    const [src, crop] = fullRes(url, width);
     return (
       "https://wsrv.nl/?url=" +
-      encodeURIComponent(url) +
-      `&w=${width}&output=webp&q=75`
+      encodeURIComponent(src) +
+      `&w=${width}${crop}&output=webp&q=75`
     );
+  }
+
+  // Some hosts hand us a small resize of the art rather than the upload
+  // itself. Eventbrite's og:image is a 460x230 imgix box (a portrait flyer
+  // clips to 129x230) and Meetup's is 600px wide, so the proxy was upscaling
+  // them into a blur. Point at the original and have wsrv redo the crop.
+  // Returns [source url, extra wsrv params].
+  function fullRes(url, width) {
+    let u;
+    try {
+      u = new URL(url);
+    } catch {
+      return [url, ""];
+    }
+    if (u.hostname === "secure.meetupstatic.com") {
+      return [url.replace(/\/\d+_(\d+\.\w+)$/, "/highres_$1"), ""];
+    }
+    const q = u.searchParams;
+    if (u.hostname !== "img.evbuc.com" || !q.has("w") || !q.has("h")) {
+      return [url, ""];
+    }
+    // the path is the percent-encoded origin URL on cdn.evbuc.com
+    const src = decodeURIComponent(u.pathname.slice(1));
+    const rect = (q.get("rect") || "").split(",");
+    // the organiser's own crop box; imgix then fits it inside w x h.
+    // precrop, or wsrv resizes first and crops the shrunk image
+    if (rect.length === 4 && rect.every((n) => /^\d+$/.test(n))) {
+      const [x, y, cw, ch] = rect;
+      return [src, `&cx=${x}&cy=${y}&cw=${cw}&ch=${ch}&precrop`];
+    }
+    if (q.get("fit") === "crop") {
+      const h = Math.floor((width * q.get("h")) / q.get("w") + 0.5);
+      let crop = `&h=${h}&fit=cover`;
+      if (q.has("fp-x") && q.has("fp-y")) {
+        crop += `&a=focal&fpx=${q.get("fp-x")}&fpy=${q.get("fp-y")}`;
+      }
+      return [src, crop];
+    }
+    // plain w/h is imgix's fit=clip: the whole image, natural aspect
+    return [src, ""];
   }
 
   // Point an <img> at the proxied art, falling back to the original once

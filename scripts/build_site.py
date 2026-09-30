@@ -1390,11 +1390,45 @@ def thumb(url: str, width: int) -> str:
     """
     if not url:
         return url
+    src, crop = full_res(url, width)
     return (
         "https://wsrv.nl/?url="
-        + urllib.parse.quote(url, safe="")
-        + f"&w={width}&output=webp&q=75"
+        + urllib.parse.quote(src, safe="")
+        + f"&w={width}{crop}&output=webp&q=75"
     )
+
+
+def full_res(url: str, width: int) -> tuple[str, str]:
+    """Mirror of fullRes() in web/app.js — keep the two in step.
+
+    Some hosts hand us a small resize of the art rather than the upload
+    itself. Eventbrite's og:image is a 460x230 imgix box (a portrait flyer
+    clips to 129x230) and Meetup's is 600px wide, so the proxy was upscaling
+    them into a blur. Point at the original and have wsrv redo the crop.
+    Returns (source url, extra wsrv params).
+    """
+    parts = urllib.parse.urlsplit(url)
+    if parts.hostname == "secure.meetupstatic.com":
+        return re.sub(r"/\d+_(\d+\.\w+)$", r"/highres_\1", url), ""
+    q = dict(urllib.parse.parse_qsl(parts.query))
+    if parts.hostname != "img.evbuc.com" or "w" not in q or "h" not in q:
+        return url, ""
+    # the path is the percent-encoded origin URL on cdn.evbuc.com
+    src = urllib.parse.unquote(parts.path[1:])
+    rect = q.get("rect", "").split(",")
+    # the organiser's own crop box; imgix then fits it inside w x h.
+    # precrop, or wsrv resizes first and crops the shrunk image
+    if len(rect) == 4 and all(n.isdigit() for n in rect):
+        x, y, cw, ch = rect
+        return src, f"&cx={x}&cy={y}&cw={cw}&ch={ch}&precrop"
+    if q.get("fit") == "crop":
+        h = int(width * int(q["h"]) / int(q["w"]) + 0.5)  # JS Math.round, not banker's
+        crop = f"&h={h}&fit=cover"
+        if "fp-x" in q and "fp-y" in q:
+            crop += f"&a=focal&fpx={q['fp-x']}&fpy={q['fp-y']}"
+        return src, crop
+    # plain w/h is imgix's fit=clip: the whole image, natural aspect
+    return src, ""
 
 
 def with_utm(url: str) -> str:
