@@ -1213,3 +1213,15 @@ body.theme-night .blob { opacity: 0.3; }
 .join-invite:hover { color: var(--gold); }
 
 .join-copy { margin: 0; }
+
+/* filters panel on wider screens: four facet rows of pills read as a wall
+   at full size, so the panel's chips run a step smaller than the topic
+   tags elsewhere (phones keep the thumb-sized rail chips) */
+@media (min-width: 561px) {
+  .filters-panel { gap: 0.45rem; }
+  .filters-panel .facet-chips { gap: 0.3rem; }
+  .filters-panel .facet-chips .token {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.68rem;
+  }
+}

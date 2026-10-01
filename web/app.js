@@ -189,7 +189,7 @@
     modality: null, // a slug from practices.json, or null
     vibe: null, // a trait key (see VIBES), or null
     lens: "all", // all | tech | beyond
-    area: "all",
+    area: null, // central/north/east/south/west, or null for anywhere
     day: "7", // "7", "30", or a London YYYY-MM-DD
     freeOnly: false,
     query: "",
@@ -828,6 +828,20 @@
           state.events.some((e) => (e.topics || []).includes(t))
         ).map((t) => ({ value: t, label: t })),
     },
+    // Sites with the compass dial (londo) choose the area there; the rest
+    // get it as a chip row. It's on the bench either way, so the test
+    // still applies when the dial set it.
+    area: {
+      state: "area",
+      legend: "where",
+      test: (e, v) => e.area === v,
+      options: () =>
+        FEATURES.compass === false
+          ? AREAS.filter((a) => state.events.some((e) => e.area === a)).map(
+              (a) => ({ value: a, label: a })
+            )
+          : [],
+    },
     modality: {
       state: "modality",
       legend: "modality",
@@ -861,7 +875,6 @@
     if (state.category !== "all" && e.category !== state.category) return false;
     if (state.lens === "tech" && !isTech(e)) return false;
     if (state.lens === "beyond" && isTech(e)) return false;
-    if (state.area !== "all" && e.area !== state.area) return false;
     if (state.freeOnly && !e.is_free) return false;
     const q = state.query.trim().toLowerCase();
     if (q && !matchesQuery(e, q)) return false;
@@ -890,7 +903,10 @@
 
       const chips = document.createElement("div");
       chips.className = "facet-chips";
-      chips.appendChild(chip(name, facet, "", "anything", false));
+      // no "anything" chip: an unlit row already means anything, and
+      // tapping the lit chip clears it (it wears a × to say so)
+      // where → the same selection on a map, leading the row
+      if (name === "area" && FEATURES.map !== false) chips.appendChild(mapChip());
       for (const item of items)
         chips.appendChild(
           chip(name, facet, item.value, item.label, item.child)
@@ -903,6 +919,20 @@
     panel.replaceChildren(...rows, ...(foot ? [foot] : []));
     document.getElementById("filters-toggle").hidden = !rows.length;
     syncFilters();
+
+    function mapChip() {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "token token-map";
+      btn.id = "filters-map";
+      btn.innerHTML =
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>map<span class="token-count"></span>';
+      btn.addEventListener("click", () => {
+        toggleFilters(false);
+        openMap();
+      });
+      return btn;
+    }
 
     function chip(name, facet, value, label, child) {
       const btn = document.createElement("button");
@@ -929,7 +959,10 @@
     let active = 0;
     for (const [name, facet] of Object.entries(FACETS)) {
       const chosen = state[facet.state];
-      if (chosen) active += 1;
+      // only what the panel shows counts toward its badge (londo's
+      // compass sets area from outside it)
+      if (chosen && document.querySelector(`#filters-panel .facet-row[data-facet="${name}"]`))
+        active += 1;
       document
         .querySelectorAll(`#filters-panel .token[data-facet="${name}"]`)
         .forEach((t) => {
@@ -949,6 +982,15 @@
           t.title = n ? `${n} in this window` : "nothing in this window";
         });
     }
+    // the map chip says how many of these have a pin — not every listing
+    // does, so a bare "map" would promise the whole list
+    const mapBtn = document.getElementById("filters-map");
+    if (mapBtn) {
+      const n = mapEvents().length;
+      mapBtn.querySelector(".token-count").textContent = n;
+      mapBtn.title = n ? `${n} of these on the map` : "none of these has a location to pin";
+      mapBtn.classList.toggle("spent", n === 0);
+    }
     // the wider look is offered from inside the panel too, unless the
     // strip is already on it
     document.getElementById("filters-expand").hidden = state.day === "30";
@@ -966,6 +1008,14 @@
     const show = open === undefined ? panel.hidden : open;
     panel.hidden = !show;
     toggle.setAttribute("aria-expanded", String(show));
+    // on phones each row is a swipeable rail: bring any lit chip into view
+    // so a choice made earlier isn't hiding off the right edge
+    if (show)
+      panel.querySelectorAll(".facet-chips .token.lit").forEach((t) => {
+        const rail = t.parentElement;
+        if (rail.scrollWidth > rail.clientWidth)
+          rail.scrollLeft = Math.max(0, t.offsetLeft - 24);
+      });
   }
 
   function renderPracticeGuide() {
@@ -1014,6 +1064,7 @@
     });
   }
 
+  const AREAS = ["central", "north", "east", "south", "west"];
   const AREA_LABELS = {
     all: "anywhere in london",
     north: "north london",
@@ -1162,6 +1213,8 @@
       if (modality) state.modality = modality;
       const vibe = params.get("vibe");
       if (vibe && VIBES.some(([k]) => k === vibe)) state.vibe = vibe;
+      const area = params.get("area");
+      if (area && AREAS.includes(area)) state.area = area;
       const cat = params.get("category");
       if (cat && CATEGORIES[cat]) state.category = cat;
     }
@@ -1178,6 +1231,7 @@
       params.set("topic", TOPIC_SLUGS[state.topic] || state.topic);
     if (state.modality) params.set("modality", state.modality);
     if (state.vibe) params.set("vibe", state.vibe);
+    if (state.area) params.set("area", state.area);
     if (state.category !== "all") params.set("category", state.category);
     if (state.day !== "7") params.set("day", state.day);
     if (state.freeOnly) params.set("free", "1");
@@ -1256,7 +1310,7 @@
     state.topic = null;
     state.modality = null;
     state.vibe = null;
-    state.area = "all";
+    state.area = null;
     state.day = "7";
     state.freeOnly = false;
     state.query = "";
@@ -1339,6 +1393,7 @@
 
     mapView.hidden = state.view !== "map";
     main.hidden = state.view === "map";
+    document.body.classList.toggle("on-map", state.view === "map");
 
     if (state.view === "map") {
       renderMap();
@@ -1564,6 +1619,59 @@
 
   // ---------- map ----------
 
+  // Single-view sites (no tab bar) reach the map from the filters' where
+  // row. It gets a history entry (#on-map) so a phone's back button
+  // returns to the list instead of leaving the site, and a bar of its
+  // own to get back with, since there are no tabs.
+  const MAP_HASH = "#on-map";
+  let mapPushed = false;
+
+  function openMap() {
+    if (FEATURES.map === false) return;
+    if (location.hash !== MAP_HASH) {
+      history.pushState(null, "", location.pathname + location.search + MAP_HASH);
+      mapPushed = true;
+    }
+    showMapBar();
+    setView("map");
+    document.getElementById("map-view").scrollIntoView({ block: "start" });
+  }
+
+  function closeMap() {
+    if (mapPushed) {
+      history.back(); // popstate brings the list back
+      return;
+    }
+    // arrived on #on-map directly — step off it without leaving the site
+    history.replaceState(null, "", location.pathname + location.search);
+    setView("browse");
+  }
+
+  function syncMapFromHash() {
+    const onMap = location.hash === MAP_HASH && FEATURES.map !== false;
+    if (!onMap) mapPushed = false;
+    if (onMap === (state.view === "map")) return;
+    if (onMap) showMapBar();
+    setView(onMap ? "map" : "browse");
+  }
+
+  function showMapBar() {
+    if (FEATURES.views !== false || document.getElementById("map-bar")) return;
+    const bar = document.createElement("div");
+    bar.className = "map-bar";
+    bar.id = "map-bar";
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "key";
+    back.textContent = "← back to the list";
+    back.addEventListener("click", closeMap);
+    const note = document.createElement("span");
+    note.className = "map-note";
+    note.id = "map-note";
+    bar.append(back, note);
+    document.getElementById("map-view").prepend(bar);
+  }
+
   function renderMap() {
     if (state.mapLoaded) {
       drawMarkers();
@@ -1605,6 +1713,15 @@
   function drawMarkers() {
     if (!state.map || !state.markerLayer) return;
     state.markerLayer.clearLayers();
+    const note = document.getElementById("map-note");
+    if (note) {
+      const pinned = mapEvents().length;
+      const all = browseEvents().length;
+      note.textContent =
+        pinned === all
+          ? `${all} on the map`
+          : `${pinned} of ${all} have a location to pin`;
+    }
     for (const e of mapEvents()) {
       const color = (CATEGORIES[e.category] || { color: "#8e7aa8" }).color;
       const marker = L.circleMarker([e.latitude, e.longitude], {
@@ -2257,12 +2374,12 @@
     // readout) to go back to anywhere
     document.getElementById("compass-unit").addEventListener("click", (ev) => {
       if (ev.target.closest("#area-readout")) {
-        if (state.area === "all") return;
-        state.area = "all";
+        if (!state.area) return;
+        state.area = null;
       } else {
         const zone = ev.target.closest(".zone");
         if (!zone) return;
-        state.area = state.area === zone.dataset.area ? "all" : zone.dataset.area;
+        state.area = state.area === zone.dataset.area ? null : zone.dataset.area;
       }
       state.surprise = null;
       syncCompass();
@@ -2281,6 +2398,8 @@
     });
 
     enableDragScroll(document.getElementById("week-strip"));
+
+    window.addEventListener("popstate", syncMapFromHash);
 
     document
       .getElementById("filters-toggle")
@@ -2707,7 +2826,9 @@
       renderSpotlight();
       maybeShowEnrichedControls();
       renderLastUpdated();
+      syncCompass();
       render();
+      syncMapFromHash();
       hideSplash();
       maybeShowInstallHint();
       eventsLoaded = true;

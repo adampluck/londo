@@ -66,7 +66,7 @@ self.LONDO_CONFIG = {
       "lens": false,
       "categoryPills": false,
       "views": false,
-      "map": false,
+      "map": true,
       "compass": false,
       "topics": true,
       "animateDayChange": false,
