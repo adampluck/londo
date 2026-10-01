@@ -145,6 +145,30 @@ class SupabaseStore:
         logger.info("Loaded enrichment for %d events", len(out))
         return out
 
+    def fetch_places(self) -> list[dict]:
+        """Every stored venue + address that has coordinates, so the
+        geocoder looks each place up once rather than on every run."""
+        url = (
+            f"{self.url}/rest/v1/events?select=venue_name,address,latitude,longitude"
+            "&latitude=not.is.null&longitude=not.is.null"
+        )
+        out: list[dict] = []
+        offset = 0
+        while True:
+            response = self.session.get(
+                f"{url}&order=source.asc,source_id.asc"
+                f"&offset={offset}&limit={self.PAGE}",
+                timeout=60,
+            )
+            response.raise_for_status()
+            rows = response.json()
+            out.extend(rows)
+            if len(rows) < self.PAGE:
+                break
+            offset += self.PAGE
+        logger.info("Loaded %d placed rows", len(out))
+        return out
+
     def fetch_pending_submissions(self) -> list[dict]:
         response = self.session.get(
             f"{self.url}/rest/v1/submissions?status=eq.pending&select=*"

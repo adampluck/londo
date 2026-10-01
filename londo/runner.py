@@ -59,6 +59,25 @@ def drop_unwanted(events: list[Event]) -> list[Event]:
     return kept
 
 
+def _stored_context(store) -> tuple[dict, list[dict]]:
+    """Prior enrichment and known places from Supabase (empty without it),
+    so enrichment only pays for LLM calls and geocoding lookups once."""
+    existing: dict = {}
+    places: list[dict] = []
+    if store is None:
+        return existing, places
+    log = logging.getLogger(__name__)
+    try:
+        existing = store.fetch_enrichment()
+    except Exception:
+        log.exception("Could not fetch enrichment")
+    try:
+        places = store.fetch_places()
+    except Exception:
+        log.exception("Could not fetch known places")
+    return existing, places
+
+
 @click.group()
 def cli() -> None:
     """Londo - London non-mainstream event aggregator."""
@@ -136,13 +155,10 @@ def scrape(
 
     from londo.enrich import enrich_events
 
-    existing = {}
-    if os.environ.get("SUPABASE_URL"):
-        try:
-            existing = SupabaseStore().fetch_enrichment()
-        except Exception:
-            logging.getLogger(__name__).exception("Could not fetch enrichment")
-    calls = enrich_events(all_events, existing=existing)
+    existing, places = _stored_context(
+        SupabaseStore() if os.environ.get("SUPABASE_URL") else None
+    )
+    calls = enrich_events(all_events, existing=existing, places=places)
     click.echo(f"Enriched: {calls} new LLM classifications")
 
     if store in ("json", "both"):
@@ -331,13 +347,8 @@ def ingest_whatsapp(
 
     from londo.enrich import enrich_events
 
-    existing = {}
-    if supabase is not None:
-        try:
-            existing = supabase.fetch_enrichment()
-        except Exception:
-            logging.getLogger(__name__).exception("Could not fetch enrichment")
-    calls = enrich_events(all_events, existing=existing)
+    existing, places = _stored_context(supabase)
+    calls = enrich_events(all_events, existing=existing, places=places)
     click.echo(f"Enriched: {calls} new LLM classifications")
 
     if store in ("json", "both"):
@@ -470,13 +481,10 @@ def seed(
         dedupe(all_events)
         from londo.enrich import enrich_events
 
-        existing = {}
-        if os.environ.get("SUPABASE_URL"):
-            try:
-                existing = SupabaseStore().fetch_enrichment()
-            except Exception:
-                logging.getLogger(__name__).exception("Could not fetch enrichment")
-        calls = enrich_events(all_events, existing=existing)
+        existing, places = _stored_context(
+            SupabaseStore() if os.environ.get("SUPABASE_URL") else None
+        )
+        calls = enrich_events(all_events, existing=existing, places=places)
         click.echo(
             f"Total: {len(all_events)} event(s) from {len(seeds)} link(s); "
             f"enriched {calls} new"

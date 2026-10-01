@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from londo.geo import assign_area
+from londo.geocode import geocode_events, known_places
 from londo.models import Event
 
 logger = logging.getLogger(__name__)
@@ -77,18 +78,28 @@ class Enrichment(BaseModel):
 
 
 def enrich_events(
-    events: list[Event], existing: dict[tuple[str, str], dict] | None = None
+    events: list[Event],
+    existing: dict[tuple[str, str], dict] | None = None,
+    places: list[dict] | None = None,
 ) -> int:
-    """Assign area (deterministic) to all events, and category/traits/hook/
-    quality (LLM) to canonical events that don't already have them.
+    """Geocode events that came with only an address, assign area
+    (deterministic) to all events, and category/traits/hook/quality (LLM)
+    to canonical events that don't already have them.
 
     `existing` maps (source, source_id) -> previously stored enrichment row;
-    matching events reuse it instead of a new API call. Returns the number
-    of LLM calls made. Requires ANTHROPIC_API_KEY; without it only the
-    deterministic area pass runs.
+    matching events reuse it instead of a new API call. `places` are stored
+    rows with coordinates (SupabaseStore.fetch_places), so a known venue
+    isn't looked up again. Returns the number of LLM calls made. Requires
+    ANTHROPIC_API_KEY; without it only the geocode and area passes run.
     """
     existing = existing or {}
     now = datetime.now(timezone.utc)
+
+    # before the area pass, which falls back to coordinates
+    try:
+        geocode_events(events, known_places(places or []))
+    except Exception:
+        logger.exception("Geocoding failed")
 
     for event in events:
         if event.area is None:
