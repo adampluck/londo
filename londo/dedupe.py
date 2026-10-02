@@ -391,6 +391,12 @@ def _near_duplicate(a: Event, b: Event) -> bool:
         return _co_listed(a, b) or _host_relisted(a, b)
     if not _starts_compatible(a, b):
         return False
+    # One host, similar titles, the very same start: one night cross-posted,
+    # whatever each page writes for the venue. Ecstatic Dance London puts
+    # walking directions there ("13 Minutes from Gospel Oak…" on Dandelion,
+    # "11 min walk from Tufnell Park…" on Eventbrite), which never match.
+    if _same_host(a, b) and _start_utc(a) is not None and _start_utc(a) == _start_utc(b):
+        return True
     # If both name a venue and they clearly disagree, keep them separate
     # even when titles look close (two "Cacao Ceremony"s in different rooms).
     va, vb = _venue_slug(a), _venue_slug(b)
