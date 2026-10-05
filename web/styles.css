@@ -1262,6 +1262,43 @@ main {
   isolation: isolate;
 }
 
+/* the pins' key, laid over the map's bottom-left corner */
+.map-legend {
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-edge);
+  background: var(--dusk-2);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.map-legend ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.map-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  opacity: 0.85;
+}
+
+.map-legend-count {
+  margin-left: auto;
+  padding-left: 0.6rem;
+  color: var(--ink-dim);
+}
+
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
   background: var(--dusk-1);
   color: var(--ink);

@@ -1394,6 +1394,7 @@
     mapView.hidden = state.view !== "map";
     main.hidden = state.view === "map";
     document.body.classList.toggle("on-map", state.view === "map");
+    syncMapToggle();
 
     if (state.view === "map") {
       renderMap();
@@ -1655,6 +1656,18 @@
     setView(onMap ? "map" : "browse");
   }
 
+  // header pin (sites that carry one): opens the map, or back to the list
+  function syncMapToggle() {
+    const btn = document.getElementById("map-toggle");
+    if (!btn) return;
+    const onMap = state.view === "map";
+    btn.setAttribute("aria-pressed", String(onMap));
+    btn.setAttribute(
+      "aria-label",
+      onMap ? "Back to the list" : "Show events on a map"
+    );
+  }
+
   function showMapBar() {
     if (FEATURES.views !== false || document.getElementById("map-bar")) return;
     const bar = document.createElement("div");
@@ -1701,6 +1714,14 @@
         }
       ).addTo(state.map);
       state.markerLayer = L.layerGroup().addTo(state.map);
+      const legend = L.control({ position: "bottomleft" });
+      legend.onAdd = () => {
+        const el = L.DomUtil.create("div", "map-legend");
+        el.id = "map-legend";
+        L.DomEvent.disableClickPropagation(el);
+        return el;
+      };
+      legend.addTo(state.map);
       drawMarkers();
     };
     script.onerror = () => {
@@ -1722,8 +1743,9 @@
           ? `${all} on the map`
           : `${pinned} of ${all} have a location to pin`;
     }
+    drawLegend();
     for (const e of mapEvents()) {
-      const color = (CATEGORIES[e.category] || { color: "#8e7aa8" }).color;
+      const color = (CATEGORIES[e.category] || { color: OTHER_PIN }).color;
       const marker = L.circleMarker([e.latitude, e.longitude], {
         radius: 7,
         color,
@@ -1747,6 +1769,31 @@
     }
     // Leaflet mis-sizes when initialized while hidden
     setTimeout(() => state.map.invalidateSize(), 60);
+  }
+
+  // the key: a swatch per kind of event the pins actually show, so the
+  // dots' colours mean something without having to open one
+  const OTHER_PIN = "#8e7aa8";
+
+  function drawLegend() {
+    const el = document.getElementById("map-legend");
+    if (!el) return;
+    const counts = new Map();
+    for (const e of mapEvents()) {
+      const key = CATEGORIES[e.category] ? e.category : "other";
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const rows = [...Object.keys(CATEGORIES), "other"]
+      .filter((key) => counts.has(key))
+      .map((key) => {
+        const cat = CATEGORIES[key] || { label: "other", color: OTHER_PIN };
+        return (
+          `<li><span class="map-swatch" style="background:${cat.color}"></span>` +
+          `${escapeHtml(cat.label)}<span class="map-legend-count">${counts.get(key)}</span></li>`
+        );
+      });
+    el.hidden = rows.length === 0;
+    el.innerHTML = `<ul>${rows.join("")}</ul>`;
   }
 
   function escapeHtml(s) {
@@ -2348,6 +2395,14 @@
       setLens(stop.dataset.lens);
       render();
     });
+
+    const mapToggle = document.getElementById("map-toggle");
+    if (mapToggle) {
+      if (FEATURES.map === false) mapToggle.hidden = true;
+      mapToggle.addEventListener("click", () =>
+        state.view === "map" ? closeMap() : openMap()
+      );
+    }
 
     // view keys live in the header (desktop) and bottom bar (mobile)
     for (const navId of ["view-tabs", "bottom-tabs"]) {

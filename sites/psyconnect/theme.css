@@ -101,6 +101,19 @@ body {
   );
 }
 
+/* the header's keycaps: map pin, then the theme switch */
+.topbar-actions {
+  align-self: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* lit while the map is showing — pressing it again goes back to the list */
+.map-toggle[aria-pressed="true"] {
+  color: var(--peach);
+  border-color: var(--peach);
+}
+
 /* the toggle: a quiet keycap in the header, moon in light, sun in dark */
 .theme-toggle {
   align-self: center;
