@@ -1280,10 +1280,33 @@ main {
   list-style: none;
 }
 
-.map-legend li {
+.map-legend button {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  width: 100%;
+  padding: 0.05rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.map-legend button:hover,
+.map-legend button[aria-pressed="true"] {
+  color: var(--peach);
+}
+
+.map-legend button:focus-visible {
+  outline: 2px solid var(--peach);
+  outline-offset: 2px;
+}
+
+/* the kinds a picked row is hiding */
+.map-legend button.off {
+  opacity: 0.4;
 }
 
 .map-swatch {

@@ -199,6 +199,7 @@
     landing: null,
     map: null,
     mapLoaded: false,
+    mapPin: null, // the one kind of event the map key is showing, if picked
   };
 
   // Intent categories — the primary way in. Colors tint badges, pills
@@ -1635,7 +1636,6 @@
     }
     showMapBar();
     setView("map");
-    document.getElementById("map-view").scrollIntoView({ block: "start" });
   }
 
   function closeMap() {
@@ -1719,6 +1719,14 @@
         const el = L.DomUtil.create("div", "map-legend");
         el.id = "map-legend";
         L.DomEvent.disableClickPropagation(el);
+        // a key row shows just that kind of event; pressing it again
+        // brings the rest back
+        el.addEventListener("click", (ev) => {
+          const row = ev.target.closest("button[data-pin]");
+          if (!row) return;
+          state.mapPin = state.mapPin === row.dataset.pin ? null : row.dataset.pin;
+          drawMarkers();
+        });
         return el;
       };
       legend.addTo(state.map);
@@ -1745,6 +1753,7 @@
     }
     drawLegend();
     for (const e of mapEvents()) {
+      if (state.mapPin && pinKind(e) !== state.mapPin) continue;
       const color = (CATEGORIES[e.category] || { color: OTHER_PIN }).color;
       const marker = L.circleMarker([e.latitude, e.longitude], {
         radius: 7,
@@ -1775,21 +1784,29 @@
   // dots' colours mean something without having to open one
   const OTHER_PIN = "#8e7aa8";
 
+  function pinKind(e) {
+    return CATEGORIES[e.category] ? e.category : "other";
+  }
+
   function drawLegend() {
     const el = document.getElementById("map-legend");
     if (!el) return;
     const counts = new Map();
     for (const e of mapEvents()) {
-      const key = CATEGORIES[e.category] ? e.category : "other";
+      const key = pinKind(e);
       counts.set(key, (counts.get(key) || 0) + 1);
     }
+    // the picked kind keeps its row even at 0, so it can be unpicked
     const rows = [...Object.keys(CATEGORIES), "other"]
-      .filter((key) => counts.has(key))
+      .filter((key) => counts.has(key) || key === state.mapPin)
       .map((key) => {
         const cat = CATEGORIES[key] || { label: "other", color: OTHER_PIN };
+        const off = state.mapPin && state.mapPin !== key;
         return (
-          `<li><span class="map-swatch" style="background:${cat.color}"></span>` +
-          `${escapeHtml(cat.label)}<span class="map-legend-count">${counts.get(key)}</span></li>`
+          `<li><button type="button" data-pin="${key}" aria-pressed="${state.mapPin === key}"` +
+          `${off ? ' class="off"' : ""}>` +
+          `<span class="map-swatch" style="background:${cat.color}"></span>` +
+          `${escapeHtml(cat.label)}<span class="map-legend-count">${counts.get(key) || 0}</span></button></li>`
         );
       });
     el.hidden = rows.length === 0;
