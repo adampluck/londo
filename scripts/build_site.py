@@ -488,6 +488,8 @@ TOPICS = {
 #   deep:    also matched in the description; only phrases distinctive
 #            enough that a passing mention really is the practice
 #   exclude: guards against a false friend ("gongfu" for "gong")
+#   min_events: overrides MIN_PRACTICE_EVENTS for a practice whose scene
+#            is small but steady (one or two dialogues a month)
 # The prose is the point: it answers the query in its first sentence so
 # a search engine — or a model quoting one paragraph — has something to
 # lift. Keep it concrete and keep it honest about prices and safety.
@@ -823,6 +825,51 @@ PRACTICES = {
             ),
         ],
     },
+    "bohm-dialogue": {
+        "label": "Bohm dialogue",
+        "chip": "Bohm dialogue",
+        "seo_title": "Bohm dialogue groups in London",
+        "terms": ["bohm"],
+        "deep": ["bohm dialogue", "bohmian dialogue"],
+        # London runs one or two a month: worth a page from the first
+        "min_events": 1,
+        "intro": (
+            "A Bohm dialogue is a group conversation with no agenda, no "
+            "leader and nothing to decide. Ten to forty people sit in a "
+            "circle and talk, and the practice is to notice your own "
+            "assumptions and reactions as they arise — to hold them up for "
+            "the group to look at rather than defend them.",
+            "It comes from the physicist David Bohm, who saw thought as a "
+            "collective process and dialogue as a way of watching it work. "
+            "London groups usually meet for two to three hours on a weekday "
+            "evening or weekend afternoon, often opening with a short "
+            "introduction for newcomers.",
+        ),
+        "faq": [
+            (
+                "What happens in a Bohm dialogue?",
+                "The group sits in a circle and a facilitator opens the space, "
+                "sometimes with a theme or a reading, then steps back. Anyone "
+                "can speak; there is no turn-taking and no goal to reach. Long "
+                "silences are normal, and the facilitator may pause the room to "
+                "reflect on what the conversation itself is doing.",
+            ),
+            (
+                "How is it different from a debate or a discussion group?",
+                "A debate tries to win and a discussion tries to reach a "
+                "conclusion. A Bohm dialogue does neither: the aim is to "
+                "suspend judgement — your own as much as anyone's — and see "
+                "the shared assumptions underneath what people say.",
+            ),
+            (
+                "Do I need to have read Bohm first?",
+                "No. Introductory sessions explain the principles at the "
+                "start, and most groups welcome people who've never heard of "
+                "it. If you want to read ahead, Bohm's short book On Dialogue "
+                "is the usual starting point.",
+            ),
+        ],
+    },
 }
 
 MIN_PRACTICE_EVENTS = 5
@@ -1112,7 +1159,7 @@ def site_practices(events: list[dict]) -> list[tuple[str, dict, list[dict]]]:
     out = []
     for slug_, spec in PRACTICES.items():
         matched = [e for e in events if practice_match(e, spec, slug_)]
-        if len(matched) >= MIN_PRACTICE_EVENTS:
+        if len(matched) >= spec.get("min_events", MIN_PRACTICE_EVENTS):
             out.append((slug_, spec, matched))
     return out
 
