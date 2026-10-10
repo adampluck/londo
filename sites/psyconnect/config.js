@@ -84,6 +84,8 @@ self.LONDO_CONFIG = {
         "Unseen", "Unseen London", "Creating Meaning", "The Study Society"
       ],
       "titleMatches": ["bohm", "contact improvisation", "ci lab"],
+      "alwaysPick": ["bohm dialogue", "bohmian dialogue"],
+      "alwaysPickMax": 2,
       "exclude": ["running club"],
       "maxTotal": 4,
       "maxMobile": 5,

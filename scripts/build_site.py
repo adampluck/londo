@@ -203,22 +203,19 @@ def _pick_curated(
     exclude_terms = [t.lower() for t in cfg.get("exclude") or []]
     today = now.astimezone(LONDON).date()
 
+    def eligible(e: dict, days: int) -> bool:
+        if exclude_source_url and e.get("source_url") == exclude_source_url:
+            return False
+        start = _parse_ts(e["start_at"])
+        if not (now < start <= now + timedelta(days=days)):
+            return False
+        if start.astimezone(LONDON).date() == today:
+            return False
+        title = (e.get("title") or "").lower()
+        return not any(term in title for term in exclude_terms)
+
     def within(days: int) -> list[dict]:
-        horizon = now + timedelta(days=days)
-        out = []
-        for e in events:
-            if not _curated(e):
-                continue
-            if exclude_source_url and e.get("source_url") == exclude_source_url:
-                continue
-            start = _parse_ts(e["start_at"])
-            if not (now < start <= horizon) or start.astimezone(LONDON).date() == today:
-                continue
-            title = (e.get("title") or "").lower()
-            if any(term in title for term in exclude_terms):
-                continue
-            out.append(e)
-        return out
+        return [e for e in events if _curated(e) and eligible(e, days)]
 
     stages = cfg.get("windowStages") or [cfg.get("windowDays") or 7]
     widen_threshold = max(cfg.get("maxTotal") or 3, cfg.get("maxMobile") or 0)
@@ -227,14 +224,27 @@ def _pick_curated(
         candidates = within(days)
         if len(candidates) >= widen_threshold:
             break
-    if not candidates:
+
+    # curated.alwaysPick: see pickCurated() — first slots, widest window
+    always_terms = [t.lower() for t in cfg.get("alwaysPick") or []]
+
+    def is_always(e: dict) -> bool:
+        text = f"{e.get('title') or ''} {e.get('description') or ''}".lower()
+        return any(term in text for term in always_terms)
+
+    pinned = [
+        e for e in events if always_terms and eligible(e, stages[-1]) and is_always(e)
+    ][: min(limit, cfg.get("alwaysPickMax") or limit)]
+    if always_terms:
+        candidates = [e for e in candidates if not is_always(e)]
+    if not candidates and not pinned:
         return []
 
     by_org: dict[str, list[dict]] = {}
     for e in candidates:
         by_org.setdefault((e.get("organizer_name") or "").lower(), []).append(e)
     org_order = sorted(by_org, key=lambda o: _parse_ts(by_org[o][0]["start_at"]))
-    picks: list[dict] = []
+    picks: list[dict] = list(pinned)
     for org in org_order:
         if len(picks) >= limit:
             break

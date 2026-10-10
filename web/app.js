@@ -2016,19 +2016,17 @@
     // today's events head the list straight below the strip, so a pick
     // from today only repeats the first cards; picks look further ahead
     const today = londonDate(now);
-    // state.events is start_at-ascending, so candidates stay in date order.
-    const within = (days) => {
-      const horizon = now + days * 86400000;
-      return state.events.filter((e) => {
-        if (!isCurated(e)) return false;
-        if (excludeSourceUrl && e.source_url === excludeSourceUrl) return false;
-        const t = new Date(e.start_at).getTime();
-        if (!(t > now && t <= horizon)) return false;
-        if (londonDate(e.start_at) === today) return false;
-        const title = (e.title || "").toLowerCase();
-        return !excludeTerms.some((term) => title.includes(term));
-      });
+    const eligible = (e, days) => {
+      if (excludeSourceUrl && e.source_url === excludeSourceUrl) return false;
+      const t = new Date(e.start_at).getTime();
+      if (!(t > now && t <= now + days * 86400000)) return false;
+      if (londonDate(e.start_at) === today) return false;
+      const title = (e.title || "").toLowerCase();
+      return !excludeTerms.some((term) => title.includes(term));
     };
+    // state.events is start_at-ascending, so candidates stay in date order.
+    const within = (days) =>
+      state.events.filter((e) => isCurated(e) && eligible(e, days));
 
     // The near week is the preference, not the rule: a quiet week from the
     // trusted organisers would otherwise leave the row half empty, so when
@@ -2053,7 +2051,25 @@
       candidates = within(days);
       if (candidates.length >= widenThreshold) break;
     }
-    if (!candidates.length) return [];
+
+    // SITE.curated.alwaysPick: a kind of event the site wants seen
+    // whenever one is on (Bohm dialogues), found anywhere in the widest
+    // window by title or description. They take the first slots, ahead of
+    // the date-ordered round-robin below, which fills whatever's left.
+    // alwaysPickMax caps how many of them the row holds in all, so the
+    // round-robin doesn't add more of the same kind on top.
+    const alwaysTerms = (cfg.alwaysPick || []).map((t) => t.toLowerCase());
+    const isAlways = (e) => {
+      const text = `${e.title || ""} ${e.description || ""}`.toLowerCase();
+      return alwaysTerms.some((term) => text.includes(term));
+    };
+    const pinned = alwaysTerms.length
+      ? state.events
+          .filter((e) => eligible(e, stages[stages.length - 1]) && isAlways(e))
+          .slice(0, Math.min(maxTotal, cfg.alwaysPickMax || maxTotal))
+      : [];
+    if (alwaysTerms.length) candidates = candidates.filter((e) => !isAlways(e));
+    if (!candidates.length && !pinned.length) return [];
 
     const orgKey = (e) => (e.organizer_name || "").toLowerCase();
     const byOrg = new Map();
@@ -2069,8 +2085,8 @@
         new Date(byOrg.get(a)[0].start_at) - new Date(byOrg.get(b)[0].start_at)
     );
 
-    const picks = [];
-    const used = new Set();
+    const picks = [...pinned];
+    const used = new Set(pinned);
     for (const org of orgOrder) {
       if (picks.length >= maxTotal) break;
       const e = byOrg.get(org)[0];
