@@ -2517,15 +2517,15 @@ body.theme-night .blob { opacity: 0.35; }
 
 .explore-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
   gap: 0.7rem;
 }
 
 .explore-tile {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.85rem 1rem;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.9rem 0.6rem 0.6rem;
   border-radius: calc(var(--radius) - 6px);
   background: var(--card);
   border: 1px solid var(--card-edge);
@@ -2535,6 +2535,24 @@ body.theme-night .blob { opacity: 0.35; }
 
 .explore-tile:hover {
   border-color: var(--peach);
+}
+
+/* a picture from one of the tile's own listings */
+.explore-art {
+  flex: none;
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: calc(var(--radius) - 10px);
+  object-fit: cover;
+  background: var(--card-edge);
+}
+
+.explore-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
 }
 
 .explore-name {
@@ -2582,5 +2600,24 @@ body.theme-night .blob { opacity: 0.35; }
 @media (min-width: 1050px) {
   .static-hosts {
     columns: 3;
+  }
+}
+
+/* phones: two columns of smaller tiles, never wider than the screen */
+@media (max-width: 560px) {
+  .explore-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .explore-tile {
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem 0.5rem 0.5rem;
+  }
+  .explore-art {
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+  .explore-name {
+    font-size: 0.9rem;
   }
 }

@@ -2590,32 +2590,59 @@ def related_html(event: dict, past: bool = False) -> str:
 
 def build_explore_tiles(events: list[dict]) -> None:
     """Every practice and topic with something on in the next 30 days, as
-    a tile with its count — the site's whole range in one glance, at the
-    foot of every event and listing page."""
+    a tile with its count and a picture from one of its listings — the
+    site's whole range in one glance, at the foot of every event and
+    listing page."""
     EXPLORE_TILES.clear()
     month = within_window(events, 30)
+    # no two tiles share a picture: practices pick first (their pools
+    # are small), the broad topics take from what's left
+    used: set[str] = set()
 
-    def tile(kind: str, key: str, href: str, label: str, n: int) -> None:
+    def picture(pool: list[dict]) -> str:
+        """The richest listing's art (soonest among equals), else that
+        listing's placeholder gradient."""
+        ranked = sorted(
+            enumerate(pool), key=lambda ie: (-(ie[1].get("quality_score") or 0), ie[0])
+        )
+        for _, e in ranked:
+            art = e.get("image_url")
+            if art and art not in used:
+                used.add(art)
+                fallback = esc(art.replace("'", "%27"))
+                return (
+                    f'<img class="explore-art" alt="" loading="lazy" width="56" height="56" '
+                    f'src="{esc(thumb(art, 112) + "&h=112&fit=cover")}" '
+                    f"onerror=\"this.onerror=null;this.src='{fallback}'\">"
+                )
+        lead = pool[0] if pool else {"title": ""}
+        return (
+            f'<span class="explore-art" aria-hidden="true" '
+            f'style="background:{placeholder_gradient(lead)}"></span>'
+        )
+
+    def tile(kind: str, key: str, href: str, label: str, pool: list[dict]) -> None:
         EXPLORE_TILES.append((
             kind,
             key,
             f'<a class="explore-tile" href="{href}" '
             f'data-goatcounter-click="static/explore-{kind}">'
-            f'<span class="explore-name">{esc(label)}</span>'
-            f'<span class="explore-count">{n} this month</span></a>',
+            f"{picture(pool)}"
+            f'<span class="explore-text"><span class="explore-name">{esc(label)}</span>'
+            f'<span class="explore-count">{len(pool)} this month</span></span></a>',
         ))
 
     for slug_, spec, matched in SITE_PRACTICES:
-        n = len(within_window(matched, 30))
-        if n:
-            tile("practice", slug_, practice_url(slug_), spec.get("chip") or spec["label"], n)
+        pool = within_window(matched, 30)
+        if pool:
+            tile("practice", slug_, practice_url(slug_), spec.get("chip") or spec["label"], pool)
     site_topics = SITE_JSON.get("topics")
     for key, (slug_, _) in TOPICS.items():
         if site_topics is not None and key not in site_topics:
             continue
-        n = sum(1 for e in month if key in (e.get("topics") or []))
-        if n:
-            tile("topic", key, topic_url(slug_), key, n)
+        pool = [e for e in month if key in (e.get("topics") or [])]
+        if pool:
+            tile("topic", key, topic_url(slug_), key, pool)
 
 
 def explore_html(kind: str | None = None, key: str | None = None) -> str:
