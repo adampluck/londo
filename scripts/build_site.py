@@ -2588,61 +2588,106 @@ def related_html(event: dict, past: bool = False) -> str:
     return "".join(sections)
 
 
+# Line icons for the explore tiles, drawn on a 24-unit grid in the stroke
+# style of the header's pin and theme icons (currentColor, round caps).
+# Keyed by practice slug or topic name; anything new falls back to a spark.
+EXPLORE_ICONS = {
+    # practices
+    "cacao-ceremony": '<path d="M5 10h11v3.5a5.5 5.5 0 0 1-5.5 5.5h0A5.5 5.5 0 0 1 5 13.5z"/>'
+    '<path d="M16 11.5h1.2a2.3 2.3 0 0 1 0 4.6H15.6"/><path d="M8.5 3.5c-1 1.4 1 2.1 0 3.6M12 3.5c-1 1.4 1 2.1 0 3.6"/>'
+    '<path d="M4 21.5h14"/>',
+    "ecstatic-dance": '<circle cx="12" cy="4.5" r="1.8"/><path d="M12 7v6M12 9.5 7.5 6M12 9.5 16.5 6'
+    'M12 13l-3.5 6.5M12 13l3.5 6"/><path d="M4 11c-1.2 2-.6 4.4.8 5.8M20 11c1.2 2 .6 4.4-.8 5.8"/>',
+    "5rhythms": '<path d="M2 13c1-3.5 2.6-3.5 4 0s3 3.5 4 0 2.6-3.5 4 0 3 3.5 4 0 2.6-3.5 4 0"/>'
+    '<circle cx="4" cy="19" r=".6"/><circle cx="8" cy="19" r=".6"/><circle cx="12" cy="19" r=".6"/>'
+    '<circle cx="16" cy="19" r=".6"/><circle cx="20" cy="19" r=".6"/>',
+    "breathwork": '<path d="M3 8.5h10.5a3 3 0 1 0-3-3"/><path d="M3 12.5h15a3 3 0 1 1-3 3"/><path d="M3 16.5h7"/>',
+    "sound-bath": '<circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.6"/>'
+    '<path d="M3.5 8.5a9.5 9.5 0 0 0 0 7M20.5 8.5a9.5 9.5 0 0 1 0 7"/>',
+    "somatics": '<path d="M7 13V7.5a1.5 1.5 0 0 1 3 0V12M10 11.5V5.5a1.5 1.5 0 0 1 3 0v6'
+    'M13 11.5V6.5a1.5 1.5 0 0 1 3 0V13M16 11a1.5 1.5 0 0 1 3 0v4a6 6 0 0 1-6 6h-.8'
+    'a6 6 0 0 1-5-2.7L4.6 14.6a1.5 1.5 0 0 1 2.4-1.8L7 13"/>',
+    "contact-improvisation": '<circle cx="7.5" cy="4.5" r="1.7"/><circle cx="16.5" cy="4.5" r="1.7"/>'
+    '<path d="M7.5 7 9 13l-2 7.5M16.5 7 15 13l2 7.5M8.6 10.5 12 12.5l3.4-2"/>',
+    "qigong": '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a4.25 4.25 0 0 1 0 8.5 4.25 4.25 0 0 0 0 8.5"/>'
+    '<circle cx="12" cy="7.75" r=".9"/><circle cx="12" cy="16.25" r=".9"/>',
+    "tantra": '<path d="M12 19.5c-2.6-2.6-3.2-6.4 0-11.5 3.2 5.1 2.6 8.9 0 11.5z"/>'
+    '<path d="M12 19.5c-4.4 0-8-2.8-8.5-7 3.6-.2 6.6 2 8.5 7zM12 19.5c4.4 0 8-2.8 8.5-7-3.6-.2-6.6 2-8.5 7z"/>',
+    "authentic-relating": '<path d="M4 4.5h9.5a2 2 0 0 1 2 2V11a2 2 0 0 1-2 2H8.5L5.5 15.5V13H4'
+    'a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2z"/><path d="M18 8.5h2a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2h-1.5v2.5'
+    'L15.5 17H12a2 2 0 0 1-2-2v-.5"/>',
+    "family-constellations": '<circle cx="12" cy="4.5" r="1.8"/><circle cx="5" cy="17.5" r="1.8"/>'
+    '<circle cx="19" cy="17.5" r="1.8"/><circle cx="12" cy="12.5" r="1.8"/>'
+    '<path d="M12 6.3v4.4M10.6 13.6 6.4 16.4M13.4 13.6l4.2 2.8M6.8 17.5h10.4"/>',
+    "kirtan": '<path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>',
+    "bohm-dialogue": '<circle cx="12" cy="4.5" r="1.5"/><circle cx="18.5" cy="8.25" r="1.5"/>'
+    '<circle cx="18.5" cy="15.75" r="1.5"/><circle cx="12" cy="19.5" r="1.5"/>'
+    '<circle cx="5.5" cy="15.75" r="1.5"/><circle cx="5.5" cy="8.25" r="1.5"/>',
+    # topics
+    "psychedelics": '<path d="M3.5 11.5a8.5 6.5 0 0 1 17 0z"/><path d="M10 11.5v6.5a2 2 0 0 0 4 0v-6.5"/>'
+    '<circle cx="9" cy="8.5" r=".8"/><circle cx="14.5" cy="7.5" r=".8"/>',
+    "consciousness": '<path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"/>'
+    '<circle cx="12" cy="12" r="3"/>',
+    "connection & intimacy": '<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.2a4.2 4.2 0 0 1 7.5 2.6'
+    'C19.5 15.4 12 20 12 20z"/>',
+    "healing & wellbeing": '<path d="M5 19c0-8 5.5-14 14.5-14 0 9-6 14-14.5 14z"/><path d="M5 19l8.5-8.5"/>',
+    "spirituality & ritual": '<path d="M12 3c2.2 3 4 5 4 7.8a4 4 0 0 1-8 0c0-1.9 1-3.1 2-4.1 0 1.9.9 2.9 2 2.9'
+    ' 0-2-1.2-3.8 0-6.6z"/><path d="M7 20.5h10M9 17.5h6"/>',
+    "tech & ai": '<rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M10 3.5V7M14 3.5V7M10 17v3.5'
+    'M14 17v3.5M3.5 10H7M3.5 14H7M17 10h3.5M17 14h3.5"/>',
+    "startups & work": '<rect x="3.5" y="7.5" width="17" height="11.5" rx="1.5"/>'
+    '<path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5M3.5 12.5h17"/>',
+    "arts & creativity": '<path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.7 1.6-1.5 0-.6-.4-1-.4-1.6 0-.8.6-1.4 1.4-1.4'
+    'H17a4 4 0 0 0 4-4C21 7.3 17 3 12 3z"/><circle cx="7.5" cy="11" r=".9"/><circle cx="10" cy="7"'
+    ' r=".9"/><circle cx="14.5" cy="7" r=".9"/>',
+    "music & sound": '<path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="16" r="2"/>',
+    "nature & outdoors": '<path d="M2.5 20 9 9.5l4 6.5 3-4 5.5 8z"/><circle cx="17.5" cy="5.5" r="2"/>',
+    "society & politics": '<circle cx="12" cy="7" r="2.3"/><circle cx="5.5" cy="9" r="1.8"/>'
+    '<circle cx="18.5" cy="9" r="1.8"/><path d="M7.5 19.5v-2.5a4.5 4.5 0 0 1 9 0v2.5'
+    'M2.5 18.5v-1.5a3 3 0 0 1 4-2.8M21.5 18.5v-1.5a3 3 0 0 0-4-2.8"/>',
+    "science & ideas": '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6'
+    'c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',
+}
+_SPARK_ICON = '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>'
+
+
+def explore_icon(key: str, tone: int) -> str:
+    return (
+        f'<span class="explore-art explore-tone-{tone % 3}" aria-hidden="true">'
+        '<svg viewBox="0 0 24 24">'
+        f"{EXPLORE_ICONS.get(key, _SPARK_ICON)}</svg></span>"
+    )
+
+
 def build_explore_tiles(events: list[dict]) -> None:
     """Every practice and topic with something on in the next 30 days, as
-    a tile with its count and a picture from one of its listings — the
-    site's whole range in one glance, at the foot of every event and
-    listing page."""
+    a tile with its icon and count — the site's whole range in one
+    glance, at the foot of every event and listing page."""
     EXPLORE_TILES.clear()
     month = within_window(events, 30)
-    # no two tiles share a picture: practices pick first (their pools
-    # are small), the broad topics take from what's left
-    used: set[str] = set()
 
-    def picture(pool: list[dict]) -> str:
-        """The richest listing's art (soonest among equals), else that
-        listing's placeholder gradient."""
-        ranked = sorted(
-            enumerate(pool), key=lambda ie: (-(ie[1].get("quality_score") or 0), ie[0])
-        )
-        for _, e in ranked:
-            art = e.get("image_url")
-            if art and art not in used:
-                used.add(art)
-                fallback = esc(art.replace("'", "%27"))
-                return (
-                    f'<img class="explore-art" alt="" loading="lazy" width="56" height="56" '
-                    f'src="{esc(thumb(art, 112) + "&h=112&fit=cover")}" '
-                    f"onerror=\"this.onerror=null;this.src='{fallback}'\">"
-                )
-        lead = pool[0] if pool else {"title": ""}
-        return (
-            f'<span class="explore-art" aria-hidden="true" '
-            f'style="background:{placeholder_gradient(lead)}"></span>'
-        )
-
-    def tile(kind: str, key: str, href: str, label: str, pool: list[dict]) -> None:
+    def tile(kind: str, key: str, href: str, label: str, n: int) -> None:
         EXPLORE_TILES.append((
             kind,
             key,
             f'<a class="explore-tile" href="{href}" '
             f'data-goatcounter-click="static/explore-{kind}">'
-            f"{picture(pool)}"
+            f"{explore_icon(key, len(EXPLORE_TILES))}"
             f'<span class="explore-text"><span class="explore-name">{esc(label)}</span>'
-            f'<span class="explore-count">{len(pool)} this month</span></span></a>',
+            f'<span class="explore-count">{n} this month</span></span></a>',
         ))
 
     for slug_, spec, matched in SITE_PRACTICES:
-        pool = within_window(matched, 30)
-        if pool:
-            tile("practice", slug_, practice_url(slug_), spec.get("chip") or spec["label"], pool)
+        n = len(within_window(matched, 30))
+        if n:
+            tile("practice", slug_, practice_url(slug_), spec.get("chip") or spec["label"], n)
     site_topics = SITE_JSON.get("topics")
     for key, (slug_, _) in TOPICS.items():
         if site_topics is not None and key not in site_topics:
             continue
-        pool = [e for e in month if key in (e.get("topics") or [])]
-        if pool:
-            tile("topic", key, topic_url(slug_), key, pool)
+        n = sum(1 for e in month if key in (e.get("topics") or []))
+        if n:
+            tile("topic", key, topic_url(slug_), key, n)
 
 
 def explore_html(kind: str | None = None, key: str | None = None) -> str:

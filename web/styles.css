@@ -2537,15 +2537,34 @@ body.theme-night .blob { opacity: 0.35; }
   border-color: var(--peach);
 }
 
-/* a picture from one of the tile's own listings */
+/* a drawn icon on a soft tint of one of the site's accents */
 .explore-art {
   flex: none;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 3.5rem;
   height: 3.5rem;
-  border-radius: calc(var(--radius) - 10px);
-  object-fit: cover;
-  background: var(--card-edge);
+  border-radius: calc(var(--radius) - 8px);
+  color: var(--peach);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.explore-tone-1 { color: color-mix(in srgb, var(--peach) 50%, var(--gold)); }
+.explore-tone-2 { color: var(--gold); }
+
+.explore-art svg {
+  width: 1.75rem;
+  height: 1.75rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.explore-tile:hover .explore-art {
+  background: color-mix(in srgb, currentColor 24%, transparent);
 }
 
 .explore-text {
@@ -2616,6 +2635,10 @@ body.theme-night .blob { opacity: 0.35; }
   .explore-art {
     width: 2.6rem;
     height: 2.6rem;
+  }
+  .explore-art svg {
+    width: 1.3rem;
+    height: 1.3rem;
   }
   .explore-name {
     font-size: 0.9rem;
