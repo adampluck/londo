@@ -567,7 +567,8 @@
 
   // £7.50, not £7.5 — mirror of _pounds() in scripts/build_site.py
   function pounds(n) {
-    return Number.isInteger(n) ? `£${n}` : `£${n.toFixed(2)}`;
+    const v = Number(n);
+    return Number.isInteger(v) ? `£${v}` : `£${v.toFixed(2)}`;
   }
 
   function practiceSpec(slug) {

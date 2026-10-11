@@ -1519,7 +1519,7 @@ def fetch_gone_events() -> list[dict]:
         [("duplicate_of", "not.is.null"), ("start_at", f"gte.{since}")],
         [
             ("duplicate_of", "is.null"),
-            ("start_at", f"gte.{now.isoformat()}"),
+            ("start_at", f"gte.{since}"),
             ("last_seen_at", f"lt.{stale}"),
         ],
     ):
@@ -1529,7 +1529,7 @@ def fetch_gone_events() -> list[dict]:
                 [
                     ("select", "source,source_id,title,start_at,duplicate_of,"
                      "organizer_name,topics,category,tags,description,"
-                     "is_online,hidden"),
+                     "is_online,hidden,last_seen_at"),
                     ("order", "start_at.desc,source.asc,source_id.asc"),
                     ("limit", "1000"),
                     ("offset", str(len(rows))),
@@ -1542,7 +1542,13 @@ def fetch_gone_events() -> list[dict]:
             if len(batch) < 1000:
                 break
         out.extend(rows)
-    return out
+    # a past listing isn't re-scraped once over, so it was withdrawn only
+    # if it vanished from its source well before the date
+    return [
+        e for e in out
+        if e.get("duplicate_of")
+        or _parse_ts(e["last_seen_at"]) < _parse_ts(e["start_at"]) - timedelta(days=3)
+    ]
 
 
 def _parse_ts(value: str) -> datetime:
@@ -2314,7 +2320,7 @@ def extra_css(css_prefix: str) -> str:
 def fmt_price(event: dict) -> str:
     if event.get("is_free"):
         return "Free"
-    if event.get("price_min") is None:
+    if event.get("price_min") is None or event["price_min"] >= PRICE_CEILING:
         return ""
     low = event["price_min"]
     high = event.get("price_max")
@@ -2375,7 +2381,10 @@ def event_meta(event: dict, past: bool = False) -> tuple[str, str]:
     if start.year != datetime.now(LONDON).year:
         day += start.strftime(" %Y")
     place = event_place(event)
-    title = f"{event['title']} · {day}" + (f", {place}" if place else "")
+    # "𝕤𝕡𝕖𝕔𝕚𝕒𝕝 | Acid Chess Club" reads as noise in a result: NFKC folds
+    # the maths-alphabet letters back to plain ones
+    name = unicodedata.normalize("NFKC", event["title"])
+    title = f"{name} · {day}" + (f", {place}" if place else "")
     lead = [fmt_when_short(event).replace(" · ", ", ")]
     if place:
         lead.append(place)
@@ -2542,7 +2551,7 @@ def event_page(event: dict, past: bool = False) -> str:
     elif event.get("is_free"):
         json_ld["isAccessibleForFree"] = True
         offer = {"price": "0", "priceCurrency": "GBP"}
-    elif event.get("price_min") is not None:
+    elif fmt_price(event):
         offer = {"price": str(event["price_min"]), "priceCurrency": "GBP"}
     if offer:
         json_ld["offers"] = {
