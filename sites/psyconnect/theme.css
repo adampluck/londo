@@ -149,16 +149,6 @@ body {
   outline-offset: 2px;
 }
 
-/* static pages put the switch top-right of the header block */
-.static-header {
-  position: relative;
-}
-
-.static-header .theme-toggle {
-  position: absolute;
-  top: 1.4rem;
-  right: 1.5rem;
-}
 
 /* Reserve the launch-splash wordmark's box up-front. The logo is a wide PNG
    (2971x508) sized to width:52% with height:auto, so until it decodes its
@@ -170,25 +160,25 @@ body {
 }
 
 /* cross-stitch wordmark — full-colour PNG, always a real click target */
-.topbar h1 a.home {
+.topbar :is(h1, .site-title) a.home {
   background: none !important;
   -webkit-background-clip: border-box !important;
   background-clip: border-box !important;
   color: inherit !important;
   -webkit-text-fill-color: inherit;
 }
-.topbar h1 a.home:any-link,
-.topbar h1 a.home:link,
-.topbar h1 a.home:visited,
-.topbar h1 a.home:hover,
-.topbar h1 a.home:active,
-.topbar h1 a.home:focus {
+.topbar :is(h1, .site-title) a.home:any-link,
+.topbar :is(h1, .site-title) a.home:link,
+.topbar :is(h1, .site-title) a.home:visited,
+.topbar :is(h1, .site-title) a.home:hover,
+.topbar :is(h1, .site-title) a.home:active,
+.topbar :is(h1, .site-title) a.home:focus {
   color: inherit !important;
   -webkit-text-fill-color: inherit;
   text-decoration: none;
 }
-.topbar h1 a.home img,
-.topbar h1 img {
+.topbar :is(h1, .site-title) a.home img,
+.topbar :is(h1, .site-title) img {
   display: block;
   height: clamp(2.2rem, 4.5vw, 3rem);
   width: auto;
@@ -1067,8 +1057,8 @@ body.theme-night .blob { opacity: 0.3; }
 :root[data-theme="dark"] .banner img,
 :root[data-theme="dark"] .spotlight-media img,
 :root[data-theme="dark"] .static-figure img { filter: brightness(0.9); }
-:root[data-theme="dark"] .topbar h1 a.home img,
-:root[data-theme="dark"] .topbar h1 img,
+:root[data-theme="dark"] .topbar :is(h1, .site-title) a.home img,
+:root[data-theme="dark"] .topbar :is(h1, .site-title) img,
 /* the plum wordmark PNG vanishes into the dark ground; alpha survives
    brightness(0), so this repaints the stitches bone-white. The launch
    splash is exempt — it stays cream in both schemes. */
@@ -1083,8 +1073,8 @@ body.theme-night .blob { opacity: 0.3; }
   :root:not([data-theme="light"]) .banner img,
   :root:not([data-theme="light"]) .spotlight-media img,
   :root:not([data-theme="light"]) .static-figure img { filter: brightness(0.9); }
-  :root:not([data-theme="light"]) .topbar h1 a.home img,
-  :root:not([data-theme="light"]) .topbar h1 img,
+  :root:not([data-theme="light"]) .topbar :is(h1, .site-title) a.home img,
+  :root:not([data-theme="light"]) .topbar :is(h1, .site-title) img,
   :root:not([data-theme="light"]) .static-logo { filter: brightness(0) invert(0.93); }
   :root:not([data-theme="light"]) .theme-moon { display: none; }
   :root:not([data-theme="light"]) .theme-sun { display: block; }

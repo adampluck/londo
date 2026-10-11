@@ -105,7 +105,7 @@ body {
   flex-wrap: wrap;
 }
 
-.topbar h1 {
+.topbar :is(h1, .site-title) {
   margin: 0;
   font-size: clamp(2.5rem, 6vw, 3.4rem);
   line-height: 1;
@@ -114,7 +114,7 @@ body {
 /* wordmark → homepage / default browse view.
    Gradient clip is text-only: applying it to an <a> that wraps a logo
    <img> (psyconnect) makes the hit-target dead in WebKit. */
-.topbar h1 a.home {
+.topbar :is(h1, .site-title) a.home {
   display: inline-block;
   position: relative;
   z-index: 1;
@@ -127,38 +127,38 @@ body {
   pointer-events: auto;
 }
 
-.topbar h1 a.home:any-link,
-.topbar h1 a.home:link,
-.topbar h1 a.home:visited,
-.topbar h1 a.home:hover,
-.topbar h1 a.home:active,
-.topbar h1 a.home:focus {
+.topbar :is(h1, .site-title) a.home:any-link,
+.topbar :is(h1, .site-title) a.home:link,
+.topbar :is(h1, .site-title) a.home:visited,
+.topbar :is(h1, .site-title) a.home:hover,
+.topbar :is(h1, .site-title) a.home:active,
+.topbar :is(h1, .site-title) a.home:focus {
   text-decoration: none;
   color: inherit;
 }
 
 /* text wordmark (londo) — gradient fill; skip when the link holds an img */
-.topbar h1 a.home:not(:has(img)) {
+.topbar :is(h1, .site-title) a.home:not(:has(img)) {
   background: linear-gradient(100deg, var(--ink) 30%, var(--peach) 75%, var(--gold));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-.topbar h1 a.home:not(:has(img)):any-link,
-.topbar h1 a.home:not(:has(img)):link,
-.topbar h1 a.home:not(:has(img)):visited,
-.topbar h1 a.home:not(:has(img)):hover,
-.topbar h1 a.home:not(:has(img)):active,
-.topbar h1 a.home:not(:has(img)):focus {
+.topbar :is(h1, .site-title) a.home:not(:has(img)):any-link,
+.topbar :is(h1, .site-title) a.home:not(:has(img)):link,
+.topbar :is(h1, .site-title) a.home:not(:has(img)):visited,
+.topbar :is(h1, .site-title) a.home:not(:has(img)):hover,
+.topbar :is(h1, .site-title) a.home:not(:has(img)):active,
+.topbar :is(h1, .site-title) a.home:not(:has(img)):focus {
   color: transparent;
 }
 
-.topbar h1 a.home img {
+.topbar :is(h1, .site-title) a.home img {
   display: block;
   pointer-events: none; /* clicks go to the <a>, not the image */
 }
 
-.topbar h1 a.home:focus-visible {
+.topbar :is(h1, .site-title) a.home:focus-visible {
   outline: 2px solid var(--peach);
   outline-offset: 4px;
   border-radius: 4px;
@@ -1474,13 +1474,13 @@ body.static-page {
 }
 
 .static-main {
-  max-width: 720px;
+  max-width: var(--page-max);
   margin: 0 auto;
   padding: 0.6rem 1.5rem 3.5rem;
 }
 
 .static-footer {
-  max-width: 720px;
+  max-width: var(--page-max);
   margin: 0 auto;
   padding: 0.5rem 1.5rem 3rem;
   text-align: center;
@@ -1585,8 +1585,17 @@ body.static-page {
 
 /* practice pages: the questions, under the listings */
 .static-faq {
-  max-width: 38rem;
   margin: 3rem 0 0;
+}
+
+/* the questions side by side on a wide screen, so a full-width section
+   still reads at a comfortable measure */
+@media (min-width: 900px) {
+  .static-faq dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2.5rem;
+  }
 }
 
 .static-faq h2 {
@@ -1698,7 +1707,6 @@ body.static-page {
 
 .static-intro {
   margin: 0.55rem 0 0;
-  max-width: 38rem;
 }
 
 .static-lead {
@@ -1777,6 +1785,31 @@ body.static-page {
   margin: 0 0 1.5rem;
 }
 
+/* an event page on a wide screen: details, ticket link and blurb beside
+   the picture, which stays in view while the blurb scrolls */
+@media (min-width: 900px) {
+  .static-event.has-figure {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 0 2.75rem;
+    align-items: start;
+  }
+  .static-event.has-figure .static-event-head { grid-column: 1; grid-row: 1; }
+  .static-event.has-figure .static-prose { grid-column: 1; grid-row: 2; }
+  .static-event.has-figure .static-figure {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    position: sticky;
+    top: 1rem;
+    margin: 0.4rem 0 0;
+  }
+}
+
+.static-event-head .static-cta-wrap {
+  margin-bottom: 1.6rem;
+}
+
 .static-figure img {
   display: block;
   width: 100%;
@@ -1848,7 +1881,6 @@ body.static-page {
 
 /* practice pages: what the listings say, between the cards and the FAQ */
 .static-glance {
-  max-width: 46rem;
   margin: 3rem 0 0;
 }
 
@@ -1898,7 +1930,6 @@ body.static-page {
 /* organiser pages: what they've hosted — quiet lines, not cards, so
    nothing here reads as something still on */
 .static-past {
-  max-width: 38rem;
   margin: 3rem 0 0;
   color: var(--ink-dim);
 }
@@ -1931,7 +1962,6 @@ body.static-page {
 
 /* /o/: every host, busiest first */
 .static-hosts {
-  max-width: 38rem;
   margin: 1.4rem 0 0;
   padding: 0;
   list-style: none;
@@ -2101,7 +2131,7 @@ body.theme-night .blob { opacity: 0.35; }
 
   /* compact header */
   .topbar { padding: 1.2rem 1.2rem 0; }
-  .topbar h1 { font-size: 2rem; }
+  .topbar :is(h1, .site-title) { font-size: 2rem; }
   .tagline { font-size: 0.8rem; margin-top: 0.1rem; }
 
   .bottom-tabs {
@@ -2404,5 +2434,149 @@ body.theme-night .blob { opacity: 0.35; }
   }
   #splash .loader {
     animation: none;
+  }
+}
+
+/* ---------- static pages: the main page's header and bench ---------- */
+
+.topbar-actions {
+  align-self: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* sites without theme.css's round keycaps still get a usable pin */
+.map-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 999px;
+  color: var(--ink-dim);
+}
+
+.map-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+}
+
+.map-toggle:hover {
+  color: var(--peach);
+}
+
+.static-controls .static-ticker {
+  margin: 0;
+}
+
+.static-controls .facet-chips a.token {
+  text-decoration: none;
+}
+
+.static-controls form {
+  margin: 0;
+}
+
+/* "everything from …" under a row of related cards */
+.static-related {
+  margin: 2.5rem 0 0;
+}
+
+.static-related-more {
+  display: inline-block;
+  margin-top: 0.9rem;
+  color: var(--mauve);
+  font-size: 0.92rem;
+  text-decoration: none;
+}
+
+.static-related-more:hover {
+  color: var(--peach);
+}
+
+/* every practice and topic with something on, at the foot of the page */
+.static-explore {
+  margin: 3.5rem 0 0;
+}
+
+.static-explore h2 {
+  margin: 0 0 1rem;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.explore-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.7rem;
+}
+
+.explore-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  border-radius: calc(var(--radius) - 6px);
+  background: var(--card);
+  border: 1px solid var(--card-edge);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.explore-tile:hover {
+  border-color: var(--peach);
+}
+
+.explore-name {
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 560;
+  font-size: 1rem;
+}
+
+.explore-count {
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
+
+/* recent lines in two columns on a wide screen */
+@media (min-width: 900px) {
+  .static-past ul {
+    columns: 2;
+    column-gap: 2.5rem;
+  }
+  .static-past li {
+    break-inside: avoid;
+  }
+}
+
+/* the bench sits in the page's own padding already */
+.static-main > .static-controls {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* hosts in columns, each name with its count beside it */
+@media (min-width: 700px) {
+  .static-hosts {
+    columns: 2;
+    column-gap: 3rem;
+  }
+  .static-hosts li {
+    break-inside: avoid;
+  }
+}
+
+@media (min-width: 1050px) {
+  .static-hosts {
+    columns: 3;
   }
 }

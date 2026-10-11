@@ -1942,12 +1942,12 @@ def date_strip_html(events: list[dict], days: int, other_url: str | None) -> str
     return _strip(ticks, ranges)
 
 
-def home_date_strip_html(event: dict) -> str:
-    """The date strip on an event page, which has no day groups of its
-    own: each tick opens the main page on that day, and the event's own
-    day is lit so the strip says where in the month it falls."""
+def home_date_strip_html(event: dict | None = None) -> str:
+    """The date strip on a page with no day groups of its own: each tick
+    opens the main page on that day, and an event page's own day is lit
+    so the strip says where in the month it falls."""
     have = {_start_london(e).date() for e in SITE_EVENTS}
-    own = _start_london(event).date()
+    own = _start_london(event).date() if event else None
     today = datetime.now(LONDON).date()
     ticks = []
     for i in range(max(LISTING_WINDOWS)):
@@ -2034,6 +2034,7 @@ def page(
     css_prefix: str = NESTED_PREFIX,
     head_extra: str = "",
     body_class: str = "static-page",
+    map_href: str | None = None,
 ) -> str:
     # "</" must not appear inside a <script> block: a scraped description
     # containing "</script>" would otherwise break out and execute (XSS)
@@ -2075,10 +2076,7 @@ def page(
 </head>
 <body class="{body_class}">
   <div class="sky" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div><div class="grain"></div></div>
-  <header class="static-header">
-    {theme_toggle_html()}<a class="static-brand" href="{BASE_URL}/">{site_wordmark(css_prefix)}</a>
-    <p class="static-tagline">{esc(SITE["tagline"])}</p>
-  </header>
+  {static_topbar(css_prefix, map_href)}
   <main class="static-main">
   {body}
   </main>
@@ -2181,13 +2179,13 @@ def site_organizers(upcoming: list[dict], past: list[dict]) -> dict[str, dict]:
     }
 
 
-def filters_nav_html(current: str | None, kind: str) -> str:
-    """The home page's filters key and panel, as navigation.
-
-    Same shape as the SPA's bench — a key that opens a panel of chips —
-    but built from <details>, so a static page needs no script. The
-    chips are links to the other listings, and the one you're on is lit.
-    """
+def filter_rows(
+    current: str | None, kind: str, where: list[str] | None = None
+) -> list[tuple[str, list[str]]]:
+    """The home page's filter rows, as links to the other listings, with
+    the one you're on lit. Served in the HTML (not built by script) — they
+    are how a crawler gets from any page to the practice and topic pages.
+    `where`: chips for the location row, already rendered."""
     rows = []
     site_topics = SITE_JSON.get("topics")
     topics = []
@@ -2224,6 +2222,8 @@ def filters_nav_html(current: str | None, kind: str) -> str:
             )
     if modalities:
         rows.append(("modality", modalities))
+    if where:
+        rows.append(("where", where))
 
     # who: the hosts index, and on a host's own page, that host lit
     # beneath it — so the key says where you are there too
@@ -2240,21 +2240,111 @@ def filters_nav_html(current: str | None, kind: str) -> str:
             )
         rows.append(("who", who))
 
-    if not rows:
-        return ""
-    body = "".join(
+    return rows
+
+
+PIN_SVG = (
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6-6.5-11a6.5 '
+    '6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>'
+)
+
+
+def home_view_url(params: dict | None = None, on_map: bool = False) -> str:
+    """The main page opened on a filtered view (its ?modality=/?topic=/
+    ?area= state) and optionally on the map."""
+    qs = urllib.parse.urlencode(home_view_params(params))
+    return f"{BASE_URL}/" + (f"?{qs}" if qs else "") + ("#on-map" if on_map else "")
+
+
+def map_available() -> bool:
+    return (SITE_JSON.get("features") or {}).get("map", True) is not False
+
+
+def static_topbar(css_prefix: str, map_href: str | None = None) -> str:
+    """The main page's header: wordmark and tagline, then the map pin (on
+    pages with something to map) and the theme switch. The wordmark sits
+    in a <p>, not an <h1> — the page's own title is its one heading."""
+    pin = (
+        f'<a class="theme-toggle map-toggle" href="{esc(map_href)}" '
+        'aria-label="Show these on a map" data-goatcounter-click="static/map">'
+        f"{PIN_SVG}</a>"
+        if map_href and map_available()
+        else ""
+    )
+    return f"""<header class="topbar static-topbar">
+    <div>
+      <p class="site-title"><a class="home" href="{BASE_URL}/" aria-label="{esc(display_name())} home">{site_wordmark(css_prefix)}</a></p>
+      <p class="tagline">{esc(SITE["tagline"])}</p>
+    </div>
+    <div class="topbar-actions">{pin}{theme_toggle_html()}</div>
+  </header>"""
+
+
+# opens and shuts the filters panel; the links in it are plain HTML
+_FILTERS_SCRIPT = (
+    "<script>(function(){var b=document.getElementById('filters-toggle'),"
+    "p=document.getElementById('filters-panel'),c=document.getElementById('filters-close');"
+    "if(!b||!p)return;function t(o){p.hidden=!o;b.setAttribute('aria-expanded',o);"
+    "b.classList.toggle('lit',o)}b.addEventListener('click',function(){t(p.hidden)});"
+    "if(c)c.addEventListener('click',function(){t(false)})})();</script>"
+)
+
+
+def static_controls(
+    strip: str,
+    current: str | None,
+    kind: str,
+    context: dict | None = None,
+    where: list[str] | None = None,
+    placeholder: str = "search…",
+) -> str:
+    """The main page's bench: search, free, filters and the date strip, in
+    its markup and ids so both sites' CSS lays it out identically. Search
+    and free open the main page, narrowed to `context` (this page's
+    practice or topic) when there is one."""
+    hidden = "".join(
+        f'<input type="hidden" name="{esc(k)}" value="{esc(v)}">'
+        for k, v in home_view_params(context).items()
+    )
+    rows = filter_rows(current, kind, where)
+    panel = "".join(
         f'<div class="facet-row"><span class="legend facet-legend">{label}</span>'
         f'<div class="facet-chips">{"".join(chips)}</div></div>'
         for label, chips in rows
     )
-    # open on the page you're on: the lit chip says where you are
-    return (
-        '<details class="static-filters">'
-        '<summary class="key filters-key">filters</summary>'
-        f'<div class="filters-panel">'
-        f'<a class="token" href="{BASE_URL}/">everything on</a>{body}'
-        "</div></details>"
-    )
+    return f"""<div class="controls static-controls" id="controls">
+    <form class="controls-row" action="{BASE_URL}/" method="get" role="search">
+      <input id="search" name="q" type="search" placeholder="{esc(placeholder)}" autocomplete="off" aria-label="search events">
+      <div class="unit unit-inline">
+        <label class="switch" title="free events only">
+          <input type="checkbox" id="free-toggle" name="free" value="1" aria-label="free events only" onchange="this.form.submit()">
+          <span class="slider"></span>
+        </label>
+        <span class="legend">free</span>
+      </div>{hidden}
+      <button class="key filters-key" id="filters-toggle" type="button" aria-expanded="false" aria-controls="filters-panel">filters</button>
+    </form>
+    <div class="controls-row bench"><div class="unit unit-grow">{strip}</div></div>
+    <div class="controls-row filters-panel" id="filters-panel" hidden>
+      {panel}
+      <div class="filters-foot">
+        <span class="filters-foot-keys">
+          <a class="key reset-key" href="{BASE_URL}/">everything on</a>
+          <button class="key filters-close" id="filters-close" type="button">close</button>
+        </span>
+      </div>
+    </div>
+  </div>
+  {_FILTERS_SCRIPT}"""
+
+
+def home_view_params(context: dict | None) -> dict:
+    """A topic carries day= so it opens as a filter rather than that
+    topic's intro landing; the rest carry it for the same 30-day view."""
+    params = dict(context or {})
+    if params:
+        params.setdefault("day", "30")
+    return params
 
 
 def _nav_chip(label: str, href: str, here: bool, child: bool = False) -> str:
@@ -2398,48 +2488,90 @@ def event_meta(event: dict, past: bool = False) -> tuple[str, str]:
     return f"{title} — {display_name()}", description
 
 
-RELATED_SHOWN = 6
+RELATED_SHOWN = 3  # cards per "more like this" row (the grid's width); two rows at most
+
+# Filled in by build() before any page is written, so the per-page blocks
+# below are lookups rather than a pass over every listing per page:
+# (source, source_id) -> the practice slugs it matches; host slug -> its
+# upcoming listings; practice slug -> its upcoming listings.
+EVENT_PRACTICES: dict[tuple[str, str], list[str]] = {}
+HOST_EVENTS: dict[str, list[dict]] = {}
+PRACTICE_EVENTS: dict[str, list[dict]] = {}
+# the explore tiles, rendered once: (kind, key, html)
+EXPLORE_TILES: list[tuple[str, str, str]] = []
 
 
-def related_html(event: dict) -> str:
-    """For a page whose event has passed: what's next from the same host,
-    then more of the same practice (else the same topics), so a search
-    that lands here still finds something to go to."""
+def index_listings(events: list[dict], past: list[dict]) -> None:
+    EVENT_PRACTICES.clear()
+    HOST_EVENTS.clear()
+    PRACTICE_EVENTS.clear()
+    for slug_, _spec, matched in SITE_PRACTICES:
+        PRACTICE_EVENTS[slug_] = matched
+    for e in [*events, *past]:
+        EVENT_PRACTICES[(e["source"], e["source_id"])] = [
+            slug_
+            for slug_, spec, _ in SITE_PRACTICES
+            if practice_match(e, spec, slug_)
+        ]
+    for e in events:
+        host = organizer_key(e)
+        if host:
+            HOST_EVENTS.setdefault(host[0], []).append(e)
+
+
+def related_html(event: dict, past: bool = False) -> str:
+    """What else to go to: the host's next dates, then more of the same
+    practice (else the same topics) — two rows of cards at most, each
+    with a way through to the whole listing. On a past event's page this
+    is the point of the page; on an upcoming one it keeps a visitor who
+    landed from a search on the site."""
     seen = {(event["source"], event["source_id"])}
+    # one date per series: a row of the same night four times is one card
+    titles = {slugify_title(event.get("title") or "")}
     sections = []
 
-    def add(heading: str, pool: list[dict]) -> None:
-        picked = [e for e in pool if (e["source"], e["source_id"]) not in seen]
-        picked = picked[:RELATED_SHOWN]
+    def add(heading: str, pool: list[dict], more: tuple[str, str] | None) -> None:
+        picked = []
+        for e in pool:
+            t = slugify_title(e.get("title") or "")
+            if (e["source"], e["source_id"]) in seen or t in titles:
+                continue
+            picked.append(e)
+            titles.add(t)
+            if len(picked) == RELATED_SHOWN:
+                break
         if not picked:
             return
         seen.update((e["source"], e["source_id"]) for e in picked)
         cards = "".join(event_card(e) for e in picked)
+        link = (
+            f'<a class="static-related-more" href="{more[0]}" '
+            f'data-goatcounter-click="static/related-more">{esc(more[1])} →</a>'
+            if more
+            else ""
+        )
         sections.append(
             f'<section class="day-group static-related"><h2 class="day-heading">'
             f"<span>{esc(heading)}</span></h2>"
-            f'<div class="grid">{cards}</div></section>'
+            f'<div class="grid">{cards}</div>{link}</section>'
         )
 
     host = organizer_key(event)
     if host:
+        page_ = organizer_page_for(event)
         add(
-            f"Coming up from {host[1]}",
-            [e for e in SITE_EVENTS if organizer_key(e) == host],
+            f"{'Coming up' if past else 'More'} from {host[1]}",
+            HOST_EVENTS.get(host[0], []),
+            (organizer_page_url(page_[0]), f"everything from {page_[1]}") if page_ else None,
         )
-    practice = next(
-        (
-            (slug_, spec)
-            for slug_, spec, _ in SITE_PRACTICES
-            if practice_match(event, spec, slug_)
-        ),
-        None,
-    )
-    if practice:
-        slug_, spec = practice
+    practices = EVENT_PRACTICES.get((event["source"], event["source_id"]), [])
+    if practices:
+        slug_ = practices[0]
+        spec = PRACTICES[slug_]
         add(
             f"More {spec['label']} coming up",
-            [e for e in SITE_EVENTS if practice_match(e, spec, slug_)],
+            PRACTICE_EVENTS.get(slug_, []),
+            (practice_url(slug_), spec["seo_title"]),
         )
     else:
         topics = set(event.get("topics") or [])
@@ -2451,8 +2583,50 @@ def related_html(event: dict) -> str:
         add(
             "Similar gatherings coming up",
             [e for n, _, e in sorted(overlap, key=lambda t: (-t[0], t[1])) if n],
+            None,
         )
     return "".join(sections)
+
+
+def build_explore_tiles(events: list[dict]) -> None:
+    """Every practice and topic with something on in the next 30 days, as
+    a tile with its count — the site's whole range in one glance, at the
+    foot of every event and listing page."""
+    EXPLORE_TILES.clear()
+    month = within_window(events, 30)
+
+    def tile(kind: str, key: str, href: str, label: str, n: int) -> None:
+        EXPLORE_TILES.append((
+            kind,
+            key,
+            f'<a class="explore-tile" href="{href}" '
+            f'data-goatcounter-click="static/explore-{kind}">'
+            f'<span class="explore-name">{esc(label)}</span>'
+            f'<span class="explore-count">{n} this month</span></a>',
+        ))
+
+    for slug_, spec, matched in SITE_PRACTICES:
+        n = len(within_window(matched, 30))
+        if n:
+            tile("practice", slug_, practice_url(slug_), spec.get("chip") or spec["label"], n)
+    site_topics = SITE_JSON.get("topics")
+    for key, (slug_, _) in TOPICS.items():
+        if site_topics is not None and key not in site_topics:
+            continue
+        n = sum(1 for e in month if key in (e.get("topics") or []))
+        if n:
+            tile("topic", key, topic_url(slug_), key, n)
+
+
+def explore_html(kind: str | None = None, key: str | None = None) -> str:
+    tiles = "".join(h for k, kk, h in EXPLORE_TILES if not (k == kind and kk == key))
+    if not tiles:
+        return ""
+    return (
+        '<section class="static-explore">'
+        f"<h2>Explore {esc(display_name())}</h2>"
+        f'<div class="explore-grid">{tiles}</div></section>'
+    )
 
 
 def topic_chips(event: dict) -> str:
@@ -2473,12 +2647,11 @@ def topic_chips(event: dict) -> str:
             0,
             f'<a class="static-chip" href="{category_url(cat)}">{esc(cat)}</a>',
         )
-    for slug_, spec, _ in SITE_PRACTICES:
-        if practice_match(event, spec, slug_):
-            chips.append(
-                f'<a class="static-chip" href="{practice_url(slug_)}">'
-                f'{esc(spec["label"])}</a>'
-            )
+    for slug_ in EVENT_PRACTICES.get((event["source"], event["source_id"]), []):
+        chips.append(
+            f'<a class="static-chip" href="{practice_url(slug_)}">'
+            f'{esc(PRACTICES[slug_]["label"])}</a>'
+        )
     if not chips:
         return ""
     return f'<p class="static-chips">{"".join(chips)}</p>'
@@ -2631,13 +2804,11 @@ def event_page(event: dict, past: bool = False) -> str:
             "</div>"
         )
 
-    related = ""
     if past:
         cta = (
             '<p class="static-cta-wrap static-cta-note">'
             f"This took place on {esc(when)}.</p>"
         )
-        related = related_html(event)
     elif event.get("source_url"):
         cta = f"""<p class="static-cta-wrap">
       <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
@@ -2653,8 +2824,7 @@ def event_page(event: dict, past: bool = False) -> str:
                "shared in the community chat — no ticket page; "
                "details as posted above</p>")
 
-    # gone: say so up top, then where to go instead, before the old blurb
-    flow = f"{cta}\n    {related}\n    {desc_html}" if past else f"{desc_html}\n    {cta}"
+    related = related_html(event, past)
 
     area = event.get("area")
     kicker_bits = ["took place" if past else "in person", "London"]
@@ -2669,26 +2839,39 @@ def event_page(event: dict, past: bool = False) -> str:
         if host_page
         else ""
     )
+    # past: the old blurb is context, not the point — what's on instead is
+    if past and paragraphs:
+        desc_html = (
+            '<div class="static-prose">'
+            f"<p>{esc(_trim(' '.join(paragraphs), 420))}</p>"
+            "</div>"
+        )
+    # details and the ticket link beside the picture; the blurb under
+    # them; then, full width, what else to go to
     body = f"""
-  {filters_nav_html(None, "event")}
-  {home_date_strip_html(event)}
+  {static_controls(home_date_strip_html(event), None, "event")}
   <nav class="static-crumbs" aria-label="breadcrumb">
     <a href="{BASE_URL}/">{esc(display_name())}</a>
     <span aria-hidden="true">/</span>{host_crumb}
     <span>event</span>
   </nav>
-  <article class="static-event">
-    <p class="static-kicker">{esc(" · ".join(kicker_bits))}</p>
-    <h1 class="static-title">{esc(event["title"])}</h1>
-    {hook}
-    <dl class="static-facts">{"".join(facts)}</dl>
-    {topic_chips(event)}
+  <article class="static-event{' has-figure' if img else ''}">
+    <div class="static-event-head">
+      <p class="static-kicker">{esc(" · ".join(kicker_bits))}</p>
+      <h1 class="static-title">{esc(event["title"])}</h1>
+      {hook}
+      <dl class="static-facts">{"".join(facts)}</dl>
+      {topic_chips(event)}
+      {cta}
+    </div>
     {img}
-    {flow}
-    <p class="static-back">
-      <a href="{BASE_URL}/">← more in-person gatherings on {esc(display_name())}</a>
-    </p>
-  </article>"""
+    {desc_html}
+  </article>
+  {related}
+  {explore_html()}
+  <p class="static-back">
+    <a href="{BASE_URL}/">← more in-person gatherings on {esc(display_name())}</a>
+  </p>"""
     return page(
         page_title,
         description,
@@ -2747,7 +2930,8 @@ def faq_html(faq: list[tuple[str, str]]) -> str:
     """The questions people actually type, answered in prose. Marked up
     as a definition list, and repeated as FAQPage JSON-LD."""
     items = "".join(
-        f"<dt>{esc(q)}</dt><dd>{esc(a)}</dd>" for q, a in faq
+        f'<div class="faq-item"><dt>{esc(q)}</dt><dd>{esc(a)}</dd></div>'
+        for q, a in faq
     )
     return (
         '<section class="static-faq">'
@@ -2816,6 +3000,9 @@ def listing_page(
     extra_html: str = "",
     faq_items: list[tuple[str, str]] | None = None,
     nav: tuple[str, str] | None = None,
+    context: dict | None = None,
+    where: list[str] | None = None,
+    placeholder: str = "search…",
 ) -> str:
     paras = intro or listing_intro_paragraphs(key, kind, label, len(events), days)
     lead_html = "".join(f'<p class="static-lead">{esc(p)}</p>' for p in paras)
@@ -2825,12 +3012,21 @@ def listing_page(
         meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
 
     groups = day_groups(events[:200])
-    # a host's page is their whole diary, not a range of the calendar
+    # a host's page is their whole diary, not a range of the calendar:
+    # its strip opens the main page on a day instead
     strip = (
-        ""
+        home_date_strip_html()
         if kind == "organizer"
         else date_strip_html(strip_events or events, days, other_url)
     )
+    # the pin maps this page's own listings; a host's, everything (the
+    # main page has no host filter)
+    map_href = (
+        home_view_url(context, on_map=True)
+        if context or kind == "organizer"
+        else None
+    )
+    explore_key = ("topic", key) if kind == "topic" else ("practice", key)
     if faq_items is None:
         faq_items = PRACTICES[key].get("faq") or [] if kind == "practice" else []
     faq = faq_html(faq_items) if faq_items else ""
@@ -2859,8 +3055,7 @@ def listing_page(
         )
 
     body = f"""
-  {filters_nav_html(*(nav or (key, kind)))}
-  {strip}
+  {static_controls(strip, *(nav or (key, kind)), context=context, where=where, placeholder=placeholder)}
   <header class="static-list-head">
     <p class="static-kicker">in person · London</p>
     <h1 class="static-title">{esc(seo_title)}</h1>
@@ -2872,7 +3067,8 @@ def listing_page(
   {groups}
   {extra_html}
   {past}
-  {faq}{back_hosts}
+  {faq}
+  {explore_html(*explore_key)}{back_hosts}
   <p class="static-back">
     <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
   </p>"""
@@ -2885,6 +3081,7 @@ def listing_page(
         json_ld=json_ld,
         css_prefix=css_prefix,
         body_class="static-page static-listing",
+        map_href=map_href,
     )
 
 
@@ -2933,7 +3130,7 @@ def organizers_index_page() -> str:
         for slug_, org in rows
     )
     body = f"""
-  {filters_nav_html(None, "hosts")}
+  {static_controls(home_date_strip_html(), None, "hosts")}
   <header class="static-list-head">
     <p class="static-kicker">in person · London</p>
     <h1 class="static-title">Hosts &amp; organisers</h1>
@@ -3388,6 +3585,45 @@ def practice_glance(
     ), price_faq
 
 
+def search_placeholder(label: str) -> str:
+    """"search cacao…" says the box searches within this page's subject;
+    a label too long for a phone-width box falls back to plain."""
+    return f"search {label}…" if len(label) <= 10 else "search within…"
+
+
+def where_chips(link_for, current: str | None = None, map_href: str | None = None) -> list[str]:
+    """The filters panel's location row: an area chip wherever there's
+    somewhere to go, and the map."""
+    chips = [
+        _nav_chip(a, link_for(a), a == current) for a in AREAS if link_for(a)
+    ]
+    if map_href and map_available():
+        chips.append(
+            f'<a class="token token-map" href="{esc(map_href)}">{PIN_SVG}map</a>'
+        )
+    return chips
+
+
+def practice_view(slug_: str, area: str | None = None) -> dict | None:
+    """The main page's filter for this practice, if the main page can show
+    it — a page kept up by past listings alone has no chip there."""
+    if not PRACTICE_EVENTS.get(slug_):
+        return None
+    return {"modality": slug_, **({"area": area} if area else {})}
+
+
+def practice_where(slug_: str, current: str | None = None) -> list[str]:
+    def link(a: str) -> str | None:
+        if a in PRACTICE_AREAS.get(slug_, []):
+            return area_url(slug_, a)
+        if any(e.get("area") == a for e in PRACTICE_EVENTS.get(slug_, [])):
+            return home_view_url(practice_view(slug_, a))
+        return None
+
+    view = practice_view(slug_)
+    return where_chips(link, current, home_view_url(view, on_map=True) if view else None)
+
+
 def practice_page_extras(slug_: str, spec: dict, matched: list[dict]) -> dict:
     """The live-data parts of a practice page, as listing_page kwargs."""
     past = PRACTICE_PAST.get(slug_, [])
@@ -3408,6 +3644,11 @@ def practice_page_extras(slug_: str, spec: dict, matched: list[dict]) -> dict:
         + by_area
         + past_events_html(past, "Recently in London"),
         "faq_items": list(spec.get("faq") or []) + ([price_faq] if price_faq else []),
+        "context": practice_view(slug_),
+        "where": practice_where(slug_),
+        "placeholder": search_placeholder(spec.get("chip") or spec["label"])
+        if practice_view(slug_)
+        else "search…",
     }
 
 
@@ -3474,6 +3715,11 @@ def area_page(
         + past_events_html(past, f"Recently in {area} London") + back,
         faq_items=[price_faq] if price_faq else [],
         nav=(slug_, "practice"),
+        context=practice_view(slug_, area),
+        where=practice_where(slug_, area),
+        placeholder=search_placeholder(spec.get("chip") or label)
+        if practice_view(slug_)
+        else "search…",
     )
 
 
@@ -3583,6 +3829,8 @@ def build(outdir: Path) -> None:
     )
 
     _EVENT_SLUGS = assign_event_slugs(events, past_events)
+    index_listings(events, past_events)
+    build_explore_tiles(events)
     urls = [f"{BASE_URL}/"]
 
     about_paras = ABOUT_CONTENT.get(SITE["name"])
@@ -3675,9 +3923,19 @@ def build(outdir: Path) -> None:
         if not topic_events:
             continue
         canonical = topic_url(slug_)
+        month = within_window(topic_events, 30)
+        view = {"topic": slug_}
         write_listing(
             outdir, ("t", slug_), canonical,
             key, key, seo_title, topic_events, "topic", urls,
+            context=view,
+            where=where_chips(
+                lambda a, view=view, month=month: home_view_url({**view, "area": a})
+                if any(e.get("area") == a for e in month)
+                else None,
+                map_href=home_view_url(view, on_map=True),
+            ),
+            placeholder=search_placeholder(key),
         )
         write_html_redirect(outdir / "t" / f"{slug_}.html", canonical)
 
