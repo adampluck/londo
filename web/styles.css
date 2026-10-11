@@ -2772,3 +2772,8 @@ body.theme-night .blob { opacity: 0.35; }
     display: none;
   }
 }
+
+/* a listing's day anchors sit on cards now (week groups): land with room */
+.static-listing .card[id] {
+  scroll-margin-top: 1rem;
+}

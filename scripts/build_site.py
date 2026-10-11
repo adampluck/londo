@@ -1973,20 +1973,39 @@ def home_date_strip_html(event: dict | None = None) -> str:
     return _strip(ticks, ranges)
 
 
-def day_groups(events: list[dict]) -> str:
-    """Events as the SPA's day-grouped card grids, each day an anchor
-    the date strip above can jump to."""
-    by_day: dict[str, list[dict]] = {}
+def week_groups(events: list[dict]) -> str:
+    """Events as card grids grouped by week, each card carrying its own
+    day. A listing rarely has two things on one day, so day headings left
+    a row of one card and two empty slots; a week fills the grid. The
+    first card of each day is that day's anchor (#d-YYYY-MM-DD) for the
+    date strip above to jump to."""
+    today = datetime.now(LONDON).date()
+    this_monday = today - timedelta(days=today.weekday())
+    by_week: dict = {}
     for e in events:
-        by_day.setdefault(_start_london(e).date().isoformat(), []).append(e)
+        day = _start_london(e).date()
+        by_week.setdefault(day - timedelta(days=day.weekday()), []).append(e)
     sections = []
-    for key, day_events in by_day.items():
-        day = _start_london(day_events[0]).strftime("%A %-d %B")
-        cards = "".join(event_card(e) for e in day_events)
+    anchored: set = set()
+    for monday, week_events in by_week.items():
+        if monday <= this_monday:
+            heading = "This week"
+        elif monday == this_monday + timedelta(days=7):
+            heading = "Next week"
+        else:
+            heading = "Week of " + monday.strftime("%-d %B")
+        cards = []
+        for e in week_events:
+            day = _start_london(e).date().isoformat()
+            card = event_card(e, dated=True)
+            if day not in anchored:
+                anchored.add(day)
+                card = card.replace('<a class="card', f'<a id="d-{day}" class="card', 1)
+            cards.append(card)
         sections.append(
-            f'<section class="day-group" id="d-{key}"><h2 class="day-heading">'
-            f"<span>{esc(day)}</span></h2>"
-            f'<div class="grid">{cards}</div></section>'
+            f'<section class="day-group"><h2 class="day-heading">'
+            f"<span>{esc(heading)}</span></h2>"
+            f'<div class="grid">{"".join(cards)}</div></section>'
         )
     return "".join(sections)
 
@@ -3109,7 +3128,7 @@ def listing_page(
     if len(meta_desc) > 160:
         meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
 
-    groups = day_groups(events[:200])
+    groups = week_groups(events[:200])
     # a host's page is their whole diary, not a range of the calendar:
     # its strip opens the main page on a day instead
     strip = (
