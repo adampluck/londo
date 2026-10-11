@@ -161,9 +161,48 @@
   // Where a card goes: the ticket/details page, or for a chat-shared
   // listing without one, its page on this site (relative, so it works at
   // both the github.io subpath and the custom domain).
+  // A listing's own page here (/e/<slug>/, from event-pages.json), where
+  // the ticket link sits beside the details, the host's next dates and
+  // more like it. One added since the last build has no page yet and
+  // links straight out; a chat-shared flyer always has one, by title.
+  let EVENT_PAGES = {};
+
+  async function loadEventPages() {
+    try {
+      const resp = await fetch("event-pages.json", { cache: "no-cache" });
+      if (resp.ok) EVENT_PAGES = await resp.json();
+    } catch (_) {
+      /* no map: cards link out, as they always did */
+    }
+  }
+
+  function eventPage(e) {
+    const slug = EVENT_PAGES[e.source + ":" + e.source_id];
+    if (slug) return slug;
+    return e.source_url ? null : slugifyTitle(e.title);
+  }
+
   function eventHref(e) {
-    if (e.source_url) return withUtm(e.source_url);
-    return new URL("e/" + slugifyTitle(e.title) + "/", document.baseURI).toString();
+    const slug = eventPage(e);
+    if (slug) return new URL("e/" + slug + "/", document.baseURI).toString();
+    return withUtm(e.source_url);
+  }
+
+  // An outbound link opens a new tab and counts as a ticket click; one to
+  // the listing's page here stays in the tab and counts as an open.
+  function linkEvent(a, e, clickPrefix) {
+    a.href = eventHref(e);
+    const host = organizerSlug(e.organizer_name);
+    if (eventPage(e)) {
+      a.dataset.goatcounterClick = "open/" + clickPrefix + host;
+    } else {
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.dataset.goatcounterClick = "out/" + clickPrefix + host;
+    }
+    // without this, count.js falls back to the link's innerHTML (the
+    // whole card's markup) as the click's title
+    a.dataset.goatcounterTitle = e.title || "";
   }
 
   // Tag outbound event links with UTM params so organisers can see
@@ -1779,7 +1818,9 @@
         `<strong>${escapeHtml(e.title)}</strong><br>` +
           `${when} · ${escapeHtml(formatTime(e))}<br>` +
           `${escapeHtml(e.venue_name || e.address || "")}<br>` +
-          `<a href="${escapeHtml(eventHref(e))}" target="_blank" rel="noopener">open ↗</a>`
+          (eventPage(e)
+            ? `<a href="${escapeHtml(eventHref(e))}">details →</a>`
+            : `<a href="${escapeHtml(eventHref(e))}" target="_blank" rel="noopener">open ↗</a>`)
       );
       state.markerLayer.addLayer(marker);
     }
@@ -1833,15 +1874,7 @@
   function card(e, index) {
     const a = document.createElement("a");
     a.className = "card" + (skipCardAnim ? " instant" : "");
-    a.href = eventHref(e);
-    a.target = "_blank";
-    a.rel = "noopener";
-    // a chat-shared listing goes to its own page here, not out
-    if (e.source_url)
-      a.dataset.goatcounterClick = "out/" + organizerSlug(e.organizer_name);
-    // without this, count.js falls back to the link's innerHTML (the
-    // whole card's markup) as the click's title
-    a.dataset.goatcounterTitle = e.title || "";
+    linkEvent(a, e, "");
     if (!skipCardAnim)
       a.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
 
@@ -2122,14 +2155,7 @@
     // same staggered settle as the browse cards (see card())
     if (!skipCardAnim)
       card.style.animationDelay = `${Math.min(index * 45, 360)}ms`;
-    card.href = eventHref(e);
-    card.target = "_blank";
-    card.rel = "noopener";
-    // a chat-shared listing goes to its own page here, not out
-    if (e.source_url)
-      card.dataset.goatcounterClick =
-        "out/" + kind + "/" + organizerSlug(e.organizer_name);
-    card.dataset.goatcounterTitle = e.title || "";
+    linkEvent(card, e, kind + "/");
 
     if (e.image_url) {
       const media = document.createElement("div");
@@ -2899,11 +2925,40 @@
 
   let eventsLoaded = false;
 
+  // Cards open the listing's page in this tab, so back has to land where
+  // you were. A page kept whole in the back/forward cache needs nothing;
+  // one that reloads renders its list only after the fetch, by which time
+  // the browser has given up restoring — so keep the spot ourselves.
+  const SCROLL_KEY = "londo:scroll";
+  window.addEventListener("pagehide", () => {
+    try {
+      sessionStorage.setItem(
+        SCROLL_KEY,
+        JSON.stringify({ url: location.href, y: window.scrollY })
+      );
+    } catch (_) {
+      /* private mode: back lands at the top, as before */
+    }
+  });
+
+  function restoreScroll() {
+    try {
+      const nav = performance.getEntriesByType("navigation")[0];
+      if (!nav || nav.type !== "back_forward") return;
+      const saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "null");
+      if (saved && saved.url === location.href && saved.y > 0)
+        requestAnimationFrame(() => window.scrollTo(0, saved.y));
+    } catch (_) {
+      /* nothing saved, or storage refused */
+    }
+  }
+
   async function attemptLoad(loadingTimer) {
     try {
       const [events] = await Promise.all([
         fetchEventsWithRetry(),
         loadPractices(),
+        loadEventPages(),
       ]);
       state.events = events.filter(siteMatch);
       clearInterval(loadingTimer);
@@ -2923,6 +2978,7 @@
       renderLastUpdated();
       syncCompass();
       render();
+      restoreScroll();
       syncMapFromHash();
       hideSplash();
       maybeShowInstallHint();

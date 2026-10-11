@@ -293,12 +293,13 @@ def _spotlight_card(e: dict, kind: str, index: int, style: str, extra: bool) -> 
     """Mirror of spotlightCard() in web/app.js. Always .instant: the
     settle animation starts at opacity 0, which would hold back the LCP."""
     cls = f"spotlight-card spotlight-{kind} instant" + (" spotlight-pick-extra" if extra else "")
-    href = with_utm(e["source_url"]) if e.get("source_url") else f"e/{slugify_title(e.get('title'))}/"
-    attrs = [f'class="{cls}"', f'href="{esc(href)}"', 'target="_blank"', 'rel="noopener"']
+    # every listing in the build has its own page: the card opens it, in
+    # the same tab, and the ticket link is on that page
+    href = f"e/{event_slug(e)}/"
+    attrs = [f'class="{cls}"', f'href="{esc(href)}"']
     if style:
         attrs.append(f'style="{style}"')
-    if e.get("source_url"):
-        attrs.append(f'data-goatcounter-click="out/{kind}/{esc(organizer_slug(e.get("organizer_name")))}"')
+    attrs.append(f'data-goatcounter-click="open/{kind}/{esc(organizer_slug(e.get("organizer_name")))}"')
     attrs.append(f'data-goatcounter-title="{esc(e.get("title") or "")}"')
 
     parts = []
@@ -3889,7 +3890,6 @@ def build(outdir: Path) -> None:
     inject_theme_boot(outdir)
     inject_robots_meta(outdir)
     inline_shell_css(outdir)
-    inject_spotlight(outdir, events)
 
     global SITE_PRACTICES, SITE_ORGANIZERS, SITE_EVENTS
     # a year back: host pages' history, past event pages, and what keeps a
@@ -3916,6 +3916,13 @@ def build(outdir: Path) -> None:
     _EVENT_SLUGS = assign_event_slugs(events, past_events)
     index_listings(events, past_events)
     build_explore_tiles(events)
+    # the static top-picks row links to event pages, so it waits for slugs
+    inject_spotlight(outdir, events)
+    # Which listings have a page of their own, for the main page's cards:
+    # one added since this build has none yet, and links out instead.
+    (outdir / "event-pages.json").write_text(
+        json.dumps({f"{e['source']}:{e['source_id']}": event_slug(e) for e in events})
+    )
     urls = [f"{BASE_URL}/"]
 
     about_paras = ABOUT_CONTENT.get(SITE["name"])
