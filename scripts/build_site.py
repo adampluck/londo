@@ -1829,9 +1829,11 @@ def placeholder_gradient(event: dict) -> str:
     return f"linear-gradient(135deg, {c1}, {c2})"
 
 
-def event_card(event: dict) -> str:
+def event_card(event: dict, dated: bool = False) -> str:
     """The SPA's card (web/app.js card()) as static markup, linking to
-    the event's own page here rather than out to the ticket page."""
+    the event's own page here rather than out to the ticket page.
+    `dated`: the card isn't under a day heading, so its time line carries
+    the day too ("Fri 23 Oct · 20:00 – 23:00")."""
     title = esc(event.get("title") or "")
     if event.get("image_url"):
         art = event["image_url"]
@@ -1855,7 +1857,8 @@ def event_card(event: dict) -> str:
 
     body = [
         f'<p class="time"><span class="dot {time_of_day_class(event)}"></span>'
-        f"{esc(fmt_time_range(event))}</p>",
+        + (esc(_start_london(event).strftime("%a %-d %b")) + " · " if dated else "")
+        + f"{esc(fmt_time_range(event))}</p>",
         f"<h3>{title}</h3>",
     ]
     if event.get("hook"):
@@ -2559,7 +2562,7 @@ def related_html(event: dict, past: bool = False) -> str:
         if not picked:
             return
         seen.update((e["source"], e["source_id"]) for e in picked)
-        cards = "".join(event_card(e) for e in picked)
+        cards = "".join(event_card(e, dated=True) for e in picked)
         link = (
             f'<a class="static-related-more" href="{more[0]}" '
             f'data-goatcounter-click="static/related-more">{esc(more[1])} →</a>'
