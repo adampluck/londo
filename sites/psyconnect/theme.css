@@ -39,6 +39,7 @@
   --mauve: light-dark(#7a6553, #a3907c);  /* quiet label ink, no longer sage */
   --peach: light-dark(#6d4160, #cb9dbf);  /* plum — brand, links, selection */
   --gold: light-dark(#8a5f14, #dba84a);   /* ochre — hooks, times, headings */
+  --cta-ink: light-dark(#fdf6ee, #1c1512); /* text on a filled plum button */
   --ink: light-dark(#3a2b20, #f2e7d7);    /* dark umber / warm bone */
   --ink-dim: light-dark(#6b5443, #b7a48d);
   --mono: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;

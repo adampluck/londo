@@ -1785,33 +1785,153 @@ body.static-page {
   margin: 0 0 1.5rem;
 }
 
-/* an event page on a wide screen: details, ticket link and blurb beside
-   the picture, which stays in view while the blurb scrolls */
+/* an event page: title, line and ticket button; the picture with the
+   details under it; the blurb. On a wide screen the picture and details
+   sit alongside and stay in view while the blurb scrolls. */
+.static-event {
+  margin-top: 0.4rem;
+}
+
 @media (min-width: 900px) {
-  .static-event.has-figure {
+  .static-event {
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
     grid-template-rows: auto 1fr;
-    gap: 0 2.75rem;
+    gap: 0 3rem;
     align-items: start;
   }
-  .static-event.has-figure .static-event-head { grid-column: 1; grid-row: 1; }
-  .static-event.has-figure .static-event-body { grid-column: 1; grid-row: 2; }
-  .static-event.has-figure .static-figure {
+  .static-event-head { grid-column: 1; grid-row: 1; }
+  .static-event-body { grid-column: 1; grid-row: 2; }
+  .static-event-aside {
     grid-column: 2;
     grid-row: 1 / span 2;
     position: sticky;
     top: 1rem;
-    margin: 0.4rem 0 0;
   }
 }
 
-.static-event-head .static-cta-wrap {
-  margin: 0 0 1.4rem;
+.static-event .static-title {
+  margin-top: 0.6rem;
+}
+
+.static-event-aside .static-figure {
+  margin: 0 0 1rem;
+}
+
+.static-event-body {
+  margin-top: 0.4rem;
 }
 
 .static-event-body .static-cta-wrap {
-  margin: 1.4rem 0 0;
+  margin: 1.6rem 0 0;
+}
+
+/* the ticket link: the one thing on the page to press, so it's filled */
+.static-cta-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  margin: 1.3rem 0 2rem;
+}
+
+.static-event .static-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.85rem 1.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--peach);
+  color: var(--cta-ink, #1a1424);
+  font-family: var(--display);
+  font-size: 1.02rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--peach) 70%, transparent);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.static-event .static-cta:hover {
+  background: var(--peach);
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.static-cta-price {
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+}
+
+.static-past-note {
+  display: inline-block;
+  margin: 1rem 0 1.4rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid var(--card-edge);
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+}
+
+/* the details as a quiet list: label left, value right */
+.static-facts-list {
+  display: block;
+  padding: 0.2rem 1.1rem;
+}
+
+.static-facts-list .static-fact {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr);
+  gap: 0.8rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--card-edge);
+}
+
+.static-facts-list .static-fact:first-child {
+  border-top: 0;
+}
+
+.static-facts-list .static-fact dt {
+  margin: 0.15rem 0 0;
+}
+
+.fact-main,
+.fact-sub {
+  display: block;
+}
+
+.fact-sub {
+  margin-top: 0.15rem;
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+}
+
+.fact-link,
+.static-fact dd a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--peach) 60%, transparent);
+  text-underline-offset: 3px;
+}
+
+.fact-link {
+  display: inline-block;
+  margin-top: 0.3rem;
+  color: var(--peach);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.static-fact dd a:hover,
+.fact-link:hover {
+  color: var(--peach);
+}
+
+@media (max-width: 640px) {
+  .static-event .static-cta {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
 }
 
 .static-figure img {
@@ -2642,5 +2762,21 @@ body.theme-night .blob { opacity: 0.35; }
   }
   .explore-name {
     font-size: 0.9rem;
+  }
+}
+
+/* a tall flyer shouldn't push the details off the screen: cap the
+   picture and fit it whole (flyers carry text a crop would cut) */
+.static-event-aside .static-figure img {
+  display: block;
+  width: 100%;
+  max-height: min(30rem, 58vh);
+  object-fit: contain;
+  background: var(--card);
+}
+
+@media (max-width: 640px) {
+  .static-cta-price {
+    display: none;
   }
 }

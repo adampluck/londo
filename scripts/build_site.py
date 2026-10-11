@@ -2442,6 +2442,21 @@ def venue_key(venue: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", re.sub(r"^the\s+", "", venue.lower()))
 
 
+def tidy_address(address: str, venue: str = "") -> str:
+    """An address as sources send it, minus its repeats: "3-5 Sutton Row,
+    London W1D 4NR, London, W1D 4NR" -> "3-5 Sutton Row, London W1D 4NR".
+    A part already said (or the venue's own name) is dropped."""
+    kept: list[str] = []
+    said = venue.lower()
+    for part in (p.strip() for p in address.split(",")):
+        low = part.lower()
+        if not part or low in said or any(low in k.lower() for k in kept):
+            continue
+        kept.append(part)
+        said += " " + low
+    return ", ".join(kept)
+
+
 def event_place(event: dict) -> str:
     """Where, in the fewest words: the venue, else the area."""
     venue = clean_venue(event)
@@ -2813,12 +2828,30 @@ def event_page(event: dict, past: bool = False) -> str:
             ),
         }
 
+    # the details as a short list under the picture: the day and the
+    # hours; the room, then its address and a map; price; who's hosting
+    start = _start_london(event)
+    day_text = start.strftime("%A %-d %B")
+    if start.year != datetime.now(LONDON).year:
+        day_text += start.strftime(" %Y")
+    when_html = f'<span class="fact-main">{esc(day_text)}</span>'
+    if not event.get("is_all_day"):
+        when_html += f'<span class="fact-sub">{esc(fmt_time_range(event))}</span>'
+    place = venue or address or "London"
+    rest = tidy_address(address, venue) if venue and address and address != venue else ""
+    map_q = urllib.parse.quote_plus(", ".join(p for p in (venue, address, "London") if p))
+    where_html = (
+        f'<span class="fact-main">{esc(place)}</span>'
+        + (f'<span class="fact-sub">{esc(rest)}</span>' if rest else "")
+        + f'<a class="fact-link" href="https://www.google.com/maps/search/?api=1&amp;query={map_q}" '
+        f'rel="noopener" target="_blank" data-goatcounter-click="static/map-venue">map ↗</a>'
+    )
     facts = []
     facts.append(
-        f'<div class="static-fact"><dt>When</dt><dd>{esc(when)}</dd></div>'
+        f'<div class="static-fact"><dt>When</dt><dd>{when_html}</dd></div>'
     )
     facts.append(
-        f'<div class="static-fact"><dt>Where</dt><dd>{esc(where)}</dd></div>'
+        f'<div class="static-fact"><dt>Where</dt><dd>{where_html}</dd></div>'
     )
     if price and not past:
         facts.append(
@@ -2880,8 +2913,8 @@ def event_page(event: dict, past: bool = False) -> str:
     top_cta = bottom_cta = ""
     if past:
         cta = (
-            '<p class="static-cta-wrap static-cta-note">'
-            f"This took place on {esc(when)}.</p>"
+            '<p class="static-past-note">'
+            f"This took place on {esc(day_text)}. What's on instead is below.</p>"
         )
     elif event.get("source_url"):
         # twice: up by the title, where a visitor from a search wants it,
@@ -2892,12 +2925,15 @@ def event_page(event: dict, past: bool = False) -> str:
       <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
          data-goatcounter-click="out/{esc(organizer_slug(org))}{'' if where == 'top' else '/' + where}"
          data-goatcounter-title="{esc(event["title"])}">
-        tickets &amp; details ↗
-      </a>
+        Tickets &amp; details <span aria-hidden="true">↗</span>
+      </a>{f'<span class="static-cta-price">{esc(price)}</span>' if price and where == 'top' else ''}
     </p>"""
 
         top_cta = ticket_link("top")
-        bottom_cta = ticket_link("bottom")
+        # a second button only where there's a blurb long enough to read
+        # past the first one
+        long_blurb = sum(len(p) for p in paragraphs) > 500
+        bottom_cta = ticket_link("bottom") if long_blurb else ""
         cta = ""
     else:
         # a flyer shared in the community chat, with no page of its own:
@@ -2908,19 +2944,6 @@ def event_page(event: dict, past: bool = False) -> str:
 
     related = related_html(event, past)
 
-    area = event.get("area")
-    kicker_bits = ["took place" if past else "in person", "London"]
-    if area:
-        kicker_bits.append(f"{area} London")
-    if event.get("category") and not SITE_JSON.get("filter"):
-        kicker_bits.append(event["category"])
-
-    host_crumb = (
-        f'\n    <a href="{organizer_page_url(host_page[0])}">{esc(host_page[1])}</a>'
-        '\n    <span aria-hidden="true">/</span>'
-        if host_page
-        else ""
-    )
     # past: the old blurb is context, not the point — what's on instead is
     if past and paragraphs:
         desc_html = (
@@ -2928,26 +2951,22 @@ def event_page(event: dict, past: bool = False) -> str:
             f"<p>{esc(_trim(' '.join(paragraphs), 420))}</p>"
             "</div>"
         )
-    # details and the ticket link beside the picture; the blurb under
-    # them; then, full width, what else to go to
+    # title, line and ticket button first; the picture with the details
+    # under it alongside (below, on a phone); then the blurb; then, full
+    # width, what else to go to
     body = f"""
   {static_controls(home_date_strip_html(event), None, "event")}
-  <nav class="static-crumbs" aria-label="breadcrumb">
-    <a href="{BASE_URL}/">{esc(display_name())}</a>
-    <span aria-hidden="true">/</span>{host_crumb}
-    <span>event</span>
-  </nav>
-  <article class="static-event{' has-figure' if img else ''}">
+  <article class="static-event">
     <div class="static-event-head">
-      <p class="static-kicker">{esc(" · ".join(kicker_bits))}</p>
       <h1 class="static-title">{esc(event["title"])}</h1>
       {hook}
-      {top_cta}
-      <dl class="static-facts">{"".join(facts)}</dl>
-      {topic_chips(event)}
-      {cta}
+      {top_cta}{cta}
     </div>
-    {img}
+    <aside class="static-event-aside">
+      {img}
+      <dl class="static-facts static-facts-list">{"".join(facts)}</dl>
+      {topic_chips(event)}
+    </aside>
     <div class="static-event-body">
       {desc_html}
       {bottom_cta}
