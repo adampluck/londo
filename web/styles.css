@@ -1846,6 +1846,55 @@ body.static-page {
   margin-top: 0.9rem;
 }
 
+/* practice pages: what the listings say, between the cards and the FAQ */
+.static-glance {
+  max-width: 46rem;
+  margin: 3rem 0 0;
+}
+
+.static-glance h2 {
+  margin: 0 0 1rem;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.static-glance .static-facts {
+  margin-bottom: 0.6rem;
+}
+
+.static-glance a,
+.static-past a,
+.static-areas a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--mauve);
+  text-underline-offset: 2px;
+}
+
+.static-glance a:hover,
+.static-past a:hover,
+.static-areas a:hover {
+  color: var(--peach);
+}
+
+.static-glance-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+}
+
+.static-areas {
+  margin-top: 1.4rem;
+  line-height: 1.8;
+}
+
+/* a past event's page: what's on instead, before the old blurb */
+.static-related {
+  margin: 0 0 2rem;
+}
+
 /* organiser pages: what they've hosted — quiet lines, not cards, so
    nothing here reads as something still on */
 .static-past {

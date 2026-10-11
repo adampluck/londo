@@ -565,6 +565,11 @@
     }
   }
 
+  // £7.50, not £7.5 — mirror of _pounds() in scripts/build_site.py
+  function pounds(n) {
+    return Number.isInteger(n) ? `£${n}` : `£${n.toFixed(2)}`;
+  }
+
   function practiceSpec(slug) {
     return PRACTICES.find((p) => p.slug === slug);
   }
@@ -574,7 +579,8 @@
   // counts. Terms hit title/organizer/tags at the start of a word; only
   // the deep phrases are trusted against the description.
   function practiceMatch(e, spec) {
-    const hay = [e.title, e.organizer_name, (e.tags || []).join(" ")]
+    const tags = spec.tags === false ? "" : (e.tags || []).join(" ");
+    const hay = [e.title, e.organizer_name, tags]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -1909,8 +1915,8 @@
       meta.appendChild(
         document.createTextNode(
           e.price_min === e.price_max || e.price_max == null
-            ? `£${e.price_min}`
-            : `£${e.price_min}–£${e.price_max}`
+            ? pounds(e.price_min)
+            : `${pounds(e.price_min)}–${pounds(e.price_max)}`
         )
       );
     }

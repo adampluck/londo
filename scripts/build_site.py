@@ -17,6 +17,7 @@ import html
 import json
 import re
 import shutil
+import statistics
 import unicodedata
 import urllib.parse
 import urllib.request
@@ -500,6 +501,10 @@ TOPICS = {
 #   exclude: guards against a false friend ("gongfu" for "gong")
 #   min_events: overrides MIN_PRACTICE_EVENTS for a practice whose scene
 #            is small but steady (one or two dialogues a month)
+#   tags:    False to match terms on title + organizer only — some hosts
+#            tag everything they run with every practice they know
+#   price_q: the FAQ question the live price answer goes under, when
+#            "How much does <label> cost in London?" reads badly
 # The prose is the point: it answers the query in its first sentence so
 # a search engine — or a model quoting one paragraph — has something to
 # lift. Keep it concrete and keep it honest about prices and safety.
@@ -508,6 +513,7 @@ PRACTICES = {
         "label": "cacao ceremony",
         "chip": "cacao",
         "seo_title": "Cacao ceremonies in London",
+        "price_q": "How much does a cacao ceremony cost in London?",
         "terms": ["cacao", "cocoa ceremony"],
         "deep": ["cacao ceremony", "cacao circle"],
         "intro": (
@@ -530,12 +536,6 @@ PRACTICES = {
                 "takes effect over twenty minutes or so, then leads whatever the "
                 "evening is built around: dance, sound, breathwork, journalling "
                 "or open sharing. Most end with a closing circle.",
-            ),
-            (
-                "How much does a cacao ceremony cost in London?",
-                "Most London cacao ceremonies cost between £10 and £30, with the "
-                "typical ticket around £17. A few community evenings are free or "
-                "donation-based; day-long retreats and full-moon specials run higher.",
             ),
             (
                 "Is cacao a drug, and is it safe?",
@@ -676,6 +676,7 @@ PRACTICES = {
     "sound-bath": {
         "label": "sound bath",
         "seo_title": "Sound baths & gong baths in London",
+        "price_q": "How much does a sound bath cost in London?",
         # bare "gong" catches Jin Mai Gong (a qigong form), so the gong
         # terms all name the session type
         "terms": [
@@ -720,6 +721,7 @@ PRACTICES = {
         "label": "somatic practice",
         "chip": "somatic",
         "seo_title": "Somatic workshops & embodiment in London",
+        "price_q": "How much do somatic workshops cost in London?",
         # bare "embodiment" is a house word for half the scene — it was
         # pulling in breathwork and tantra nights, so the terms name the
         # practice itself
@@ -835,10 +837,187 @@ PRACTICES = {
             ),
         ],
     },
+    "tantra": {
+        "label": "tantra",
+        "seo_title": "Tantra workshops & classes in London",
+        "price_q": "How much do tantra workshops cost in London?",
+        "terms": ["tantra", "tantric", "neo-tantra", "neotantra"],
+        "deep": ["tantra workshop", "tantric practice"],
+        # tagged onto half the intimacy scene; the title says it plainly
+        "tags": False,
+        "intro": (
+            "Tantra workshops in London are mostly neo-tantra: a modern, "
+            "Western take on the Indian tradition that works with breath, "
+            "slow touch, eye contact and attention to build intimacy — with "
+            "yourself, a partner or a room of strangers. An evening usually "
+            "mixes guided exercises in pairs with talks on desire, "
+            "boundaries and energy.",
+            "Formats run from two-hour introductions and masterclasses to "
+            "women's and couples' days, tantric slow dating and full "
+            "weekends. Clothes stay on at almost all of them; the few that "
+            "differ say so clearly on the listing.",
+        ),
+        "faq": [
+            (
+                "What happens at a tantra workshop?",
+                "Most begin in a circle with an introduction and some breath "
+                "or movement to settle the room. Then come exercises, often in "
+                "pairs: eye gazing, synchronised breathing, giving and "
+                "receiving simple touch on the hands or back, and practising "
+                "asking for what you want and saying no. They close with "
+                "sharing.",
+            ),
+            (
+                "Do I need a partner, and is it sexual?",
+                "No partner is needed — most people come alone, and you can "
+                "sit out any exercise. Introductory workshops are clothed and "
+                "non-sexual; they work with sexual energy as a theme, not as "
+                "an activity. Consent is taught explicitly, and every exercise "
+                "is an invitation you can decline.",
+            ),
+            (
+                "Is tantra a religion?",
+                "Classical tantra is a family of Hindu and Buddhist traditions "
+                "with long lineages. The London workshops are neo-tantra, "
+                "which borrows some practices and language from them but "
+                "asks for no belief — closer to a relationship or embodiment "
+                "class than to a religious rite.",
+            ),
+        ],
+    },
+    "authentic-relating": {
+        "label": "authentic relating",
+        "chip": "relating",
+        "seo_title": "Authentic relating & circling in London",
+        "price_q": "How much does an authentic relating event cost in London?",
+        "terms": ["authentic relating", "circling", "relating games", "relating room"],
+        "deep": ["authentic relating"],
+        "tags": False,
+        "intro": (
+            "Authentic relating is a set of guided conversation practices "
+            "for meeting people honestly: saying what is actually true for "
+            "you in the moment, and getting curious about the person in "
+            "front of you instead of performing. Evenings are a sequence of "
+            "games in pairs and small groups, each with a simple structure "
+            "and a facilitator holding time.",
+            "Circling is its deeper sibling: a group of five to ten turns its "
+            "whole attention on one person, or on the group itself, and "
+            "reflects back what it notices. London has weekly drop-ins, "
+            "beginner evenings and full circling weekends.",
+        ),
+        "faq": [
+            (
+                "What happens at an authentic relating evening?",
+                "After a short welcome you're paired up for structured games — "
+                "one person asks a question, the other answers, then you swap, "
+                "or you take turns finishing a sentence like \"right now I "
+                "notice…\". The structures make it easy to go past small talk "
+                "quickly. Expect plenty of rotation and a sharing circle at the "
+                "end.",
+            ),
+            (
+                "What is circling?",
+                "A group practice in which everyone gives their attention to "
+                "one person's experience in the moment — what they feel, how "
+                "they're landing with the group — and says what they notice in "
+                "return. It's slower and more intimate than relating games, and "
+                "usually led by a trained facilitator.",
+            ),
+            (
+                "Is it therapy?",
+                "No. It's a social practice, not treatment, and nobody is asked "
+                "to dig into their history. You choose how much to share, and "
+                "\"I'd rather not say\" is a welcome answer.",
+            ),
+        ],
+    },
+    "family-constellations": {
+        "label": "family constellations",
+        "seo_title": "Family constellations workshops in London",
+        "price_q": "How much does a family constellations workshop cost in London?",
+        "terms": ["family constellation", "systemic constellation"],
+        "deep": ["family constellation", "systemic constellation"],
+        "tags": False,
+        "intro": (
+            "Family constellations is a group process developed by Bert "
+            "Hellinger. One person brings an issue — usually about family, "
+            "relationships or a repeating pattern — and chooses people from "
+            "the room to stand in for family members. Placed in space, the "
+            "representatives often feel and say surprising things, and the "
+            "facilitator works with what shows up.",
+            "London workshops run as evenings and full days, often with "
+            "three to six constellations set up in a session. You can come "
+            "to bring an issue of your own or just to represent; the "
+            "listing usually says which places are left.",
+        ),
+        "faq": [
+            (
+                "What happens in a family constellations workshop?",
+                "The group sits in a circle. Someone with an issue tells the "
+                "facilitator briefly what it is, then picks representatives "
+                "for themselves and the people involved and places them in the "
+                "room. The representatives report what they sense, and the "
+                "facilitator moves people and offers sentences until the "
+                "picture settles. Each constellation takes thirty to sixty "
+                "minutes.",
+            ),
+            (
+                "Do I have to bring an issue?",
+                "No. Many people come as participants only, representing in "
+                "other people's constellations, which is how most people learn "
+                "what the work is like. Bringing an issue is often priced "
+                "higher and booked ahead.",
+            ),
+            (
+                "Is family constellations therapy?",
+                "It's used alongside therapy but isn't a regulated "
+                "treatment, and the evidence for it is limited. It can bring up "
+                "strong feelings, so look for experienced facilitators, and "
+                "tell them beforehand if you are in crisis or recently "
+                "bereaved.",
+            ),
+        ],
+    },
+    "kirtan": {
+        "label": "kirtan & chanting",
+        "chip": "kirtan",
+        "seo_title": "Kirtan & chanting circles in London",
+        "price_q": "How much does kirtan cost in London?",
+        "terms": ["kirtan", "mantra circle", "mantra singing", "chanting", "bhajan"],
+        "deep": [],
+        "tags": False,
+        "intro": (
+            "Kirtan is call-and-response chanting from the Indian devotional "
+            "tradition: a leader sings a line of a mantra, usually with "
+            "harmonium and drum, and the room sings it back, slowly at first "
+            "and then faster until it lifts. Nobody needs to sing well, and "
+            "the words are simple and repeated.",
+            "London's chanting circles also cover Vedic chanting, mantra "
+            "circles and Celtic and devotional song. Most are an evening of "
+            "ninety minutes to two hours, seated on cushions or chairs.",
+        ),
+        "faq": [
+            (
+                "What happens at a kirtan?",
+                "You sit in a circle or rows facing the musicians. The leader "
+                "introduces a mantra and what it means, sings each line, and "
+                "everyone answers. Each chant builds over ten to twenty minutes, "
+                "and there's usually silence between them. Song sheets are "
+                "often handed out.",
+            ),
+            (
+                "Do I need to be religious or able to sing?",
+                "No. The mantras come from Hindu devotion, but London kirtans "
+                "welcome people of any faith or none, and the point is joining "
+                "in rather than singing well. You can also just listen.",
+            ),
+        ],
+    },
     "bohm-dialogue": {
         "label": "Bohm dialogue",
         "chip": "Bohm dialogue",
         "seo_title": "Bohm dialogue groups in London",
+        "price_q": "How much does a Bohm dialogue cost in London?",
         "terms": ["bohm"],
         "deep": ["bohm dialogue", "bohmian dialogue"],
         # London runs one or two a month: worth a page from the first
@@ -1147,12 +1326,13 @@ def practice_match(event: dict, spec: dict, slug: str | None = None) -> bool:
 
 
 def _term_match(event: dict, spec: dict) -> bool:
+    tags = " ".join(event.get("tags") or []) if spec.get("tags", True) else ""
     hay = " ".join(
         p
         for p in (
             event.get("title") or "",
             event.get("organizer_name") or "",
-            " ".join(event.get("tags") or []),
+            tags,
         )
         if p
     ).lower()
@@ -1164,13 +1344,33 @@ def _term_match(event: dict, spec: dict) -> bool:
     return bool(deep) and _matches((event.get("description") or "").lower(), deep)
 
 
-def site_practices(events: list[dict]) -> list[tuple[str, dict, list[dict]]]:
-    """Each practice this site has enough listings for, with its events."""
+# How far back past listings keep a practice (or area) page standing: a
+# page that has ranked shouldn't vanish in a quiet fortnight and 404.
+PRACTICE_PAST_DAYS = 90
+
+# slug -> that practice's listings from the last PRACTICE_PAST_DAYS,
+# filled in by site_practices()
+PRACTICE_PAST: dict[str, list[dict]] = {}
+
+
+def site_practices(
+    events: list[dict], past: list[dict] = ()
+) -> list[tuple[str, dict, list[dict]]]:
+    """Each practice this site has enough listings for, with its events.
+
+    Recent past listings count towards the threshold, so a page stays up
+    through a quiet spell rather than flickering in and out of existence.
+    """
+    since = datetime.now(timezone.utc) - timedelta(days=PRACTICE_PAST_DAYS)
+    recent = [e for e in past if _parse_ts(e["start_at"]) >= since]
     out = []
+    PRACTICE_PAST.clear()
     for slug_, spec in PRACTICES.items():
         matched = [e for e in events if practice_match(e, spec, slug_)]
-        if len(matched) >= spec.get("min_events", MIN_PRACTICE_EVENTS):
+        was = [e for e in recent if practice_match(e, spec, slug_)]
+        if len(matched) + len(was) >= spec.get("min_events", MIN_PRACTICE_EVENTS):
             out.append((slug_, spec, matched))
+            PRACTICE_PAST[slug_] = was
     return out
 
 
@@ -1306,6 +1506,45 @@ def fetch_past_events(days: int = PAST_WINDOW_DAYS) -> list[dict]:
     ]
 
 
+def fetch_gone_events() -> list[dict]:
+    """Listings that no longer get a page of their own — merged into
+    another listing as a duplicate, or dropped by their source before
+    the date — so the URLs Google already found can point somewhere."""
+    supabase_url, anon_key = read_config()
+    now = datetime.now(timezone.utc)
+    stale = (now - timedelta(days=3)).isoformat()
+    since = (now - timedelta(days=PAST_WINDOW_DAYS)).isoformat()
+    out: list[dict] = []
+    for filters in (
+        [("duplicate_of", "not.is.null"), ("start_at", f"gte.{since}")],
+        [
+            ("duplicate_of", "is.null"),
+            ("start_at", f"gte.{now.isoformat()}"),
+            ("last_seen_at", f"lt.{stale}"),
+        ],
+    ):
+        rows: list[dict] = []
+        while True:
+            query = urllib.parse.urlencode(
+                [
+                    ("select", "source,source_id,title,start_at,duplicate_of,"
+                     "organizer_name,topics,category,tags,description,"
+                     "is_online,hidden"),
+                    ("order", "start_at.desc,source.asc,source_id.asc"),
+                    ("limit", "1000"),
+                    ("offset", str(len(rows))),
+                    ("hidden", "is.false"),
+                    *filters,
+                ]
+            )
+            batch = _rest_get(supabase_url, anon_key, query)
+            rows.extend(batch)
+            if len(batch) < 1000:
+                break
+        out.extend(rows)
+    return out
+
+
 def _parse_ts(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
@@ -1361,15 +1600,23 @@ def legacy_event_id(event: dict) -> str:
     return f"{event['source']}-{sid}"
 
 
-def assign_event_slugs(events: list[dict]) -> dict[tuple[str, str], str]:
+def assign_event_slugs(
+    events: list[dict], past: list[dict] = ()
+) -> dict[tuple[str, str], str]:
     """Prefer bare title slug; on collision append date, then a short unique tail.
 
     Listings without a ticket page (chat-shared flyers) pick first: the
     SPA links them to their own page by bare title slug (eventHref() in
-    web/app.js), so that slug has to be theirs."""
+    web/app.js), so that slug has to be theirs.
+
+    Past events (newest first) are slugged after every upcoming one, so
+    they never take a URL from something still on: a series' bare slug
+    rolls forward to its next date, and a finished one keeps the URL it
+    was found at."""
     used: set[str] = set()
     mapping: dict[tuple[str, str], str] = {}
-    for event in sorted(events, key=lambda e: bool(e.get("source_url"))):
+    upcoming = sorted(events, key=lambda e: bool(e.get("source_url")))
+    for event in [*upcoming, *past]:
         base = slugify_title(event.get("title") or "event")
         day = ""
         if event.get("start_at"):
@@ -1620,7 +1867,7 @@ def event_card(event: dict) -> str:
     if meta:
         body.append(f'<p class="meta">{" · ".join(meta)}</p>')
     if not event.get("hook") and event.get("description"):
-        blurb = " ".join(event["description"].split())[:220]
+        blurb = strip_meeting_links(" ".join(event["description"].split()))[:220]
         body.append(f'<p class="blurb">{esc(blurb)}</p>')
 
     return (
@@ -1737,6 +1984,18 @@ def day_groups(events: list[dict]) -> str:
 def write_index(path: Path, html_text: str) -> None:
     path.mkdir(parents=True, exist_ok=True)
     (path / "index.html").write_text(html_text)
+
+
+def moved_page(canonical: str) -> str:
+    return (
+        f'<!doctype html><html lang="en"><head>'
+        f'<meta charset="utf-8">'
+        f'<link rel="canonical" href="{esc(canonical)}">'
+        f'<meta http-equiv="refresh" content="0;url={esc(canonical)}">'
+        f"</head><body>"
+        f'<p><a href="{esc(canonical)}">This page has moved</a>.</p>'
+        f"</body></html>"
+    )
 
 
 def write_html_redirect(old_file: Path, new_url: str) -> None:
@@ -2060,8 +2319,131 @@ def fmt_price(event: dict) -> str:
     low = event["price_min"]
     high = event.get("price_max")
     if high is not None and high != low:
-        return f"£{low:g}–£{high:g}"
-    return f"£{low:g}"
+        return f"{_pounds(low)}–{_pounds(high)}"
+    return _pounds(low)
+
+
+def _pounds(amount: float) -> str:
+    """£7.50, not £7.5; £12, not £12.00."""
+    return f"£{amount:g}" if float(amount).is_integer() else f"£{amount:.2f}"
+
+
+# Some hosts fill the venue with walking directions ("13 Minutes from
+# Gospel Oak…") — fine on a card, wrong in a page title or a list of rooms.
+_DIRECTIONS_RE = re.compile(r"\b(mins?|minutes?|walk|from|station)\b", re.I)
+_NOT_A_VENUE = {"london", "tbc", "tba", "secret location", "online"}
+
+
+def clean_venue(event: dict) -> str:
+    venue = (event.get("venue_name") or "").strip()
+    if not venue or len(venue) > 40 or venue.lower() in _NOT_A_VENUE:
+        return ""
+    return "" if _DIRECTIONS_RE.search(venue) else venue
+
+
+def venue_key(venue: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", re.sub(r"^the\s+", "", venue.lower()))
+
+
+def event_place(event: dict) -> str:
+    """Where, in the fewest words: the venue, else the area."""
+    venue = clean_venue(event)
+    if venue:
+        return venue
+    return f"{event['area']} London" if event.get("area") else ""
+
+
+# A hybrid listing's Zoom sign-up link, printed as text: it got the Good
+# Company pages ranked for "zoom.us/meeting/register" and nothing else
+_MEETING_LINK_RE = re.compile(r"(?:https?://)?[\w.-]*\bzoom\.us/\S+", re.I)
+
+
+def strip_meeting_links(text: str) -> str:
+    return _MEETING_LINK_RE.sub("the Zoom link on the ticket page", text)
+
+
+def _trim(text: str, n: int = 160) -> str:
+    return text if len(text) <= n else text[: n - 3].rsplit(" ", 1)[0] + "…"
+
+
+def event_meta(event: dict, past: bool = False) -> tuple[str, str]:
+    """The page title and meta description: what a search result shows.
+    People searching an event's name want when and where before anything
+    else, so both lead with it."""
+    start = _start_london(event)
+    day = start.strftime("%a %-d %b")
+    if start.year != datetime.now(LONDON).year:
+        day += start.strftime(" %Y")
+    place = event_place(event)
+    title = f"{event['title']} · {day}" + (f", {place}" if place else "")
+    lead = [fmt_when_short(event).replace(" · ", ", ")]
+    if place:
+        lead.append(place)
+    if not past and fmt_price(event):
+        lead.append(fmt_price(event))
+    about = event.get("hook") or strip_meeting_links(
+        re.sub(r"\s+", " ", event.get("description") or "")
+    )
+    lead_text = ("Took place " if past else "") + " · ".join(lead)
+    description = _trim(f"{lead_text}. {about}" if about else lead_text)
+    return f"{title} — {display_name()}", description
+
+
+RELATED_SHOWN = 6
+
+
+def related_html(event: dict) -> str:
+    """For a page whose event has passed: what's next from the same host,
+    then more of the same practice (else the same topics), so a search
+    that lands here still finds something to go to."""
+    seen = {(event["source"], event["source_id"])}
+    sections = []
+
+    def add(heading: str, pool: list[dict]) -> None:
+        picked = [e for e in pool if (e["source"], e["source_id"]) not in seen]
+        picked = picked[:RELATED_SHOWN]
+        if not picked:
+            return
+        seen.update((e["source"], e["source_id"]) for e in picked)
+        cards = "".join(event_card(e) for e in picked)
+        sections.append(
+            f'<section class="day-group static-related"><h2 class="day-heading">'
+            f"<span>{esc(heading)}</span></h2>"
+            f'<div class="grid">{cards}</div></section>'
+        )
+
+    host = organizer_key(event)
+    if host:
+        add(
+            f"Coming up from {host[1]}",
+            [e for e in SITE_EVENTS if organizer_key(e) == host],
+        )
+    practice = next(
+        (
+            (slug_, spec)
+            for slug_, spec, _ in SITE_PRACTICES
+            if practice_match(event, spec, slug_)
+        ),
+        None,
+    )
+    if practice:
+        slug_, spec = practice
+        add(
+            f"More {spec['label']} coming up",
+            [e for e in SITE_EVENTS if practice_match(e, spec, slug_)],
+        )
+    else:
+        topics = set(event.get("topics") or [])
+        overlap = [
+            (len(topics & set(e.get("topics") or [])), i, e)
+            for i, e in enumerate(SITE_EVENTS)
+        ]
+        # most topics in common first, soonest first among equals
+        add(
+            "Similar gatherings coming up",
+            [e for n, _, e in sorted(overlap, key=lambda t: (-t[0], t[1])) if n],
+        )
+    return "".join(sections)
 
 
 def topic_chips(event: dict) -> str:
@@ -2093,7 +2475,10 @@ def topic_chips(event: dict) -> str:
     return f'<p class="static-chips">{"".join(chips)}</p>'
 
 
-def event_page(event: dict) -> str:
+def event_page(event: dict, past: bool = False) -> str:
+    """An event's own page. `past`: it has happened — the page stays up
+    for the searches still landing on it, minus the ticket offer, and
+    points on to what's coming up instead."""
     canonical = event_url(event)
     when = fmt_when(event)
     venue = event.get("venue_name") or ""
@@ -2101,13 +2486,7 @@ def event_page(event: dict) -> str:
     where = ", ".join(p for p in (venue, address) if p) or "London"
     price = fmt_price(event)
     org = event.get("organizer_name") or ""
-    description = (
-        event.get("hook")
-        or re.sub(r"\s+", " ", event.get("description") or "")[:200]
-        or f"{when} at {where}"
-    )
-    if len(description) > 160:
-        description = description[:157].rsplit(" ", 1)[0] + "…"
+    page_title, description = event_meta(event, past)
 
     json_ld: dict = {
         "@context": "https://schema.org",
@@ -2139,7 +2518,9 @@ def event_page(event: dict) -> str:
     if image:
         json_ld["image"] = [image]
     if event.get("description"):
-        json_ld["description"] = re.sub(r"\s+", " ", event["description"])[:500]
+        json_ld["description"] = strip_meeting_links(
+            re.sub(r"\s+", " ", event["description"])
+        )[:500]
     elif event.get("hook"):
         json_ld["description"] = event["hook"]
     host_page = organizer_page_for(event)
@@ -2156,7 +2537,9 @@ def event_page(event: dict) -> str:
     # no price, no offer: a bare ticket link only trades Google's
     # "missing offers" warning for "missing price"
     offer: dict = {}
-    if event.get("is_free"):
+    if past:
+        pass  # nothing left to sell
+    elif event.get("is_free"):
         json_ld["isAccessibleForFree"] = True
         offer = {"price": "0", "priceCurrency": "GBP"}
     elif event.get("price_min") is not None:
@@ -2182,7 +2565,7 @@ def event_page(event: dict) -> str:
     facts.append(
         f'<div class="static-fact"><dt>Where</dt><dd>{esc(where)}</dd></div>'
     )
-    if price:
+    if price and not past:
         facts.append(
             f'<div class="static-fact"><dt>Price</dt><dd>{esc(price)}</dd></div>'
         )
@@ -2221,7 +2604,9 @@ def event_page(event: dict) -> str:
         )
     paragraphs = [
         p.strip()
-        for p in re.split(r"\n\n+", event.get("description") or "")
+        for p in re.split(
+            r"\n\n+", strip_meeting_links(event.get("description") or "")
+        )
         if p.strip()
     ][:12]
     if paragraphs:
@@ -2237,7 +2622,14 @@ def event_page(event: dict) -> str:
             "</div>"
         )
 
-    if event.get("source_url"):
+    related = ""
+    if past:
+        cta = (
+            '<p class="static-cta-wrap static-cta-note">'
+            f"This took place on {esc(when)}.</p>"
+        )
+        related = related_html(event)
+    elif event.get("source_url"):
         cta = f"""<p class="static-cta-wrap">
       <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
          data-goatcounter-click="out/{esc(organizer_slug(org))}"
@@ -2252,8 +2644,11 @@ def event_page(event: dict) -> str:
                "shared in the community chat — no ticket page; "
                "details as posted above</p>")
 
+    # gone: say so up top, then where to go instead, before the old blurb
+    flow = f"{cta}\n    {related}\n    {desc_html}" if past else f"{desc_html}\n    {cta}"
+
     area = event.get("area")
-    kicker_bits = ["in person", "London"]
+    kicker_bits = ["took place" if past else "in person", "London"]
     if area:
         kicker_bits.append(f"{area} London")
     if event.get("category") and not SITE_JSON.get("filter"):
@@ -2280,14 +2675,13 @@ def event_page(event: dict) -> str:
     <dl class="static-facts">{"".join(facts)}</dl>
     {topic_chips(event)}
     {img}
-    {desc_html}
-    {cta}
+    {flow}
     <p class="static-back">
       <a href="{BASE_URL}/">← more in-person gatherings on {esc(display_name())}</a>
     </p>
   </article>"""
     return page(
-        f"{event['title']} — {display_name()}",
+        page_title,
         description,
         canonical,
         event.get("image_url") or DEFAULT_OG_IMAGE,
@@ -2329,7 +2723,10 @@ def listing_intro_paragraphs(
             "here's what they've hosted recently.",
         ]
     freshness = (
-        f"{count} on in {window} — times, venues and tickets, "
+        f"Nothing on in {window} right now — recent ones are listed below, "
+        "and new dates appear here as soon as they're announced."
+        if count == 0
+        else f"{count} on in {window} — times, venues and tickets, "
         f"refreshed several times a day."
         if count != 1
         else f"One on in {window} — times, venue and tickets below."
@@ -2406,8 +2803,12 @@ def listing_page(
     other_url: str | None = None,
     css_prefix: str = NESTED_PREFIX,
     strip_events: list[dict] | None = None,
+    intro: list[str] | None = None,
+    extra_html: str = "",
+    faq_items: list[tuple[str, str]] | None = None,
+    nav: tuple[str, str] | None = None,
 ) -> str:
-    paras = listing_intro_paragraphs(key, kind, label, len(events), days)
+    paras = intro or listing_intro_paragraphs(key, kind, label, len(events), days)
     lead_html = "".join(f'<p class="static-lead">{esc(p)}</p>' for p in paras)
     # meta description: first paragraph, kept short
     meta_desc = paras[0]
@@ -2421,11 +2822,12 @@ def listing_page(
         if kind == "organizer"
         else date_strip_html(strip_events or events, days, other_url)
     )
-    spec = PRACTICES[key] if kind == "practice" else {}
-    faq = faq_html(spec["faq"]) if spec.get("faq") else ""
+    if faq_items is None:
+        faq_items = PRACTICES[key].get("faq") or [] if kind == "practice" else []
+    faq = faq_html(faq_items) if faq_items else ""
     json_ld = (
-        listing_json_ld(seo_title, canonical, meta_desc, events, spec.get("faq") or [])
-        if kind in ("practice", "organizer")
+        listing_json_ld(seo_title, canonical, meta_desc, events, faq_items)
+        if kind in ("practice", "organizer", "area")
         else None
     )
     org = SITE_ORGANIZERS.get(key) if kind == "organizer" else None
@@ -2448,7 +2850,7 @@ def listing_page(
         )
 
     body = f"""
-  {filters_nav_html(key, kind)}
+  {filters_nav_html(*(nav or (key, kind)))}
   {strip}
   <header class="static-list-head">
     <p class="static-kicker">in person · London</p>
@@ -2459,6 +2861,7 @@ def listing_page(
     {own_site}
   </header>
   {groups}
+  {extra_html}
   {past}
   {faq}{back_hosts}
   <p class="static-back">
@@ -2476,9 +2879,10 @@ def listing_page(
     )
 
 
-def past_events_html(past: list[dict]) -> str:
-    """A host's recent history: plain muted lines, no cards or links, so
-    nothing here reads as something you could still go to."""
+def past_events_html(past: list[dict], heading: str = "Recently hosted") -> str:
+    """Recent history: plain muted lines rather than cards, so nothing
+    here reads as something you could still go to. Each links to the
+    event's own page, which says plainly that it has passed."""
     if not past:
         return ""
     this_year = datetime.now(LONDON).year
@@ -2488,7 +2892,7 @@ def past_events_html(past: list[dict]) -> str:
         when = start.strftime(
             "%a %-d %b" if start.year == this_year else "%a %-d %b %Y"
         )
-        bits = [esc(e["title"])]
+        bits = [f'<a href="{event_url(e)}">{esc(e["title"])}</a>']
         if e.get("venue_name"):
             bits.append(esc(e["venue_name"]))
         items.append(
@@ -2496,7 +2900,7 @@ def past_events_html(past: list[dict]) -> str:
             f' · {" · ".join(bits)}</li>'
         )
     return (
-        '<section class="static-past"><h2>Recently hosted</h2>'
+        f'<section class="static-past"><h2>{esc(heading)}</h2>'
         f'<ul>{"".join(items)}</ul></section>'
     )
 
@@ -2547,6 +2951,39 @@ def organizers_index_page() -> str:
         },
         css_prefix="..",
         body_class="static-page static-listing",
+    )
+
+
+def not_found_page() -> str:
+    """GitHub Pages serves this for any missing path, so its links and
+    assets are absolute. Most misses are a listing that was cancelled or
+    renamed: say so, and offer the ways back in."""
+    practices = "".join(
+        f'<a class="static-chip" href="{practice_url(slug_)}">'
+        f'{esc(spec.get("chip") or spec["label"])}</a>'
+        for slug_, spec, matched in SITE_PRACTICES
+        if matched and not spec.get("parent")
+    )
+    body = f"""
+  <header class="static-list-head">
+    <h1 class="static-title">That page isn't here</h1>
+    <div class="static-intro">
+      <p class="static-lead">If it was an event, it may have been cancelled,
+      renamed or moved to a new date — its organiser's other dates are on
+      their page, and everything on in London is on the
+      <a href="{BASE_URL}/">front page</a>.</p>
+    </div>
+  </header>
+  {f'<p class="static-chips">{practices}</p>' if practices else ""}
+  <p class="static-back"><a href="{BASE_URL}/">← everything on {esc(display_name())}</a></p>"""
+    return page(
+        f"Not found — {display_name()}",
+        "That page isn't here any more.",
+        f"{BASE_URL}/",
+        DEFAULT_OG_IMAGE,
+        body,
+        css_prefix=BASE_URL,
+        head_extra='\n  <meta name="robots" content="noindex">',
     )
 
 
@@ -2779,6 +3216,258 @@ def join_community_page(join: dict) -> str:
     )
 
 
+# Practice pages by London area (/p/<practice>/<area>/): the searches
+# that reach the practice pages name a part of town ("sound bath east
+# london", "breathwork shoreditch"). An area gets a page once it has had
+# this many listings, upcoming plus the last PRACTICE_PAST_DAYS.
+AREAS = ("north", "east", "south", "west", "central")
+AREA_MIN_EVENTS = 4
+# slug -> the areas that practice has a page for, filled in by build()
+PRACTICE_AREAS: dict[str, list[str]] = {}
+
+# listings needed before the at-a-glance numbers mean anything
+GLANCE_MIN = 5
+# a ticket above this is a placeholder (Momence's "book via the link" £999)
+PRICE_CEILING = 500
+
+
+def area_url(slug_: str, area: str) -> str:
+    return f"{practice_url(slug_)}{area}/"
+
+
+def area_title(spec: dict, area: str) -> str:
+    title = spec["seo_title"]
+    if " in London" in title:
+        return title.replace(" in London", f" in {area} London")
+    return f"{spec['label']} in {area} London"
+
+
+def _joined(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _top(counter: dict, n: int, at_least: int = 2) -> list:
+    return [k for k, c in sorted(counter.items(), key=lambda kv: -kv[1]) if c >= at_least][:n]
+
+
+def practice_glance(
+    slug_: str, spec: dict, pool: list[dict], area: str | None = None
+) -> tuple[str, tuple[str, str] | None]:
+    """What the listings themselves say about a practice in London — the
+    typical ticket, when and where it happens, the rooms and hosts that
+    run it most — from upcoming listings plus the last three months'.
+    Returns the section and an FAQ entry on price, built from the same
+    numbers so the two never disagree."""
+    if len(pool) < GLANCE_MIN:
+        return "", None
+    label = spec["label"]
+    where = f"{area} London" if area else "London"
+    rows: list[tuple[str, str]] = []
+    price_faq = None
+
+    paid = sorted(
+        e["price_min"]
+        for e in pool
+        if not e.get("is_free") and e.get("price_min")
+        and 0 < e["price_min"] < PRICE_CEILING
+    )
+    free = sum(1 for e in pool if e.get("is_free"))
+    if len(paid) >= GLANCE_MIN:
+        typical = round(statistics.median(paid))
+        low, _, high = (round(q) for q in statistics.quantiles(paid, n=4))
+        text = f"£{typical}" + (f", most £{low}–£{high}" if low != high else "")
+        if free:
+            text += f" · {free} of {len(pool)} free"
+        rows.append(("Typical ticket", esc(text)))
+        answer = (
+            f"Across the {len(pool)} {label} listings in {where} we've seen "
+            f"over the last three months and coming up, the typical ticket "
+            f"is £{typical}"
+            + (f", and most cost between £{low} and £{high}." if low != high else ".")
+        )
+        if free:
+            answer += (
+                f" {free} {'was' if free == 1 else 'were'} free or "
+                "donation-based."
+            )
+        question = spec.get("price_q") or f"How much does {label} cost in London?"
+        if area:
+            question = question.replace("in London", f"in {area} London")
+        price_faq = (question, answer)
+
+    days = {}
+    parts = {}
+    for e in pool:
+        start = _start_london(e)
+        day = start.strftime("%A") + "s"
+        days[day] = days.get(day, 0) + 1
+        if not e.get("is_all_day"):
+            part = (
+                "mornings" if start.hour < 12
+                else "afternoons" if start.hour < 17
+                else "evenings"
+            )
+            parts[part] = parts.get(part, 0) + 1
+    common_days = [d for d in _top(days, 2) if days[d] >= len(pool) / 5]
+    if common_days:
+        text = f"Mostly {_joined(common_days)}"
+        part = _top(parts, 1)
+        if part and parts[part[0]] >= len(pool) / 2:
+            text += f", usually {part[0]}"
+        rows.append(("When", esc(text)))
+
+    if not area:
+        areas = {}
+        for e in pool:
+            if e.get("area") in AREAS:
+                areas[e["area"]] = areas.get(e["area"], 0) + 1
+        links = []
+        for a in _top(areas, 5, at_least=1):
+            text = f"{a} ({areas[a]})"
+            links.append(
+                f'<a href="{area_url(slug_, a)}">{esc(text)}</a>'
+                if a in PRACTICE_AREAS.get(slug_, [])
+                else esc(text)
+            )
+        if links:
+            rows.append(("Where", " · ".join(links)))
+
+    # "The Skylight Centre" and "Skylight Centre" are one room
+    venues: dict[str, int] = {}
+    names: dict[str, str] = {}
+    for e in pool:
+        v = clean_venue(e)
+        if v:
+            key = venue_key(v)
+            venues[key] = venues.get(key, 0) + 1
+            names.setdefault(key, v)
+    rooms = [names[k] for k in _top(venues, 5)]
+    if rooms:
+        rows.append(("Regular rooms", esc(" · ".join(rooms))))
+
+    hosts = {}
+    labels = {}
+    for e in pool:
+        key = organizer_key(e)
+        if key:
+            hosts[key[0]] = hosts.get(key[0], 0) + 1
+            labels[key[0]] = key[1]
+    top_hosts = _top(hosts, 5)
+    if top_hosts:
+        rows.append((
+            "Hosts who run most",
+            " · ".join(
+                f'<a href="{organizer_page_url(h)}">{esc(labels[h])}</a>'
+                if h in SITE_ORGANIZERS
+                else esc(labels[h])
+                for h in top_hosts
+            ),
+        ))
+
+    if not rows:
+        return "", price_faq
+    facts = "".join(
+        f'<div class="static-fact"><dt>{dt}</dt><dd>{dd}</dd></div>'
+        for dt, dd in rows
+    )
+    return (
+        '<section class="static-glance">'
+        f"<h2>At a glance: {esc(area_title(spec, area) if area else spec['seo_title'])}</h2>"
+        f'<dl class="static-facts">{facts}</dl>'
+        f'<p class="static-glance-note">From {len(pool)} listings: '
+        "what's coming up and the last three months.</p></section>"
+    ), price_faq
+
+
+def practice_page_extras(slug_: str, spec: dict, matched: list[dict]) -> dict:
+    """The live-data parts of a practice page, as listing_page kwargs."""
+    past = PRACTICE_PAST.get(slug_, [])
+    glance, price_faq = practice_glance(slug_, spec, matched + past)
+    areas = PRACTICE_AREAS.get(slug_, [])
+    by_area = (
+        '<p class="static-back static-areas">By area: '
+        + " · ".join(
+            f'<a href="{area_url(slug_, a)}">{esc(area_title(spec, a))}</a>'
+            for a in areas
+        )
+        + "</p>"
+        if areas
+        else ""
+    )
+    return {
+        "extra_html": glance
+        + by_area
+        + past_events_html(past, "Recently in London"),
+        "faq_items": list(spec.get("faq") or []) + ([price_faq] if price_faq else []),
+    }
+
+
+def area_page(
+    slug_: str, spec: dict, area: str, upcoming: list[dict], past: list[dict]
+) -> str:
+    """One practice in one part of London: its own intro, numbers and
+    rooms (with addresses — the neighbourhood names people search for),
+    not a copy of the London-wide page."""
+    label = spec["label"]
+    month = within_window(upcoming, 30)
+    venues: dict[str, dict] = {}
+    seen_rooms: set[str] = set()
+    for e in upcoming + past:
+        v = clean_venue(e)
+        if v and venue_key(v) not in seen_rooms:
+            seen_rooms.add(venue_key(v))
+            venues[v] = e
+    names = list(venues)[:3]
+    intro = [
+        f"Every {label} listing we can find in {area} London"
+        + (f" — at {_joined(names)} and more" if len(names) > 1 else "")
+        + ", with times, prices and tickets.",
+        (
+            f"Nothing on in {area} London in the next 30 days right now — "
+            "recent ones are listed below, and new dates appear here as soon "
+            "as they're announced."
+            if not month
+            else f"{len(month)} on in the next 30 days, refreshed several times a day."
+            if len(month) != 1
+            else "One on in the next 30 days — time, venue and tickets below."
+        ),
+    ]
+    glance, price_faq = practice_glance(slug_, spec, upcoming + past, area)
+    rooms = "".join(
+        f"<li><strong>{esc(v)}</strong>"
+        + (f" — {esc(e['address'])}" if e.get("address") else "")
+        + "</li>"
+        for v, e in list(venues.items())[:12]
+    )
+    rooms_html = (
+        f'<section class="static-past static-rooms"><h2>Where in {esc(area)} London</h2>'
+        f"<ul>{rooms}</ul></section>"
+        if rooms
+        else ""
+    )
+    others = [a for a in PRACTICE_AREAS.get(slug_, []) if a != area]
+    back = (
+        f'<p class="static-back"><a href="{practice_url(slug_)}">'
+        f"← {esc(spec['seo_title'])}: what to expect, and every area</a></p>"
+    )
+    if others:
+        back += (
+            '<p class="static-back static-areas">Elsewhere: '
+            + " · ".join(
+                f'<a href="{area_url(slug_, a)}">{esc(a)} London</a>' for a in others
+            )
+            + "</p>"
+        )
+    return listing_page(
+        slug_, label, area_title(spec, area), area_url(slug_, area), month,
+        kind="area", days=30, css_prefix="../../..", intro=intro,
+        extra_html=glance + rooms_html
+        + past_events_html(past, f"Recently in {area} London") + back,
+        faq_items=[price_faq] if price_faq else [],
+        nav=(slug_, "practice"),
+    )
+
+
 def write_listing(
     outdir: Path,
     parts: tuple[str, ...],
@@ -2789,6 +3478,7 @@ def write_listing(
     events: list[dict],
     kind: str,
     urls: list[str],
+    **page_kw,
 ) -> None:
     """A listing at both ranges: the lead page at `parts`, the other one
     a directory below it.
@@ -2823,6 +3513,7 @@ def write_listing(
         listing_page(
             key, label, seo_title, canonical, by_days[lead_days],
             kind=kind, days=lead_days, other_url=other_url, strip_events=month,
+            **page_kw,
         ),
     )
     urls.append(canonical)
@@ -2832,7 +3523,7 @@ def write_listing(
         listing_page(
             key, label, seo_title, canonical, by_days[other_days],
             kind=kind, days=other_days, other_url=canonical,
-            css_prefix="../../..", strip_events=month,
+            css_prefix="../../..", strip_events=month, **page_kw,
         ),
     )
 
@@ -2861,7 +3552,10 @@ def build(outdir: Path) -> None:
     inject_spotlight(outdir, events)
 
     global SITE_PRACTICES, SITE_ORGANIZERS, SITE_EVENTS
-    SITE_PRACTICES = site_practices(events)
+    # a year back: host pages' history, past event pages, and what keeps a
+    # practice page standing through a quiet spell
+    past_events = [e for e in fetch_past_events() if site_match(e)]
+    SITE_PRACTICES = site_practices(events, past_events)
     SITE_EVENTS = events
     # before the event pages: their filters key carries these
     TOPIC_COUNTS.clear()
@@ -2870,7 +3564,7 @@ def build(outdir: Path) -> None:
             TOPIC_COUNTS[t] = TOPIC_COUNTS.get(t, 0) + 1
     # before the event pages: their Host line links to these
     SITE_ORGANIZERS = (
-        site_organizers(events, [e for e in fetch_past_events() if site_match(e)])
+        site_organizers(events, past_events)
         if (SITE_JSON.get("features") or {}).get("organizerPages")
         else {}
     )
@@ -2879,7 +3573,7 @@ def build(outdir: Path) -> None:
         f"{BASE_URL}/og-image.jpg" if (outdir / "og-image.jpg").exists() else None
     )
 
-    _EVENT_SLUGS = assign_event_slugs(events)
+    _EVENT_SLUGS = assign_event_slugs(events, past_events)
     urls = [f"{BASE_URL}/"]
 
     about_paras = ABOUT_CONTENT.get(SITE["name"])
@@ -2908,20 +3602,47 @@ def build(outdir: Path) -> None:
         legacy = legacy_event_id(event)
         if legacy != slug:
             write_html_redirect(outdir / "e" / f"{legacy}.html", canonical)
-            write_index(
-                outdir / "e" / legacy,
-                (
-                    f'<!doctype html><html lang="en"><head>'
-                    f'<meta charset="utf-8">'
-                    f'<link rel="canonical" href="{esc(canonical)}">'
-                    f'<meta http-equiv="refresh" content="0;url={esc(canonical)}">'
-                    f"</head><body>"
-                    f'<p><a href="{esc(canonical)}">This page has moved</a>.</p>'
-                    f"</body></html>"
-                ),
-            )
+            write_index(outdir / "e" / legacy, moved_page(canonical))
         write_html_redirect(outdir / "e" / f"{slug}.html", canonical)
         urls.append(canonical)
+
+    # Past events keep their pages: searches for a name keep landing after
+    # the date, and a 404 throws away what the page had earned. Left out
+    # of the sitemap — Google already knows the ones that matter.
+    for event in past_events:
+        slug = event_slug(event)
+        write_index(outdir / "e" / slug, event_page(event, past=True))
+        write_html_redirect(outdir / "e" / f"{slug}.html", event_url(event))
+
+    # A series' later dates live at <slug>-<date> until the date before
+    # them passes and the bare slug rolls on to them: the dated URL Google
+    # found keeps working, pointing at wherever that date lives now.
+    taken = set(_EVENT_SLUGS.values())
+    for event in [*events, *past_events]:
+        if not event.get("start_at"):
+            continue
+        dated = f"{slugify_title(event.get('title') or 'event')}-{event['start_at'][:10]}"
+        if dated not in taken:
+            taken.add(dated)
+            write_index(outdir / "e" / dated, moved_page(event_url(event)))
+
+    # Listings gone since Google found them: a merged duplicate points at
+    # the listing it was merged into, a withdrawn one at its host's page.
+    # Anything else falls through to 404.html.
+    by_key = {f"{e['source']}:{e['source_id']}": e for e in [*events, *past_events]}
+    for row in fetch_gone_events():
+        target = by_key.get(row.get("duplicate_of") or "")
+        if target:
+            dest = event_url(target)
+        elif site_match(row) and organizer_page_for(row):
+            dest = organizer_page_url(organizer_page_for(row)[0])
+        else:
+            continue
+        base = slugify_title(row.get("title") or "")
+        for slug in (base, f"{base}-{(row.get('start_at') or '')[:10]}"):
+            if base and slug not in taken:
+                taken.add(slug)
+                write_index(outdir / "e" / slug, moved_page(dest))
 
     # category pages only make sense when the site spans all categories;
     # on a filtered site one of them would just mirror the homepage
@@ -2951,13 +3672,31 @@ def build(outdir: Path) -> None:
         )
         write_html_redirect(outdir / "t" / f"{slug_}.html", canonical)
 
+    PRACTICE_AREAS.clear()
+    for slug_, spec, matched in SITE_PRACTICES:
+        pool = matched + PRACTICE_PAST.get(slug_, [])
+        PRACTICE_AREAS[slug_] = [
+            a for a in AREAS
+            if sum(1 for e in pool if e.get("area") == a) >= AREA_MIN_EVENTS
+        ]
     for slug_, spec, matched in SITE_PRACTICES:
         canonical = practice_url(slug_)
         write_listing(
             outdir, ("p", slug_), canonical,
             slug_, spec["label"], spec["seo_title"], matched, "practice", urls,
+            **practice_page_extras(slug_, spec, matched),
         )
         write_html_redirect(outdir / "p" / f"{slug_}.html", canonical)
+        for area in PRACTICE_AREAS[slug_]:
+            write_index(
+                outdir / "p" / slug_ / area,
+                area_page(
+                    slug_, spec, area,
+                    [e for e in matched if e.get("area") == area],
+                    [e for e in PRACTICE_PAST.get(slug_, []) if e.get("area") == area],
+                ),
+            )
+            urls.append(area_url(slug_, area))
 
     for slug_, org in SITE_ORGANIZERS.items():
         write_listing(
@@ -2983,11 +3722,16 @@ def build(outdir: Path) -> None:
                     "deep": spec.get("deep") or [],
                     "exclude": spec.get("exclude") or [],
                     "parent": spec.get("parent"),
+                    "tags": spec.get("tags", True),
                 }
-                for slug_, spec, _ in SITE_PRACTICES
+                for slug_, spec, matched in SITE_PRACTICES
+                # a page kept up by past listings alone has no chip to light
+                if matched
             ]
         )
     )
+
+    (outdir / "404.html").write_text(not_found_page())
 
     today = datetime.now(timezone.utc).date().isoformat()
     sitemap = (
