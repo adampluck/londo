@@ -1796,7 +1796,7 @@ body.static-page {
     align-items: start;
   }
   .static-event.has-figure .static-event-head { grid-column: 1; grid-row: 1; }
-  .static-event.has-figure .static-prose { grid-column: 1; grid-row: 2; }
+  .static-event.has-figure .static-event-body { grid-column: 1; grid-row: 2; }
   .static-event.has-figure .static-figure {
     grid-column: 2;
     grid-row: 1 / span 2;
@@ -1807,7 +1807,11 @@ body.static-page {
 }
 
 .static-event-head .static-cta-wrap {
-  margin-bottom: 1.6rem;
+  margin: 0 0 1.4rem;
+}
+
+.static-event-body .static-cta-wrap {
+  margin: 1.4rem 0 0;
 }
 
 .static-figure img {

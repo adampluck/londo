@@ -2804,19 +2804,28 @@ def event_page(event: dict, past: bool = False) -> str:
             "</div>"
         )
 
+    top_cta = bottom_cta = ""
     if past:
         cta = (
             '<p class="static-cta-wrap static-cta-note">'
             f"This took place on {esc(when)}.</p>"
         )
     elif event.get("source_url"):
-        cta = f"""<p class="static-cta-wrap">
+        # twice: up by the title, where a visitor from a search wants it,
+        # and again after the blurb for whoever read that first. The click
+        # path says which one was used.
+        def ticket_link(where: str) -> str:
+            return f"""<p class="static-cta-wrap static-cta-{where}">
       <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
-         data-goatcounter-click="out/{esc(organizer_slug(org))}"
+         data-goatcounter-click="out/{esc(organizer_slug(org))}{'' if where == 'top' else '/' + where}"
          data-goatcounter-title="{esc(event["title"])}">
         tickets &amp; details ↗
       </a>
     </p>"""
+
+        top_cta = ticket_link("top")
+        bottom_cta = ticket_link("bottom")
+        cta = ""
     else:
         # a flyer shared in the community chat, with no page of its own:
         # the details above are all there is
@@ -2860,12 +2869,16 @@ def event_page(event: dict, past: bool = False) -> str:
       <p class="static-kicker">{esc(" · ".join(kicker_bits))}</p>
       <h1 class="static-title">{esc(event["title"])}</h1>
       {hook}
+      {top_cta}
       <dl class="static-facts">{"".join(facts)}</dl>
       {topic_chips(event)}
       {cta}
     </div>
     {img}
-    {desc_html}
+    <div class="static-event-body">
+      {desc_html}
+      {bottom_cta}
+    </div>
   </article>
   {related}
   {explore_html()}
