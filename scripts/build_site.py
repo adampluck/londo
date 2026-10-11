@@ -2910,30 +2910,21 @@ def event_page(event: dict, past: bool = False) -> str:
             "</div>"
         )
 
-    top_cta = bottom_cta = ""
+    top_cta = ""
     if past:
         cta = (
             '<p class="static-past-note">'
             f"This took place on {esc(day_text)}. What's on instead is below.</p>"
         )
     elif event.get("source_url"):
-        # twice: up by the title, where a visitor from a search wants it,
-        # and again after the blurb for whoever read that first. The click
-        # path says which one was used.
-        def ticket_link(where: str) -> str:
-            return f"""<p class="static-cta-wrap static-cta-{where}">
+        # one button, up by the title, where a visitor from a search wants it
+        top_cta = f"""<p class="static-cta-wrap static-cta-top">
       <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
-         data-goatcounter-click="out/{esc(organizer_slug(org))}{'' if where == 'top' else '/' + where}"
+         data-goatcounter-click="out/{esc(organizer_slug(org))}"
          data-goatcounter-title="{esc(event["title"])}">
         Tickets &amp; details <span aria-hidden="true">↗</span>
-      </a>{f'<span class="static-cta-price">{esc(price)}</span>' if price and where == 'top' else ''}
+      </a>{f'<span class="static-cta-price">{esc(price)}</span>' if price else ''}
     </p>"""
-
-        top_cta = ticket_link("top")
-        # a second button only where there's a blurb long enough to read
-        # past the first one
-        long_blurb = sum(len(p) for p in paragraphs) > 500
-        bottom_cta = ticket_link("bottom") if long_blurb else ""
         cta = ""
     else:
         # a flyer shared in the community chat, with no page of its own:
@@ -2969,7 +2960,6 @@ def event_page(event: dict, past: bool = False) -> str:
     </aside>
     <div class="static-event-body">
       {desc_html}
-      {bottom_cta}
     </div>
   </article>
   {related}

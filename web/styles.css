@@ -1822,10 +1822,6 @@ body.static-page {
   margin-top: 0.4rem;
 }
 
-.static-event-body .static-cta-wrap {
-  margin: 1.6rem 0 0;
-}
-
 /* the ticket link: the one thing on the page to press, so it's filled */
 .static-cta-wrap {
   display: flex;
@@ -1954,10 +1950,6 @@ body.static-page {
 
 .static-prose p:last-child {
   margin-bottom: 0;
-}
-
-.static-cta-wrap {
-  margin: 2rem 0 0;
 }
 
 .static-cta {
