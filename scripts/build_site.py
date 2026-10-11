@@ -1973,29 +1973,63 @@ def home_date_strip_html(event: dict | None = None) -> str:
     return _strip(ticks, ranges)
 
 
+# the card grid's width on a wide screen: a group shorter than this
+# leaves a row with holes in it
+GROUP_MIN = 3
+
+
+def _range_label(first, last) -> str:
+    if first == last:
+        return first.strftime("%A %-d %B")
+    if first.month == last.month:
+        return f"{first:%-d} – {last:%-d %B}"
+    return f"{first:%-d %b} – {last:%-d %b}"
+
+
 def week_groups(events: list[dict]) -> str:
-    """Events as card grids grouped by week, each card carrying its own
-    day. A listing rarely has two things on one day, so day headings left
-    a row of one card and two empty slots; a week fills the grid. The
-    first card of each day is that day's anchor (#d-YYYY-MM-DD) for the
-    date strip above to jump to."""
+    """Events as card grids under a few headings, each card carrying its
+    own day. A listing rarely has two things on one day, or even three in
+    a week, so a heading per day — or per week — left rows one card wide.
+    Weeks are merged, in order, until a group's cards fill whole rows;
+    only the page's last row can be short, and a short last group joins
+    the one before it. A lone week keeps its name ("This
+    week", "Next week"); merged weeks are named by their dates. The first
+    card of each day is that day's anchor (#d-YYYY-MM-DD) for the date
+    strip above."""
     today = datetime.now(LONDON).date()
     this_monday = today - timedelta(days=today.weekday())
-    by_week: dict = {}
+    weeks: dict = {}
     for e in events:
         day = _start_london(e).date()
-        by_week.setdefault(day - timedelta(days=day.weekday()), []).append(e)
+        weeks.setdefault(day - timedelta(days=day.weekday()), []).append(e)
+
+    groups: list[list] = []  # [[monday, ...], events]
+    for monday, week_events in weeks.items():
+        # keep filling the open group until its rows are whole
+        if groups and len(groups[-1][1]) % GROUP_MIN:
+            groups[-1][0].append(monday)
+            groups[-1][1].extend(week_events)
+        else:
+            groups.append([[monday], list(week_events)])
+    if len(groups) > 1 and len(groups[-1][1]) < GROUP_MIN:
+        mondays, tail = groups.pop()
+        groups[-1][0].extend(mondays)
+        groups[-1][1].extend(tail)
+
     sections = []
     anchored: set = set()
-    for monday, week_events in by_week.items():
-        if monday <= this_monday:
+    for mondays, group_events in groups:
+        if len(mondays) == 1 and mondays[0] <= this_monday:
             heading = "This week"
-        elif monday == this_monday + timedelta(days=7):
+        elif len(mondays) == 1 and mondays[0] == this_monday + timedelta(days=7):
             heading = "Next week"
         else:
-            heading = "Week of " + monday.strftime("%-d %B")
+            heading = _range_label(
+                _start_london(group_events[0]).date(),
+                _start_london(group_events[-1]).date(),
+            )
         cards = []
-        for e in week_events:
+        for e in group_events:
             day = _start_london(e).date().isoformat()
             card = event_card(e, dated=True)
             if day not in anchored:
