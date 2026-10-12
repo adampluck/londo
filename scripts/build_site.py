@@ -510,51 +510,8 @@ TOPICS = {
 # a search engine — or a model quoting one paragraph — has something to
 # lift. Keep it concrete and keep it honest about prices and safety.
 PRACTICES = {
-    "cacao-ceremony": {
-        "label": "cacao ceremony",
-        "chip": "cacao",
-        "seo_title": "Cacao ceremonies in London",
-        "price_q": "How much does a cacao ceremony cost in London?",
-        "terms": ["cacao", "cocoa ceremony"],
-        "deep": ["cacao ceremony", "cacao circle"],
-        "intro": (
-            "A cacao ceremony is a gathering where everyone drinks a cup of "
-            "thick, bitter ceremonial cacao together and then sits, moves or "
-            "shares for a couple of hours. The cacao is a mild heart opener, "
-            "not a psychedelic: it lifts the mood, warms the chest and makes "
-            "people a little more willing to be honest with each other.",
-            "In London they usually run on a weekday evening or a Sunday "
-            "afternoon, often paired with ecstatic dance, sound, breathwork or "
-            "a sharing circle. Expect two to three hours, a room of twenty to "
-            "eighty people, and no requirement to say anything at all.",
-        ),
-        "faq": [
-            (
-                "What happens at a cacao ceremony?",
-                "You arrive, sit in a circle and are handed a cup of ceremonial "
-                "cacao — thick, dark and unsweetened. The facilitator usually "
-                "opens with an intention or a short meditation while the cacao "
-                "takes effect over twenty minutes or so, then leads whatever the "
-                "evening is built around: dance, sound, breathwork, journalling "
-                "or open sharing. Most end with a closing circle.",
-            ),
-            (
-                "Is cacao a drug, and is it safe?",
-                "Ceremonial cacao is food, not a drug — it's unprocessed cacao "
-                "with theobromine and a little caffeine, so it feels like a strong "
-                "coffee with a warmer edge. It's worth telling the facilitator "
-                "beforehand if you take antidepressants (particularly MAOIs), have "
-                "a heart condition, or are pregnant, as they will often serve a "
-                "smaller dose.",
-            ),
-            (
-                "Can I go to a cacao ceremony on my own?",
-                "Yes — most people there came alone. Facilitators build in "
-                "introductions and pairs, and nobody is made to speak or touch "
-                "anyone. Arriving ten minutes early makes the first circle easier.",
-            ),
-        ],
-    },
+    # most listed first, all time, psyconnect's events (counted 2026-10-12):
+    # the order of the homepage rail, filter row and explore tiles
     "ecstatic-dance": {
         "label": "ecstatic dance",
         "seo_title": "Ecstatic dance in London",
@@ -634,46 +591,6 @@ PRACTICES = {
             ),
         ],
     },
-    "breathwork": {
-        "label": "breathwork",
-        "seo_title": "Breathwork classes & workshops in London",
-        "terms": ["breathwork", "breathing workshop", "rebirthing", "holotropic"],
-        "deep": ["breathwork session", "conscious connected breathing"],
-        "intro": (
-            "Breathwork is a session where a facilitator guides you through a "
-            "specific breathing pattern — usually connected, mouth-led and "
-            "faster than normal — while you lie down with music playing. Thirty "
-            "to sixty minutes of it can bring tingling, strong emotion, "
-            "tears or a deep calm, and the session closes with rest and sharing.",
-            "London runs everything from lunchtime classes to weekend "
-            "intensives, in styles from gentle and somatic to the intense "
-            "holotropic lineage. Most are two hours and need no experience.",
-        ),
-        "faq": [
-            (
-                "What happens in a breathwork session?",
-                "You lie on a mat with an eye mask while the facilitator talks you "
-                "into a connected breathing rhythm — in through the mouth, no pause "
-                "at the top, out with a release. After twenty to forty minutes of "
-                "active breathing the music softens and you rest, then the group "
-                "usually shares what came up.",
-            ),
-            (
-                "Is breathwork safe?",
-                "For most people, yes, though tingling hands and a tight jaw are "
-                "common and harmless. Facilitators normally ask you to check in "
-                "first if you have epilepsy, cardiovascular problems, glaucoma, "
-                "severe asthma, a history of psychosis, or are pregnant — the "
-                "faster styles aren't recommended in those cases.",
-            ),
-            (
-                "Do I need any experience?",
-                "No. Almost every London session is open to first-timers and the "
-                "facilitator explains the pattern before anything starts. You can "
-                "stop and breathe normally whenever you want.",
-            ),
-        ],
-    },
     "sound-bath": {
         "label": "sound bath",
         "seo_title": "Sound baths & gong baths in London",
@@ -715,6 +632,91 @@ PRACTICES = {
                 "and more physical than bowls — you feel them in your chest. "
                 "Sessions billed as sound healing or sound journeys use a wider mix "
                 "of instruments and often voice.",
+            ),
+        ],
+    },
+    "cacao-ceremony": {
+        "label": "cacao ceremony",
+        "chip": "cacao",
+        "seo_title": "Cacao ceremonies in London",
+        "price_q": "How much does a cacao ceremony cost in London?",
+        "terms": ["cacao", "cocoa ceremony"],
+        "deep": ["cacao ceremony", "cacao circle"],
+        "intro": (
+            "A cacao ceremony is a gathering where everyone drinks a cup of "
+            "thick, bitter ceremonial cacao together and then sits, moves or "
+            "shares for a couple of hours. The cacao is a mild heart opener, "
+            "not a psychedelic: it lifts the mood, warms the chest and makes "
+            "people a little more willing to be honest with each other.",
+            "In London they usually run on a weekday evening or a Sunday "
+            "afternoon, often paired with ecstatic dance, sound, breathwork or "
+            "a sharing circle. Expect two to three hours, a room of twenty to "
+            "eighty people, and no requirement to say anything at all.",
+        ),
+        "faq": [
+            (
+                "What happens at a cacao ceremony?",
+                "You arrive, sit in a circle and are handed a cup of ceremonial "
+                "cacao — thick, dark and unsweetened. The facilitator usually "
+                "opens with an intention or a short meditation while the cacao "
+                "takes effect over twenty minutes or so, then leads whatever the "
+                "evening is built around: dance, sound, breathwork, journalling "
+                "or open sharing. Most end with a closing circle.",
+            ),
+            (
+                "Is cacao a drug, and is it safe?",
+                "Ceremonial cacao is food, not a drug — it's unprocessed cacao "
+                "with theobromine and a little caffeine, so it feels like a strong "
+                "coffee with a warmer edge. It's worth telling the facilitator "
+                "beforehand if you take antidepressants (particularly MAOIs), have "
+                "a heart condition, or are pregnant, as they will often serve a "
+                "smaller dose.",
+            ),
+            (
+                "Can I go to a cacao ceremony on my own?",
+                "Yes — most people there came alone. Facilitators build in "
+                "introductions and pairs, and nobody is made to speak or touch "
+                "anyone. Arriving ten minutes early makes the first circle easier.",
+            ),
+        ],
+    },
+    "breathwork": {
+        "label": "breathwork",
+        "seo_title": "Breathwork classes & workshops in London",
+        "terms": ["breathwork", "breathing workshop", "rebirthing", "holotropic"],
+        "deep": ["breathwork session", "conscious connected breathing"],
+        "intro": (
+            "Breathwork is a session where a facilitator guides you through a "
+            "specific breathing pattern — usually connected, mouth-led and "
+            "faster than normal — while you lie down with music playing. Thirty "
+            "to sixty minutes of it can bring tingling, strong emotion, "
+            "tears or a deep calm, and the session closes with rest and sharing.",
+            "London runs everything from lunchtime classes to weekend "
+            "intensives, in styles from gentle and somatic to the intense "
+            "holotropic lineage. Most are two hours and need no experience.",
+        ),
+        "faq": [
+            (
+                "What happens in a breathwork session?",
+                "You lie on a mat with an eye mask while the facilitator talks you "
+                "into a connected breathing rhythm — in through the mouth, no pause "
+                "at the top, out with a release. After twenty to forty minutes of "
+                "active breathing the music softens and you rest, then the group "
+                "usually shares what came up.",
+            ),
+            (
+                "Is breathwork safe?",
+                "For most people, yes, though tingling hands and a tight jaw are "
+                "common and harmless. Facilitators normally ask you to check in "
+                "first if you have epilepsy, cardiovascular problems, glaucoma, "
+                "severe asthma, a history of psychosis, or are pregnant — the "
+                "faster styles aren't recommended in those cases.",
+            ),
+            (
+                "Do I need any experience?",
+                "No. Almost every London session is open to first-timers and the "
+                "facilitator explains the pattern before anything starts. You can "
+                "stop and breathe normally whenever you want.",
             ),
         ],
     },
@@ -761,44 +763,6 @@ PRACTICES = {
                 "Not unless you choose to be. Most London sessions are solo or "
                 "guided in pairs with explicit consent, and 'I'd rather not' is a "
                 "complete answer.",
-            ),
-        ],
-    },
-    "contact-improvisation": {
-        "label": "contact improvisation",
-        "chip": "contact improv",
-        "seo_title": "Contact improvisation jams & classes in London",
-        "terms": ["contact improv", "contact jam", "ci jam"],
-        "deep": ["contact improvisation"],
-        "intro": (
-            "Contact improvisation is a movement practice built on a shared "
-            "point of contact: two people lean, roll, lift and give weight, "
-            "following momentum rather than choreography. It's danced barefoot "
-            "and usually in silence or to quiet music.",
-            "London has weekly jams — open floors where anyone can dance with "
-            "anyone — plus classes for people who want the technique first. "
-            "Jams often ask for some prior experience; classes never do.",
-        ),
-        "faq": [
-            (
-                "What is contact improvisation?",
-                "A duet form developed by Steve Paxton in the 1970s in which "
-                "dancers share weight through a moving point of contact. Nothing "
-                "is set in advance: the dance follows physics — momentum, gravity "
-                "and the surface between two bodies.",
-            ),
-            (
-                "Is contact improv a beginner-friendly practice?",
-                "Classes are, and are the right place to start: you learn rolling, "
-                "giving weight and how to keep each other safe. Open jams assume "
-                "you already have those basics, so check the listing before turning "
-                "up to one.",
-            ),
-            (
-                "Is contact improvisation intimate?",
-                "It involves a lot of physical contact but is not romantic or "
-                "sexual, and consent is explicit throughout — you can decline a "
-                "dance or end one at any point without explanation.",
             ),
         ],
     },
@@ -886,52 +850,6 @@ PRACTICES = {
             ),
         ],
     },
-    "authentic-relating": {
-        "label": "authentic relating",
-        "chip": "relating",
-        "seo_title": "Authentic relating & circling in London",
-        "price_q": "How much does an authentic relating event cost in London?",
-        "terms": ["authentic relating", "circling", "relating games", "relating room"],
-        "deep": ["authentic relating"],
-        "tags": False,
-        "intro": (
-            "Authentic relating is a set of guided conversation practices "
-            "for meeting people honestly: saying what is actually true for "
-            "you in the moment, and getting curious about the person in "
-            "front of you instead of performing. Evenings are a sequence of "
-            "games in pairs and small groups, each with a simple structure "
-            "and a facilitator holding time.",
-            "Circling is its deeper sibling: a group of five to ten turns its "
-            "whole attention on one person, or on the group itself, and "
-            "reflects back what it notices. London has weekly drop-ins, "
-            "beginner evenings and full circling weekends.",
-        ),
-        "faq": [
-            (
-                "What happens at an authentic relating evening?",
-                "After a short welcome you're paired up for structured games — "
-                "one person asks a question, the other answers, then you swap, "
-                "or you take turns finishing a sentence like \"right now I "
-                "notice…\". The structures make it easy to go past small talk "
-                "quickly. Expect plenty of rotation and a sharing circle at the "
-                "end.",
-            ),
-            (
-                "What is circling?",
-                "A group practice in which everyone gives their attention to "
-                "one person's experience in the moment — what they feel, how "
-                "they're landing with the group — and says what they notice in "
-                "return. It's slower and more intimate than relating games, and "
-                "usually led by a trained facilitator.",
-            ),
-            (
-                "Is it therapy?",
-                "No. It's a social practice, not treatment, and nobody is asked "
-                "to dig into their history. You choose how much to share, and "
-                "\"I'd rather not say\" is a welcome answer.",
-            ),
-        ],
-    },
     "family-constellations": {
         "label": "family constellations",
         "seo_title": "Family constellations workshops in London",
@@ -979,38 +897,87 @@ PRACTICES = {
             ),
         ],
     },
-    "kirtan": {
-        "label": "kirtan & chanting",
-        "chip": "kirtan",
-        "seo_title": "Kirtan & chanting circles in London",
-        "price_q": "How much does kirtan cost in London?",
-        "terms": ["kirtan", "mantra circle", "mantra singing", "chanting", "bhajan"],
-        "deep": [],
+    "authentic-relating": {
+        "label": "authentic relating",
+        "chip": "relating",
+        "seo_title": "Authentic relating & circling in London",
+        "price_q": "How much does an authentic relating event cost in London?",
+        "terms": ["authentic relating", "circling", "relating games", "relating room"],
+        "deep": ["authentic relating"],
         "tags": False,
         "intro": (
-            "Kirtan is call-and-response chanting from the Indian devotional "
-            "tradition: a leader sings a line of a mantra, usually with "
-            "harmonium and drum, and the room sings it back, slowly at first "
-            "and then faster until it lifts. Nobody needs to sing well, and "
-            "the words are simple and repeated.",
-            "London's chanting circles also cover Vedic chanting, mantra "
-            "circles and Celtic and devotional song. Most are an evening of "
-            "ninety minutes to two hours, seated on cushions or chairs.",
+            "Authentic relating is a set of guided conversation practices "
+            "for meeting people honestly: saying what is actually true for "
+            "you in the moment, and getting curious about the person in "
+            "front of you instead of performing. Evenings are a sequence of "
+            "games in pairs and small groups, each with a simple structure "
+            "and a facilitator holding time.",
+            "Circling is its deeper sibling: a group of five to ten turns its "
+            "whole attention on one person, or on the group itself, and "
+            "reflects back what it notices. London has weekly drop-ins, "
+            "beginner evenings and full circling weekends.",
         ),
         "faq": [
             (
-                "What happens at a kirtan?",
-                "You sit in a circle or rows facing the musicians. The leader "
-                "introduces a mantra and what it means, sings each line, and "
-                "everyone answers. Each chant builds over ten to twenty minutes, "
-                "and there's usually silence between them. Song sheets are "
-                "often handed out.",
+                "What happens at an authentic relating evening?",
+                "After a short welcome you're paired up for structured games — "
+                "one person asks a question, the other answers, then you swap, "
+                "or you take turns finishing a sentence like \"right now I "
+                "notice…\". The structures make it easy to go past small talk "
+                "quickly. Expect plenty of rotation and a sharing circle at the "
+                "end.",
             ),
             (
-                "Do I need to be religious or able to sing?",
-                "No. The mantras come from Hindu devotion, but London kirtans "
-                "welcome people of any faith or none, and the point is joining "
-                "in rather than singing well. You can also just listen.",
+                "What is circling?",
+                "A group practice in which everyone gives their attention to "
+                "one person's experience in the moment — what they feel, how "
+                "they're landing with the group — and says what they notice in "
+                "return. It's slower and more intimate than relating games, and "
+                "usually led by a trained facilitator.",
+            ),
+            (
+                "Is it therapy?",
+                "No. It's a social practice, not treatment, and nobody is asked "
+                "to dig into their history. You choose how much to share, and "
+                "\"I'd rather not say\" is a welcome answer.",
+            ),
+        ],
+    },
+    "contact-improvisation": {
+        "label": "contact improvisation",
+        "chip": "contact improv",
+        "seo_title": "Contact improvisation jams & classes in London",
+        "terms": ["contact improv", "contact jam", "ci jam"],
+        "deep": ["contact improvisation"],
+        "intro": (
+            "Contact improvisation is a movement practice built on a shared "
+            "point of contact: two people lean, roll, lift and give weight, "
+            "following momentum rather than choreography. It's danced barefoot "
+            "and usually in silence or to quiet music.",
+            "London has weekly jams — open floors where anyone can dance with "
+            "anyone — plus classes for people who want the technique first. "
+            "Jams often ask for some prior experience; classes never do.",
+        ),
+        "faq": [
+            (
+                "What is contact improvisation?",
+                "A duet form developed by Steve Paxton in the 1970s in which "
+                "dancers share weight through a moving point of contact. Nothing "
+                "is set in advance: the dance follows physics — momentum, gravity "
+                "and the surface between two bodies.",
+            ),
+            (
+                "Is contact improv a beginner-friendly practice?",
+                "Classes are, and are the right place to start: you learn rolling, "
+                "giving weight and how to keep each other safe. Open jams assume "
+                "you already have those basics, so check the listing before turning "
+                "up to one.",
+            ),
+            (
+                "Is contact improvisation intimate?",
+                "It involves a lot of physical contact but is not romantic or "
+                "sexual, and consent is explicit throughout — you can decline a "
+                "dance or end one at any point without explanation.",
             ),
         ],
     },
@@ -1057,6 +1024,41 @@ PRACTICES = {
                 "start, and most groups welcome people who've never heard of "
                 "it. If you want to read ahead, Bohm's short book On Dialogue "
                 "is the usual starting point.",
+            ),
+        ],
+    },
+    "kirtan": {
+        "label": "kirtan & chanting",
+        "chip": "kirtan",
+        "seo_title": "Kirtan & chanting circles in London",
+        "price_q": "How much does kirtan cost in London?",
+        "terms": ["kirtan", "mantra circle", "mantra singing", "chanting", "bhajan"],
+        "deep": [],
+        "tags": False,
+        "intro": (
+            "Kirtan is call-and-response chanting from the Indian devotional "
+            "tradition: a leader sings a line of a mantra, usually with "
+            "harmonium and drum, and the room sings it back, slowly at first "
+            "and then faster until it lifts. Nobody needs to sing well, and "
+            "the words are simple and repeated.",
+            "London's chanting circles also cover Vedic chanting, mantra "
+            "circles and Celtic and devotional song. Most are an evening of "
+            "ninety minutes to two hours, seated on cushions or chairs.",
+        ),
+        "faq": [
+            (
+                "What happens at a kirtan?",
+                "You sit in a circle or rows facing the musicians. The leader "
+                "introduces a mantra and what it means, sings each line, and "
+                "everyone answers. Each chant builds over ten to twenty minutes, "
+                "and there's usually silence between them. Song sheets are "
+                "often handed out.",
+            ),
+            (
+                "Do I need to be religious or able to sing?",
+                "No. The mantras come from Hindu devotion, but London kirtans "
+                "welcome people of any faith or none, and the point is joining "
+                "in rather than singing well. You can also just listen.",
             ),
         ],
     },
