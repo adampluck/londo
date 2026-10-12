@@ -11,18 +11,19 @@
    keep in step. theme-boot.js sets data-theme on <html> when the reader
    picks a side; with nothing set we follow the system.
 
-   Dark is warm — soaked umber and ember, not neutral grey — because the
-   ground is a hand-drawn cream pattern and a cold dark makes it look like
-   an unfinished sketch. Accents keep their ≥4.5:1 footing on both grounds:
+   Dark is forest night — pine-charcoal ground, bone ink, sage for the
+   plum's jobs and apricot for the ochre's. The first dark was umber with
+   a lilac plum and yellow ochre, and the pair fought; green and apricot
+   sit together the way plum and ochre do on cream. Accents keep their ≥4.5:1 footing on both grounds:
    the light inks are too dark to read on umber, so dark mode lifts them
    rather than reusing them. */
 
 :root {
   color-scheme: light dark;
 
-  --dusk-0: light-dark(#f6efe4, #191310); /* cream / soaked umber */
-  --dusk-1: light-dark(#f0e5d3, #211a15); /* parchment */
-  --dusk-2: light-dark(#e8d9c2, #2c2119); /* warm sand */
+  --dusk-0: light-dark(#f6efe4, #111714); /* cream / soaked umber */
+  --dusk-1: light-dark(#f0e5d3, #161e1a); /* parchment */
+  --dusk-2: light-dark(#e8d9c2, #1e2823); /* warm sand */
   /* Accent and secondary inks are all ≥4.5:1 on their ground — the first
      pass inherited londo's values, which were mixed for a near-black panel
      and washed out to 3:1-ish on cream. --mono is Inter, not IBM Plex
@@ -36,41 +37,41 @@
      category glows — now resolves to one of these. --peach and --mauve keep
      their names because styles.css reaches for them by name; only their
      values changed. */
-  --mauve: light-dark(#7a6553, #a3907c);  /* quiet label ink, no longer sage */
-  --peach: light-dark(#6d4160, #cb9dbf);  /* plum — brand, links, selection */
-  --gold: light-dark(#8a5f14, #dba84a);   /* ochre — hooks, times, headings */
-  --cta-ink: light-dark(#fdf6ee, #1c1512); /* text on a filled plum button */
-  --ink: light-dark(#3a2b20, #f2e7d7);    /* dark umber / warm bone */
-  --ink-dim: light-dark(#6b5443, #b7a48d);
+  --mauve: light-dark(#7a6553, #9aa89d);  /* quiet label ink, no longer sage */
+  --peach: light-dark(#6d4160, #93ccb4);  /* plum — brand, links, selection */
+  --gold: light-dark(#8a5f14, #e9b48c);   /* ochre — hooks, times, headings */
+  --cta-ink: light-dark(#fdf6ee, #0f1513); /* text on a filled plum button */
+  --ink: light-dark(#3a2b20, #ece7dc);    /* dark umber / warm bone */
+  --ink-dim: light-dark(#6b5443, #a9b3a9);
   --mono: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   /* cards share the spotlight cards' ivory: londo's near-transparent card
      let the background pattern read straight through the copy. Dark mode
      cannot use an ivory wash, so it lifts off the ground instead. */
-  --card: light-dark(rgba(255, 252, 245, 0.75), rgba(255, 236, 210, 0.07));
-  --card-edge: light-dark(rgba(122, 90, 60, 0.2), rgba(255, 224, 190, 0.16));
-  --key-face: light-dark(#efe2cb, #2f251d);
-  --key-side: light-dark(#d3bd9c, #150f0b);
-  --key-lit: light-dark(#f9f1e2, #3b2e24);
+  --card: light-dark(rgba(255, 252, 245, 0.75), rgba(215, 240, 228, 0.06));
+  --card-edge: light-dark(rgba(122, 90, 60, 0.2), rgba(200, 232, 216, 0.15));
+  --key-face: light-dark(#efe2cb, #222c27);
+  --key-side: light-dark(#d3bd9c, #0a0f0d);
+  --key-lit: light-dark(#f9f1e2, #2c3833);
   --radius: 24px;
   /* launch splash stays cream in both schemes: it has to match the
      manifest background_color and the baked iOS launch PNGs, which are
      single files with no dark variant */
   --splash-bg: #f6efe4;
-  --hint-bg: light-dark(#fbf7ee, #241c16);
+  --hint-bg: light-dark(#fbf7ee, #18201c);
 
   /* controls: the bench's own surfaces and labels */
-  --surface: light-dark(rgba(255, 252, 245, 0.8), rgba(255, 238, 214, 0.07));
-  --surface-solid: light-dark(#fff, rgba(255, 240, 220, 0.09));
-  --edge-soft: light-dark(rgba(90, 62, 40, 0.22), rgba(255, 224, 190, 0.2));
-  --ui-strong: light-dark(#4a3729, #f0e5d5);
-  --ui-label: light-dark(#5c4636, #cdbba6);
-  --ui-soft: light-dark(#6b5443, #b7a48d);
+  --surface: light-dark(rgba(255, 252, 245, 0.8), rgba(215, 240, 228, 0.07));
+  --surface-solid: light-dark(#fff, rgba(220, 242, 232, 0.09));
+  --edge-soft: light-dark(rgba(90, 62, 40, 0.22), rgba(200, 232, 216, 0.2));
+  --ui-strong: light-dark(#4a3729, #e8ece5);
+  --ui-label: light-dark(#5c4636, #c2ccc3);
+  --ui-soft: light-dark(#6b5443, #a9b3a9);
   /* Selected day / topic. A solid dark slab with white type was the
      loudest thing on the page; a plum wash with plum type and a plum rule
      under it still reads as "this one" without shouting. */
-  --sel-wash: light-dark(rgba(109, 65, 96, 0.16), rgba(203, 157, 191, 0.2));
-  --sel-ink: light-dark(#5a3450, #f0d7e8);
-  --sel-line: light-dark(#6d4160, #cb9dbf);
+  --sel-wash: light-dark(rgba(109, 65, 96, 0.16), rgba(147, 204, 180, 0.18));
+  --sel-ink: light-dark(#5a3450, #d7f0e5);
+  --sel-line: light-dark(#6d4160, #93ccb4);
   /* 50px wider than the londo default, to give the 4-column spotlight room.
      Deliberately under ~1161px: past that, .grid's minmax(265px, 1fr) reflows
      the browse grid to 4 columns and the cards below shrink to ~275px. */
@@ -82,8 +83,8 @@
      (day headings' accent and count, empty states, the footer) uses these
      deeper pairs instead: both hold ≥4.5:1 on the darkest ground. Card
      text keeps the lighter house inks — cards carry their own ivory. */
-  --ground-accent: light-dark(#5e400c, #dba84a);
-  --ground-dim: light-dark(#514031, #b7a48d);
+  --ground-accent: light-dark(#5e400c, #e9b48c);
+  --ground-dim: light-dark(#514031, #a9b3a9);
 }
 
 /* an explicit choice pins the scheme; light-dark() resolves off the used
@@ -95,10 +96,10 @@
 body {
   background: linear-gradient(
     175deg,
-    light-dark(#faf4e8, #1c1512) 0%,
+    light-dark(#faf4e8, #0f1513) 0%,
     var(--dusk-0) 38%,
     var(--dusk-1) 72%,
-    light-dark(#e5d3b8, #2b201a) 100%
+    light-dark(#e5d3b8, #1b2420) 100%
   );
 }
 
@@ -283,12 +284,12 @@ body {
   }
 }
 
-.slider { background: light-dark(rgba(122, 90, 60, 0.25), rgba(255, 232, 205, 0.16)); }
+.slider { background: light-dark(rgba(122, 90, 60, 0.25), rgba(215, 240, 228, 0.16)); }
 .slider::before {
-  background: linear-gradient(180deg, light-dark(#fdf6e9, #4a3b2e), var(--key-face));
+  background: linear-gradient(180deg, light-dark(#fdf6e9, #3b4b43), var(--key-face));
   border: 1px solid var(--edge-soft);
 }
-.switch input:checked + .slider { background: light-dark(rgba(109, 65, 96, 0.4), rgba(203, 157, 191, 0.5)); }
+.switch input:checked + .slider { background: light-dark(rgba(109, 65, 96, 0.4), rgba(147, 204, 180, 0.5)); }
 
 /* ---------- date picker + topic tags: legibility pass ----------
    londo's bench is a dark instrument panel where hairline rules and tiny
@@ -343,7 +344,7 @@ body {
 }
 
 @media (hover: hover) {
-  .tick:hover { background: light-dark(rgba(109, 65, 96, 0.09), rgba(203, 157, 191, 0.1)); }
+  .tick:hover { background: light-dark(rgba(109, 65, 96, 0.09), rgba(147, 204, 180, 0.1)); }
   .tick.cursor:hover {
     background:
       linear-gradient(var(--sel-line), var(--sel-line)) bottom / 100% 2px no-repeat,
@@ -354,7 +355,7 @@ body {
 /* the pinned 7/30 group: separated by a tint rather than a rule */
 .ticker-fixed {
   border-left: none;
-  background: light-dark(rgba(122, 90, 60, 0.07), rgba(255, 232, 205, 0.06));
+  background: light-dark(rgba(122, 90, 60, 0.07), rgba(215, 240, 228, 0.06));
 }
 
 /* topic tags — pill-shaped, filled when active */
@@ -428,7 +429,7 @@ body {
   stroke: var(--card-edge);
 }
 .zone {
-  fill: light-dark(rgba(122, 90, 60, 0.08), rgba(255, 232, 205, 0.08));
+  fill: light-dark(rgba(122, 90, 60, 0.08), rgba(215, 240, 228, 0.08));
   stroke: var(--edge-soft);
 }
 
@@ -486,7 +487,7 @@ body {
 .placeholder-initial {
   font-family: var(--display);
   font-weight: 600;
-  color: light-dark(rgba(58, 43, 32, 0.72), rgba(242, 231, 215, 0.8));
+  color: light-dark(rgba(58, 43, 32, 0.72), rgba(236, 231, 220, 0.8));
 }
 
 .banner:not(:has(img))::after {
@@ -570,15 +571,15 @@ body {
 }
 
 .static-cta:hover {
-  background: light-dark(rgba(109, 65, 96, 0.1), rgba(203, 157, 191, 0.16));
+  background: light-dark(rgba(109, 65, 96, 0.1), rgba(147, 204, 180, 0.16));
 }
 
 .static-footer-home a,
 footer a {
   /* deeper plum than --peach: footer links sit on the gradient's darkest
      reach, where #6d4160 slips under 4.5:1 — see --ground-* */
-  color: light-dark(#5a3450, #cb9dbf);
-  border-bottom-color: light-dark(rgba(109, 65, 96, 0.45), rgba(203, 157, 191, 0.5));
+  color: light-dark(#5a3450, #93ccb4);
+  border-bottom-color: light-dark(rgba(109, 65, 96, 0.45), rgba(147, 204, 180, 0.5));
 }
 
 /* the footer sits at the very bottom of the gradient, its darkest reach —
@@ -613,7 +614,7 @@ footer,
 
 /* mobile sticky day header: parchment, not londo's dark plum */
 @media (max-width: 640px) {
-  .day-heading { background: light-dark(rgba(246, 239, 228, 0.92), rgba(25, 19, 16, 0.92)); }
+  .day-heading { background: light-dark(rgba(246, 239, 228, 0.92), rgba(17, 23, 20, 0.92)); }
 
   /* styles.css shrinks ticks to 0.66rem and tokens to 0.64rem on phones —
      the widths where legibility matters most. Hold the type size and trim
@@ -1018,36 +1019,36 @@ footer,
    each stop carries its own pair. */
 body.theme-dawn {
   background: linear-gradient(175deg,
-    light-dark(#fbeedd, #241a19) 0%,
-    light-dark(#f7e6cd, #2c1f1a) 40%,
-    light-dark(#f2d9b8, #34251c) 75%,
-    light-dark(#eccfa8, #3b2b1e) 100%);
+    light-dark(#fbeedd, #131c1b) 0%,
+    light-dark(#f7e6cd, #17211e) 40%,
+    light-dark(#f2d9b8, #1c2723) 75%,
+    light-dark(#eccfa8, #212d28) 100%);
 }
 body.theme-dawn .blob-a { background: radial-gradient(circle, rgba(122, 74, 108, 0.3), transparent 65%); }
 body.theme-dawn .blob-b { background: radial-gradient(circle, rgba(196, 148, 60, 0.28), transparent 65%); }
 
 body.theme-day {
   background: linear-gradient(175deg,
-    light-dark(#fcf7ec, #1c1613) 0%,
-    light-dark(#f6efe4, #231b16) 45%,
-    light-dark(#efe3cd, #2b2119) 78%,
-    light-dark(#e8d7ba, #32261c) 100%);
+    light-dark(#fcf7ec, #121815) 0%,
+    light-dark(#f6efe4, #151d19) 45%,
+    light-dark(#efe3cd, #19221e) 78%,
+    light-dark(#e8d7ba, #1e2823) 100%);
 }
 
 body.theme-dusk {
   background: linear-gradient(175deg,
-    light-dark(#f8ecd6, #201618) 0%,
-    light-dark(#f2dfc0, #2a1d1a) 45%,
-    light-dark(#e9cda2, #33231c) 78%,
-    light-dark(#ddba8c, #3b281f) 100%);
+    light-dark(#f8ecd6, #141a1c) 0%,
+    light-dark(#f2dfc0, #171f1f) 45%,
+    light-dark(#e9cda2, #1b2522) 78%,
+    light-dark(#ddba8c, #202a26) 100%);
 }
 
 body.theme-night {
   background: linear-gradient(175deg,
-    light-dark(#f0e2ca, #14100e) 0%,
-    light-dark(#e7d4b4, #1a1512) 45%,
-    light-dark(#d9c09b, #221a15) 80%,
-    light-dark(#ccb089, #291f19) 100%);
+    light-dark(#f0e2ca, #0d1210) 0%,
+    light-dark(#e7d4b4, #111714) 45%,
+    light-dark(#d9c09b, #151c19) 80%,
+    light-dark(#ccb089, #19211d) 100%);
 }
 body.theme-night .blob { opacity: 0.3; }
 
@@ -1058,6 +1059,8 @@ body.theme-night .blob { opacity: 0.3; }
 
 :root[data-theme="dark"] .sky::before { opacity: 0.15; }
 :root[data-theme="dark"] .blob { opacity: 0.3; }
+:root[data-theme="dark"] .blob-a { background: radial-gradient(circle, rgba(110, 170, 145, 0.22), transparent 65%); }
+:root[data-theme="dark"] .blob-b { background: radial-gradient(circle, rgba(220, 150, 100, 0.16), transparent 65%); }
 :root[data-theme="dark"] .grain { opacity: 0.055; }
 :root[data-theme="dark"] .banner img,
 :root[data-theme="dark"] .spotlight-media img,
@@ -1074,6 +1077,8 @@ body.theme-night .blob { opacity: 0.3; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .sky::before { opacity: 0.15; }
   :root:not([data-theme="light"]) .blob { opacity: 0.3; }
+  :root:not([data-theme="light"]) .blob-a { background: radial-gradient(circle, rgba(110, 170, 145, 0.22), transparent 65%); }
+  :root:not([data-theme="light"]) .blob-b { background: radial-gradient(circle, rgba(220, 150, 100, 0.16), transparent 65%); }
   :root:not([data-theme="light"]) .grain { opacity: 0.055; }
   :root:not([data-theme="light"]) .banner img,
   :root:not([data-theme="light"]) .spotlight-media img,
