@@ -4154,6 +4154,15 @@ def build(outdir: Path) -> None:
             ]
         )
     )
+    # the explore tiles' line icons, for the app's practice rail and filter
+    # chips — keyed like EXPLORE_ICONS, by practice slug or topic name
+    site_topics = SITE_JSON.get("topics")
+    (outdir / "icons.json").write_text(
+        json.dumps({
+            k: v for k, v in EXPLORE_ICONS.items()
+            if k in PRACTICES or site_topics is None or k in site_topics
+        } | {"_": _SPARK_ICON})
+    )
 
     (outdir / "404.html").write_text(not_found_page())
 

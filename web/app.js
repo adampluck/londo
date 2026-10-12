@@ -593,15 +593,33 @@
   // the same table its /p/<slug>/ pages are built from, filtered to the
   // ones this site has the listings for.
   let PRACTICES = [];
+  // the explore tiles' line icons, by practice slug or topic name
+  let ICONS = {};
 
   async function loadPractices() {
+    await Promise.all([
+      fetchJson("practices.json").then((v) => v && (PRACTICES = v)),
+      fetchJson("icons.json").then((v) => v && (ICONS = v)),
+    ]);
+  }
+
+  async function fetchJson(path) {
     try {
-      const resp = await fetch("practices.json", { cache: "no-cache" });
-      if (!resp.ok) return;
-      PRACTICES = await resp.json();
+      const resp = await fetch(path, { cache: "no-cache" });
+      return resp.ok ? await resp.json() : null;
     } catch (_) {
-      /* the chips are an extra; the listing must not wait on them */
+      return null; /* the chips are an extra; the listing must not wait on them */
     }
+  }
+
+  // An icon for a chip, or null. The paths come from our own build
+  // (EXPLORE_ICONS in scripts/build_site.py), so innerHTML is safe.
+  function iconSvg(key) {
+    const paths = ICONS[key];
+    if (!paths) return null;
+    const span = document.createElement("span");
+    span.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`;
+    return span.firstChild;
   }
 
   // £7.50, not £7.5 — mirror of _pounds() in scripts/build_site.py
@@ -965,7 +983,31 @@
     const foot = panel.querySelector(".filters-foot");
     panel.replaceChildren(...rows, ...(foot ? [foot] : []));
     document.getElementById("filters-toggle").hidden = !rows.length;
+    renderPracticeRail();
     syncFilters();
+
+    // psyconnect's homepage rail: one icon pill per practice, a shortcut
+    // to the modality row of the panel. Children (5Rhythms) stay in the
+    // panel, under their parent.
+    function renderPracticeRail() {
+      const rail = document.getElementById("practice-rail");
+      if (!rail || !FEATURES.practiceRail) return;
+      const pills = PRACTICES.filter((p) => !p.parent).map((p) => {
+        const btn = chip("modality", FACETS.modality, p.slug, p.label);
+        btn.dataset.goatcounterClick = `rail/${p.slug}`;
+        return btn;
+      });
+      rail.replaceChildren(...pills);
+      rail.hidden = !pills.length;
+      // the right-edge fade says "more this way"; drop it once there's none
+      const atEnd = () =>
+        rail.classList.toggle(
+          "at-end",
+          rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 4
+        );
+      rail.onscroll = atEnd;
+      atEnd();
+    }
 
     function mapChip() {
       const btn = document.createElement("button");
@@ -988,6 +1030,12 @@
       btn.dataset.facet = name;
       btn.dataset.value = value;
       btn.textContent = label;
+      const icon =
+        name === "modality" || name === "topic" ? iconSvg(value) : null;
+      if (icon) {
+        btn.classList.add("token-icon");
+        btn.prepend(icon);
+      }
       btn.addEventListener("click", () => {
         clearLanding();
         // tapping the lit chip clears the facet
@@ -1011,7 +1059,9 @@
       if (chosen && document.querySelector(`#filters-panel .facet-row[data-facet="${name}"]`))
         active += 1;
       document
-        .querySelectorAll(`#filters-panel .token[data-facet="${name}"]`)
+        .querySelectorAll(
+          `:is(#filters-panel, #practice-rail) .token[data-facet="${name}"]`
+        )
         .forEach((t) => {
           const value = t.dataset.value;
           const lit = value ? chosen === value : !chosen;

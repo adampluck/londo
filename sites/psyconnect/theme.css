@@ -1240,3 +1240,34 @@ body.theme-night .blob { opacity: 0.3; }
     padding: 0.3rem 0.68rem;
   }
 }
+
+/* ---------- practice rail ----------
+   The explore tiles' icons as one slim row under the day strip: a way in
+   for someone who knows what they're after, without opening filters.
+   One line at every width — it scrolls sideways rather than wrapping
+   into a wall, and fades at the edge to say there's more. */
+.practice-rail {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.1rem 0;
+  mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
+}
+.practice-rail::-webkit-scrollbar { display: none; }
+/* scrolled to the end: nothing more to promise */
+.practice-rail.at-end { mask-image: none; }
+.practice-rail[hidden] { display: none; }
+
+.practice-rail .token {
+  flex: none;
+  scroll-snap-align: start;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.72rem 0.3rem 0.6rem;
+  white-space: nowrap;
+}
+/* the open panel's modality row is the same pills again — one copy */
+.controls:has(#filters-panel:not([hidden])) .practice-rail { display: none; }

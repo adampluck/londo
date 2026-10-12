@@ -732,6 +732,24 @@ body {
   stroke-width: 2;
 }
 
+/* practice and topic chips wear the explore tiles' line icons */
+.token-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.token-icon svg {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .token-map .token-count { margin-left: 0.1em; }
 
 @media (max-width: 560px) {
