@@ -2032,7 +2032,8 @@ body.static-page {
 
 .static-glance a,
 .static-past a,
-.static-areas a {
+.static-areas a,
+.static-venue-facts a {
   color: inherit;
   text-decoration: underline;
   text-decoration-color: var(--mauve);
@@ -2041,8 +2042,16 @@ body.static-page {
 
 .static-glance a:hover,
 .static-past a:hover,
-.static-areas a:hover {
+.static-areas a:hover,
+.static-venue-facts a:hover {
   color: var(--peach);
+}
+
+/* a venue page's address and regular hosts, under its intro */
+.static-venue-facts {
+  margin: 0.3rem 0 0;
+  color: var(--ink-dim);
+  font-size: 0.95rem;
 }
 
 .static-glance-note {

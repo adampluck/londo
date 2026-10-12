@@ -7,7 +7,7 @@
 importScripts("config.js");
 
 const SITE = (self.LONDO_CONFIG && self.LONDO_CONFIG.SITE) || {};
-const CACHE = (SITE.id || "londo") + "-v50";
+const CACHE = (SITE.id || "londo") + "-v51";
 const SHELL = [
   "./",
   "index.html",
@@ -60,6 +60,29 @@ self.addEventListener("fetch", (e) => {
         .catch(() => caches.match(request))
     );
     return;
+  }
+
+  // the static pages (events, venues, tonight…) are rebuilt several
+  // times a day: fetch them fresh, falling back to the last copy offline.
+  // The app shell itself stays cache-first, for an instant start.
+  if (request.mode === "navigate") {
+    const scope = new URL(self.registration.scope).pathname;
+    const path = new URL(request.url).pathname;
+    const rel = path.startsWith(scope) ? path.slice(scope.length) : path;
+    if (rel !== "" && rel !== "index.html") {
+      e.respondWith(
+        fetch(request)
+          .then((res) => {
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put(request, copy));
+            }
+            return res;
+          })
+          .catch(() => caches.match(request))
+      );
+      return;
+    }
   }
 
   // everything else (shell, fonts, images): cache-first, refresh behind

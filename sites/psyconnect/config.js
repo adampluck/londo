@@ -71,7 +71,9 @@ self.LONDO_CONFIG = {
       "topics": true,
       "animateDayChange": false,
       "organizerPages": true,
-      "practiceRail": true
+      "practiceRail": true,
+      "venuePages": true,
+      "whenPages": true
     },
     "mapTiles": "light_all",
     "featured": {

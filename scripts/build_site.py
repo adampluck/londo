@@ -2195,6 +2195,13 @@ def seo_nav_html() -> str:
     if SITE_ORGANIZERS:
         parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
         parts.append(f'<a href="{organizers_index_url()}">hosts</a>')
+    if SITE_VENUES:
+        parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
+        parts.append(f'<a href="{venues_index_url()}">venues</a>')
+    if _when_pages_on():
+        for which in WHEN_PAGES:
+            parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
+            parts.append(f'<a href="{BASE_URL}/{which}/">{which.replace("-", " ")}</a>')
     return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
 
 
@@ -2236,6 +2243,146 @@ def site_organizers(upcoming: list[dict], past: list[dict]) -> dict[str, dict]:
         for slug_, org in found.items()
         if len(org["upcoming"]) + len(org["past"]) >= MIN_ORGANIZER_EVENTS
     }
+
+
+# ---------- venue pages ----------
+# "What's on at Colet House" is a search people make, and the rooms are
+# where a scene actually gathers. A venue earns a page the way a host
+# does: enough on, or recently on, that the page has something to say.
+MIN_VENUE_EVENTS = 4
+
+# Venues with a page, filled in by build() before any page is written:
+# event pages link their Where line here. slug -> {label, address, area,
+# lat, lon, upcoming, past, aliases}.
+SITE_VENUES: dict[str, dict] = {}
+# (source, source_id) -> venue slug, for exactly the events on its page
+VENUE_EVENTS: dict[tuple[str, str], str] = {}
+
+_POSTCODE_RE = re.compile(r"\b([A-Z]{1,2}\d[A-Z\d]?) ?(\d[A-Z]{2})\b", re.I)
+# A venue name that is really a home ("flat 6, 4 Torriano Mews", "51
+# Barnsbury Street") never gets a page: someone's front door is not a
+# venue to advertise. 21Soho and 4-4-2 Together pass — no space after
+# the number.
+_PRIVATE_VENUE_RE = re.compile(r"\bflat\b|^\d+[a-z]?\s+[a-z]", re.I)
+# "London SE1", "London N3": a postcode district standing in for a venue
+_DISTRICT_VENUE_RE = re.compile(r"^london,?\s+[a-z]{1,2}\d", re.I)
+# Neighbourhoods some sources put in the venue field. Parks stay in —
+# "events on Hampstead Heath" is a real place to meet.
+_NEIGHBOURHOODS = {
+    "hackney", "hackney wick", "hackney downs", "stoke newington", "dalston",
+    "shoreditch", "brixton", "peckham", "camden", "camden town", "islington",
+    "clapham", "bethnal green", "walthamstow", "london fields", "soho",
+    "kings cross", "king's cross", "bermondsey", "deptford", "lewisham",
+    "hammersmith", "notting hill", "kentish town", "tottenham", "hoxton",
+    "whitechapel", "stratford", "greenwich", "wimbledon", "croydon",
+    "central london", "east london", "north london", "south london",
+    "west london", "london bridge", "elephant and castle", "vauxhall",
+}
+
+
+def _venue_outward(event: dict) -> str | None:
+    """The postcode district (W14, E8) from the address, if it has a
+    whole postcode — the one place spelling every source agrees on."""
+    m = _POSTCODE_RE.search(f"{event.get('address') or ''} {event.get('venue_name') or ''}")
+    return m.group(1).upper() if m else None
+
+
+def _venue_page_name(venue: str) -> bool:
+    low = venue.lower().strip()
+    return not (
+        _PRIVATE_VENUE_RE.search(low)
+        or _DISTRICT_VENUE_RE.search(low)
+        or low in _NEIGHBOURHOODS
+        or low in AREAS
+    )
+
+
+def _venue_slug(names) -> str:
+    """One slug however the sources spell the room. Counts shift build to
+    build, so this can't follow the commonest spelling ("21 Soho" one week,
+    "21Soho" the next): the spelling with the most word breaks wins, then
+    the alphabet — the same answer every time those names are seen."""
+    slugs = {
+        # St Luke's -> st-lukes, not st-luke-s
+        slugify_title(re.sub(r"^the\s+|['’]", "", n.strip(), flags=re.I))
+        for n in names
+    }
+    return sorted(slugs, key=lambda s: (-s.count("-"), s))[0]
+
+
+def site_venues(upcoming: list[dict], past: list[dict]) -> dict[str, dict]:
+    """Rooms with enough on, or recently on, to be worth a page. Spellings
+    group by venue_key ("The Skylight Centre" = "Skylight Centre"). A name
+    shared by two buildings ("St Luke's Church") keeps only the events in
+    its usual postcode district, so one page never mixes two places."""
+    groups: dict[str, dict] = {}
+    for when, evs in (("upcoming", upcoming), ("past", past)):
+        for e in evs:
+            venue = clean_venue(e)
+            if not venue or not _venue_page_name(venue):
+                continue
+            g = groups.setdefault(
+                venue_key(venue), {"names": {}, "upcoming": [], "past": []}
+            )
+            g["names"][venue] = g["names"].get(venue, 0) + 1
+            g[when].append(e)
+
+    found: dict[str, dict] = {}
+    for g in groups.values():
+        every = g["upcoming"] + g["past"]
+        districts = [d for d in map(_venue_outward, every) if d]
+        home = max(set(districts), key=districts.count) if districts else None
+
+        def here(e: dict) -> bool:
+            d = _venue_outward(e)
+            return home is None or d is None or d == home
+
+        upcoming_ = [e for e in g["upcoming"] if here(e)]
+        past_ = [e for e in g["past"] if here(e)]
+        kept = upcoming_ + past_
+        if len(kept) < MIN_VENUE_EVENTS:
+            continue
+        names = g["names"]
+        slug_ = _venue_slug(names)
+        label = max(sorted(names), key=names.get)  # commonest spelling, for show
+        # an address with a whole postcode beats one without
+        # arrival notes ride along in some addresses: "(please arrive…)"
+        addresses = [
+            tidy_address(re.sub(r"\s*\([^)]*\)", "", e["address"]), label)
+            for e in kept
+            if e.get("address")
+        ]
+        addresses = [a for a in addresses if a and a.lower() not in ("london", "london, uk")]
+        with_pc = [a for a in addresses if _POSTCODE_RE.search(a)]
+        pool = with_pc or addresses
+        address = max(sorted(set(pool)), key=pool.count) if pool else ""
+        areas = [e["area"] for e in kept if e.get("area")]
+        geo = [(e["latitude"], e["longitude"]) for e in kept if e.get("latitude") and e.get("longitude")]
+        found[slug_] = {
+            "label": label,
+            "address": address,
+            "area": max(sorted(set(areas)), key=areas.count) if areas else None,
+            "geo": geo[0] if geo else None,
+            "upcoming": upcoming_,
+            "past": past_,
+            # other spellings' slugs, redirected to this one
+            "aliases": {
+                s for s in (_venue_slug([n]) for n in names) if s != slug_
+            },
+        }
+    return found
+
+
+def venue_page_url(slug_: str) -> str:
+    return f"{BASE_URL}/v/{slug_}/"
+
+
+def venues_index_url() -> str:
+    return f"{BASE_URL}/v/"
+
+
+def venue_page_for(event: dict) -> str | None:
+    return VENUE_EVENTS.get((event["source"], event["source_id"]))
 
 
 def filter_rows(
@@ -2283,6 +2430,24 @@ def filter_rows(
         rows.append(("modality", modalities))
     if where:
         rows.append(("where", where))
+
+    # the rooms: the venues index, and on a venue's own page, that venue
+    # lit beneath it, at the end of the where row
+    if SITE_VENUES:
+        rooms = [_nav_chip("venues", venues_index_url(), kind == "venues")]
+        if kind == "venue" and current in SITE_VENUES:
+            rooms.append(
+                _nav_chip(
+                    esc(SITE_VENUES[current]["label"]),
+                    venue_page_url(current),
+                    True,
+                    child=True,
+                )
+            )
+        if rows and rows[-1][0] == "where":
+            rows[-1] = ("where", rows[-1][1] + rooms)
+        else:
+            rows.append(("where", rooms))
 
     # who: the hosts index, and on a host's own page, that host lit
     # beneath it — so the key says where you are there too
@@ -2898,8 +3063,13 @@ def event_page(event: dict, past: bool = False) -> str:
     place = venue or address or "London"
     rest = tidy_address(address, venue) if venue and address and address != venue else ""
     map_q = urllib.parse.quote_plus(", ".join(p for p in (venue, address, "London") if p))
+    room = venue_page_for(event)
     where_html = (
-        f'<span class="fact-main">{esc(place)}</span>'
+        (
+            f'<a class="fact-main fact-venue" href="{venue_page_url(room)}">{esc(place)}</a>'
+            if room
+            else f'<span class="fact-main">{esc(place)}</span>'
+        )
         + (f'<span class="fact-sub">{esc(rest)}</span>' if rest else "")
         + f'<a class="fact-link" href="https://www.google.com/maps/search/?api=1&amp;query={map_q}" '
         f'rel="noopener" target="_blank" data-goatcounter-click="static/map-venue">map ↗</a>'
@@ -3156,6 +3326,9 @@ def listing_page(
     context: dict | None = None,
     where: list[str] | None = None,
     placeholder: str = "search…",
+    head_html: str = "",
+    past_html: str = "",
+    json_ld_extra: list[dict] | None = None,
 ) -> str:
     paras = intro or listing_intro_paragraphs(key, kind, label, len(events), days)
     lead_html = "".join(f'<p class="static-lead">{esc(p)}</p>' for p in paras)
@@ -3165,29 +3338,33 @@ def listing_page(
         meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
 
     groups = week_groups(events[:200])
-    # a host's page is their whole diary, not a range of the calendar:
-    # its strip opens the main page on a day instead
+    # a host's or a room's page is its whole diary, not a range of the
+    # calendar: its strip opens the main page on a day instead
+    diary = kind in ("organizer", "venue")
     strip = (
         home_date_strip_html()
-        if kind == "organizer"
+        if diary
         else date_strip_html(strip_events or events, days, other_url)
     )
     # the pin maps this page's own listings; a host's, everything (the
     # main page has no host filter)
     map_href = (
         home_view_url(context, on_map=True)
-        if context or kind == "organizer"
+        if context or diary
         else None
     )
-    explore_key = ("topic", key) if kind == "topic" else ("practice", key)
+    # leave out the page's own tile (an area page is its practice's)
+    explore_key = ("practice", key) if kind in ("practice", "area") else (kind, key)
     if faq_items is None:
         faq_items = PRACTICES[key].get("faq") or [] if kind == "practice" else []
     faq = faq_html(faq_items) if faq_items else ""
     json_ld = (
         listing_json_ld(seo_title, canonical, meta_desc, events, faq_items)
-        if kind in ("practice", "organizer", "area")
+        if kind in ("practice", "organizer", "area", "venue")
         else None
     )
+    if json_ld and json_ld_extra:
+        json_ld["@graph"].extend(json_ld_extra)
     org = SITE_ORGANIZERS.get(key) if kind == "organizer" else None
     own_site = past = ""
     back_hosts = ""
@@ -3215,11 +3392,11 @@ def listing_page(
     <div class="static-intro">
       {lead_html}
     </div>
-    {own_site}
+    {own_site}{head_html}
   </header>
   {groups}
   {extra_html}
-  {past}
+  {past or past_html}
   {faq}
   {explore_html(*explore_key)}{back_hosts}
   <p class="static-back">
@@ -3310,6 +3487,299 @@ def organizers_index_page() -> str:
         },
         css_prefix="..",
         body_class="static-page static-listing",
+    )
+
+
+def venue_title(v: dict) -> str:
+    label = v["label"]
+    return f"What's on at {label}" + ("" if "london" in label.lower() else ", London")
+
+
+def _and_list(items: list[str]) -> str:
+    if len(items) < 2:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def venue_page_extras(slug_: str, v: dict) -> dict:
+    """A room's page: what tends to happen there and who runs it, where
+    it is, then its diary and what's been on."""
+    label, every = v["label"], v["upcoming"] + v["past"]
+    practices: dict[str, int] = {}
+    hosts: dict[tuple[str, str], int] = {}
+    for e in every:
+        for p in EVENT_PRACTICES.get((e["source"], e["source_id"]), []):
+            if not PRACTICES[p].get("parent"):
+                practices[p] = practices.get(p, 0) + 1
+        h = organizer_key(e)
+        if h:
+            hosts[h] = hosts.get(h, 0) + 1
+    top = sorted(practices, key=lambda p: (-practices[p], p))[:3]
+    kinds = ", ".join(PRACTICES[p]["label"] for p in top)
+    where = f"in {v['area']} London" if v.get("area") else "in London"
+    lead = (
+        f"{kinds[:1].upper()}{kinds[1:]} and more at {label}, {where}"
+        if kinds
+        else f"Gatherings at {label}, {where}"
+    ) + f" — everything on {display_name()} that's held there, with times, prices and tickets."
+    n = len(v["upcoming"])
+    fresh = (
+        f"{n} coming up — refreshed several times a day."
+        if n > 1
+        else "One coming up — time, price and tickets below."
+        if n == 1
+        else "Nothing listed here right now — here's what's been on "
+        "recently, and new dates appear as soon as they're announced."
+    )
+
+    bits = []
+    if v["address"]:
+        bits.append(esc(v["address"]))
+    map_q = urllib.parse.quote_plus(", ".join(p for p in (label, v["address"], "London") if p))
+    bits.append(
+        f'<a href="https://www.google.com/maps/search/?api=1&amp;query={map_q}" '
+        f'rel="noopener" target="_blank" data-goatcounter-click="static/venue-map">map ↗</a>'
+    )
+    host_links = []
+    for (h_slug, h_label) in sorted(hosts, key=lambda h: (-hosts[h], h[1].lower()))[:5]:
+        host_links.append(
+            f'<a href="{organizer_page_url(h_slug)}">{esc(h_label)}</a>'
+            if h_slug in SITE_ORGANIZERS
+            else esc(h_label)
+        )
+    head = f'<p class="static-venue-facts">{" · ".join(bits)}</p>'
+    if host_links:
+        head += (
+            f'<p class="static-venue-facts">Hosts here include '
+            f'{_and_list(host_links)}.</p>'
+        )
+
+    place: dict = {"@type": "Place", "name": label, "url": venue_page_url(slug_)}
+    if v["address"]:
+        place["address"] = {
+            "@type": "PostalAddress",
+            "streetAddress": v["address"],
+            "addressLocality": "London",
+            "addressCountry": "GB",
+        }
+    if v.get("geo"):
+        place["geo"] = {
+            "@type": "GeoCoordinates",
+            "latitude": v["geo"][0],
+            "longitude": v["geo"][1],
+        }
+    return {
+        "intro": [lead, fresh],
+        "head_html": head,
+        "past_html": past_events_html(v["past"], f"Recently at {label}"),
+        "json_ld_extra": [place],
+        "nav": (slug_, "venue"),
+    }
+
+
+def venues_index_page() -> str:
+    """Every room with a page, busiest first, with its part of town."""
+    canonical = venues_index_url()
+    intro = (
+        f"The studios, halls and community spaces where the gatherings on "
+        f"{display_name()} happen — each with what's coming up there and "
+        f"what's been on recently."
+    )
+    rows = sorted(
+        SITE_VENUES.items(),
+        key=lambda kv: (-len(kv[1]["upcoming"]), kv[1]["label"].lower()),
+    )
+    items = "".join(
+        f'<li><a href="{venue_page_url(slug_)}">{esc(v["label"])}</a>'
+        f'<span class="static-hosts-count">'
+        + (f'{esc(v["area"])} · ' if v.get("area") else "")
+        + f'{len(v["upcoming"]) or "nothing"} coming up</span></li>'
+        for slug_, v in rows
+    )
+    body = f"""
+  {static_controls(home_date_strip_html(), None, "venues")}
+  <header class="static-list-head">
+    <p class="static-kicker">in person · London</p>
+    <h1 class="static-title">Venues</h1>
+    <div class="static-intro">
+      <p class="static-lead">{esc(intro)}</p>
+    </div>
+  </header>
+  <ul class="static-hosts">{items}</ul>
+  <p class="static-back">
+    <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
+  </p>"""
+    return page(
+        f"Venues — {display_name()}",
+        intro,
+        canonical,
+        DEFAULT_OG_IMAGE,
+        body,
+        json_ld={
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "name": "Venues",
+            "description": intro,
+            "url": canonical,
+        },
+        css_prefix="..",
+        body_class="static-page static-listing",
+    )
+
+
+# ---------- tonight / this weekend ----------
+# Landing pages for the searches people make on the day ("things to do
+# tonight london", "this weekend"): crawlable, in the sitemap and the
+# static footer, not part of the app. They're rebuilt with the site four
+# times a day, so the page carries its own clock: a card hides once its
+# event is over, and a page whose day has gone says so and points at today.
+WHEN_PAGES = ("tonight", "this-weekend")
+EVENING = 17  # the hour "tonight" starts
+
+
+def _when_pages_on() -> bool:
+    return bool((SITE_JSON.get("features") or {}).get("whenPages"))
+
+
+def _ends_at(event: dict) -> datetime:
+    if event.get("end_at"):
+        return _parse_ts(event["end_at"])
+    return _parse_ts(event["start_at"]) + timedelta(hours=2)
+
+
+def _when_sections(days: list[tuple[str, list[dict]]]) -> str:
+    sections = []
+    for heading, evs in days:
+        if not evs:
+            continue
+        cards = "".join(
+            event_card(e).replace(
+                '<a class="card',
+                f'<a data-ends="{int(_ends_at(e).timestamp() * 1000)}" class="card',
+                1,
+            )
+            for e in evs
+        )
+        sections.append(
+            f'<section class="day-group"><h2 class="day-heading">'
+            f"<span>{esc(heading)}</span></h2>"
+            f'<div class="grid">{cards}</div></section>'
+        )
+    return "".join(sections)
+
+
+_WHEN_SCRIPT = """<script>
+(() => {
+  // the HTML is from the last build: drop what has finished since, and
+  // own up if the day itself has passed
+  const now = Date.now();
+  document.querySelectorAll(".card[data-ends]").forEach((c) => {
+    if (+c.dataset.ends < now) c.remove();
+  });
+  document.querySelectorAll(".static-when .day-group").forEach((g) => {
+    if (!g.querySelector(".card")) g.remove();
+  });
+  const stale = document.getElementById("when-stale");
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
+  if (stale && today > stale.dataset.until) stale.hidden = false;
+})();
+</script>"""
+
+
+def when_page(which: str, events: list[dict]) -> str:
+    now = datetime.now(LONDON)
+    today = now.date()
+    live = [e for e in events if _ends_at(e) > now]
+
+    def on(day) -> list[dict]:
+        return [e for e in live if _start_london(e).date() == day]
+
+    if which == "tonight":
+        todays = on(today)
+        days = [
+            ("Today", [e for e in todays if _start_london(e).hour < EVENING]),
+            ("Tonight", [e for e in todays if _start_london(e).hour >= EVENING]),
+        ]
+        shown = todays
+        until = today
+        when_text = "today and tonight"
+        if not todays:
+            tomorrow = today + timedelta(days=1)
+            shown = on(tomorrow)
+            days = [(f"Nothing more on today — tomorrow, {tomorrow:%A %-d %B}", shown)]
+            until = tomorrow
+            when_text = "tomorrow"
+        seo_title = "What's on in London today & tonight"
+        dates = today.strftime("%A %-d %B")
+    else:
+        # this week's Friday: ahead on a weekday, just gone on Sat/Sun
+        friday = today + timedelta(days=4 - today.weekday())
+        weekend = [friday, friday + timedelta(days=1), friday + timedelta(days=2)]
+        days = [
+            (
+                f"{d:%A %-d %B}" + (" evening" if i == 0 else ""),
+                [e for e in on(d) if i or _start_london(e).hour >= EVENING],
+            )
+            for i, d in enumerate(weekend)
+        ]
+        shown = [e for _, evs in days for e in evs]
+        until = weekend[-1]
+        seo_title = "What's on in London this weekend"
+        when_text = "this weekend"
+        dates = (
+            f"{weekend[0]:%a %-d} – {weekend[-1]:%a %-d %B}"
+            if weekend[0].month == weekend[-1].month
+            else f"{weekend[0]:%a %-d %b} – {weekend[-1]:%a %-d %b}"
+        )
+
+    counts: dict[str, int] = {}
+    for e in shown:
+        for p in EVENT_PRACTICES.get((e["source"], e["source_id"]), []):
+            if not PRACTICES[p].get("parent"):
+                counts[p] = counts.get(p, 0) + 1
+    kinds = ", ".join(
+        PRACTICES[p]["label"] for p in sorted(counts, key=lambda p: (-counts[p], p))[:3]
+    )
+    n = len(shown)
+    lead = ("Nothing more on today. " if when_text == "tomorrow" else "") + (
+        f"{n} gatherings in London {when_text}"
+        if n != 1
+        else f"One gathering in London {when_text}"
+    ) + (f" — {kinds} and more" if kinds else "") + (
+        ", with times, prices and tickets. Refreshed several times a day."
+    )
+    canonical = f"{BASE_URL}/{which}/"
+    groups = _when_sections(days) or (
+        '<p class="static-lead">Nothing listed yet — '
+        f'<a href="{BASE_URL}/">see everything coming up</a>.</p>'
+    )
+    body = f"""
+  {static_controls(home_date_strip_html(), None, which)}
+  <header class="static-list-head">
+    <p class="static-kicker">in person · London · {esc(dates)}</p>
+    <h1 class="static-title">{esc(seo_title)}</h1>
+    <div class="static-intro">
+      <p class="static-lead">{esc(lead)}</p>
+    </div>
+    <p class="static-venue-facts" id="when-stale" data-until="{until.isoformat()}" hidden>
+      This list was for {esc(until.strftime("%A %-d %B"))}. <a href="{BASE_URL}/?day=today">See what's on today →</a></p>
+  </header>
+  <div class="static-when">{groups}</div>
+  {explore_html()}
+  <p class="static-back">
+    <a href="{BASE_URL}/">← all of {esc(display_name())}</a>
+  </p>
+  {_WHEN_SCRIPT}"""
+    return page(
+        f"{seo_title} — {display_name()}",
+        lead,
+        canonical,
+        DEFAULT_OG_IMAGE,
+        body,
+        json_ld=listing_json_ld(seo_title, canonical, lead, shown, []),
+        css_prefix="..",
+        body_class="static-page static-listing",
+        map_href=home_view_url(None, on_map=True),
     )
 
 
@@ -3898,12 +4368,14 @@ def write_listing(
     lead and it stays out of the sitemap — one page competes for the
     query, the other is just a wider look.
     """
-    if kind == "organizer":
-        # one host's diary is short: everything ahead on one page, and a
-        # quiet host still has their page
+    if kind in ("organizer", "venue"):
+        # one host's (or room's) diary is short: everything ahead on one
+        # page, and a quiet one still has its page
         write_index(
             outdir.joinpath(*parts),
-            listing_page(key, label, seo_title, canonical, events, kind=kind),
+            listing_page(
+                key, label, seo_title, canonical, events, kind=kind, **page_kw
+            ),
         )
         urls.append(canonical)
         return
@@ -3975,6 +4447,14 @@ def build(outdir: Path) -> None:
         if (SITE_JSON.get("features") or {}).get("organizerPages")
         else {}
     )
+    # likewise their Where line links to the room's page
+    SITE_VENUES.clear()
+    VENUE_EVENTS.clear()
+    if (SITE_JSON.get("features") or {}).get("venuePages"):
+        SITE_VENUES.update(site_venues(events, past_events))
+        for slug_, v in SITE_VENUES.items():
+            for e in v["upcoming"] + v["past"]:
+                VENUE_EVENTS[(e["source"], e["source_id"])] = slug_
 
     DEFAULT_OG_IMAGE = (
         f"{BASE_URL}/og-image.jpg" if (outdir / "og-image.jpg").exists() else None
@@ -4133,6 +4613,23 @@ def build(outdir: Path) -> None:
     if SITE_ORGANIZERS:
         write_index(outdir / "o", organizers_index_page())
         urls.append(organizers_index_url())
+
+    for slug_, v in SITE_VENUES.items():
+        write_listing(
+            outdir, ("v", slug_), venue_page_url(slug_),
+            slug_, v["label"], venue_title(v), v["upcoming"], "venue", urls,
+            **venue_page_extras(slug_, v),
+        )
+        for alias in v["aliases"]:
+            write_index(outdir / "v" / alias, moved_page(venue_page_url(slug_)))
+    if SITE_VENUES:
+        write_index(outdir / "v", venues_index_page())
+        urls.append(venues_index_url())
+
+    if _when_pages_on():
+        for which in WHEN_PAGES:
+            write_index(outdir / which, when_page(which, events))
+            urls.append(f"{BASE_URL}/{which}/")
 
     # The home page's practice chips read this: same definitions, same
     # per-site set, so the app filters by exactly what the pages list.
