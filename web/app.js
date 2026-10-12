@@ -2569,6 +2569,10 @@
     });
 
     enableDragScroll(document.getElementById("week-strip"));
+    // psyconnect's practice rail is a tape too; its pills are redrawn
+    // inside it, so the listeners on the rail itself survive
+    const rail = document.getElementById("practice-rail");
+    if (rail) enableDragScroll(rail);
 
     window.addEventListener("popstate", syncMapFromHash);
 

@@ -1256,6 +1256,10 @@ body.theme-night .blob { opacity: 0.3; }
   -webkit-overflow-scrolling: touch;
   padding: 0.1rem 0;
   mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
+  /* mouse users drag it like the day strip (enableDragScroll in app.js) */
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .practice-rail::-webkit-scrollbar { display: none; }
 /* scrolled to the end: nothing more to promise */
