@@ -477,6 +477,10 @@ body {
    gradient, umber initials. */
 .banner {
   background: linear-gradient(160deg, var(--dusk-1), var(--dusk-2));
+  /* 2:1, not londo's 16:9 — Eventbrite crops every upload to 2:1 and
+     Dandelion's art sits near 1.9:1, so 16:9 shaved the sides off a third
+     of the listings. Square Luma/Momence art crops either way. */
+  aspect-ratio: 2 / 1;
 }
 
 .placeholder-initial {
