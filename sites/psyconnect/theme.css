@@ -459,10 +459,12 @@ body {
   line-height: 1.45;
 }
 
-/* the hook is the card's voice — it was 0.92 opacity ochre, which on cream
-   landed under 3:1. Full strength, one notch larger. */
+/* the hook is the card's voice, in the top picks' blurb ink rather than
+   ochre — ochre on every card was a lot of yellow, and the dim ink holds
+   ≥4.5:1 in both schemes. Full strength, one notch larger. */
 .hook {
   opacity: 1;
+  color: var(--ink-dim);
   font-size: 0.9rem;
 }
 
