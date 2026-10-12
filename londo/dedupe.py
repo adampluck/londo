@@ -282,11 +282,17 @@ def _place_slug(event: Event) -> str:
 
 
 def _same_place(a: Event, b: Event) -> bool:
-    """Same postcode, or one side's venue name sits inside the other's
-    venue + address (SoulLinkHub folds the venue into its address)."""
+    """Same postcode, the very same venue name, or one side's venue name
+    sits inside the other's venue + address (SoulLinkHub folds the venue
+    into its address)."""
     pa, pb = _postcode(a), _postcode(b)
     if pa and pb:
         return pa == pb
+    # a short name ("Om Being") is too loose to find inside an address,
+    # but both pages naming it exactly is as good as a postcode
+    va, vb = _venue_slug(a), _venue_slug(b)
+    if va and len(va) >= 5 and va == vb:
+        return True
     for x, y in ((a, b), (b, a)):
         vx = _venue_slug(x)
         if vx and len(vx) >= 8 and vx in _place_slug(y):

@@ -23,7 +23,7 @@ from londo.whatsapp import Post
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-opus-5"
+MODEL = "claude-haiku-4-5"  # flyer reads are simple extraction; keep the bill low
 LONDON = ZoneInfo("Europe/London")
 MAX_PHOTOS = 3  # flyer + a couple of extras; the rest are repeats
 
