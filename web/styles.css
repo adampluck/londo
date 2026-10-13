@@ -1840,6 +1840,28 @@ body.static-page {
   margin-top: 0.4rem;
 }
 
+/* a long blurb, folded until asked for (the script on event pages sets
+   the height) */
+.static-event-body.folded .static-prose {
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 4.5rem), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 4.5rem), transparent);
+}
+
+.read-more {
+  margin: 0.4rem 0 0;
+  padding: 0.3rem 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--peach);
+  cursor: pointer;
+}
+
+.read-more:hover { text-decoration: underline; text-underline-offset: 3px; }
+.read-more::after { content: " ↓"; }
+
 /* the ticket link: the one thing on the page to press, so it's filled */
 .static-cta-wrap {
   display: flex;

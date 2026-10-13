@@ -2978,6 +2978,59 @@ _BACK_SCRIPT = (
 )
 
 
+# A long blurb folds: on a wide screen where the picture-and-details
+# column ends, so the two columns finish together; on a phone after a
+# paragraph or two. Measured on the page — art and text vary — and only
+# when there's a good few lines to hide.
+_READ_MORE_SCRIPT = """<script>
+(() => {
+  const body = document.querySelector(".static-event-body");
+  const prose = body && body.querySelector(".static-prose");
+  const btn = body && body.querySelector(".read-more");
+  const aside = document.querySelector(".static-event-aside");
+  const article = document.querySelector(".static-event");
+  if (!prose || !btn) return;
+  const wide = matchMedia("(min-width: 900px)");
+  let open = false;
+  function cap() {
+    const top = prose.getBoundingClientRect().top;
+    if (wide.matches && aside) {
+      // the aside is sticky, so measure its height from the article top,
+      // not where it happens to sit on screen
+      const end = article.getBoundingClientRect().top + aside.offsetHeight;
+      return Math.max(end - top, 160);
+    }
+    const ps = prose.querySelectorAll("p");
+    const p = ps[1] || ps[0];
+    const after = p ? p.getBoundingClientRect().bottom - top : 260;
+    return Math.min(Math.max(after, 160), 260);
+  }
+  function fit() {
+    if (open) return;
+    prose.style.maxHeight = "";
+    body.classList.remove("folded");
+    const limit = cap();
+    const fold = prose.scrollHeight - limit > 110;
+    if (fold) {
+      prose.style.maxHeight = limit + "px";
+      body.classList.add("folded");
+    }
+    btn.hidden = !fold;
+  }
+  btn.addEventListener("click", () => {
+    open = true;
+    prose.style.maxHeight = "";
+    body.classList.remove("folded");
+    btn.hidden = true;
+  });
+  fit();
+  addEventListener("resize", fit);
+  addEventListener("load", fit);
+  if (aside) aside.querySelectorAll("img").forEach((i) => i.addEventListener("load", fit));
+})();
+</script>"""
+
+
 def event_crumbs(event: dict) -> str:
     """Above the title: a way back, then the practice (or host) page the
     event belongs to — one more step into the site from a search landing."""
@@ -3226,7 +3279,10 @@ def event_page(event: dict, past: bool = False) -> str:
     </aside>
     <div class="static-event-body">
       {desc_html}
+      <button class="read-more" type="button" hidden
+              data-goatcounter-click="static/read-more">Read more</button>
     </div>
+    {_READ_MORE_SCRIPT}
   </article>
   {related}
   {explore_html()}
