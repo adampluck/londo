@@ -3279,8 +3279,7 @@ def event_page(event: dict, past: bool = False) -> str:
     </aside>
     <div class="static-event-body">
       {desc_html}
-      <button class="read-more" type="button" hidden
-              data-goatcounter-click="static/read-more">Read more</button>
+      <button class="read-more" type="button" hidden>Read more</button>
     </div>
     {_READ_MORE_SCRIPT}
   </article>
