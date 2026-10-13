@@ -2968,6 +2968,43 @@ def topic_chips(event: dict) -> str:
     return f'<p class="static-chips">{"".join(chips)}</p>'
 
 
+# "← back" when the reader came from one of our pages (history keeps
+# their place in the list); a plain way home when they landed from search
+_BACK_SCRIPT = (
+    "<script>(()=>{const a=document.getElementById('crumb-back');"
+    "let ours=false;try{ours=new URL(document.referrer).origin===location.origin}catch(_){}"
+    "if(a&&ours&&history.length>1){a.textContent='← back';"
+    "a.addEventListener('click',e=>{e.preventDefault();history.back()})}})();</script>"
+)
+
+
+def event_crumbs(event: dict) -> str:
+    """Above the title: a way back, then the practice (or host) page the
+    event belongs to — one more step into the site from a search landing."""
+    parts = [
+        f'<a id="crumb-back" href="{BASE_URL}/" '
+        'data-goatcounter-click="static/crumb-back">← all events</a>'
+    ]
+    # the most specific practice: 5Rhythms before ecstatic dance
+    practices = sorted(
+        EVENT_PRACTICES.get((event["source"], event["source_id"]), []),
+        key=lambda p: not PRACTICES[p].get("parent"),
+    )
+    host = organizer_page_for(event)
+    if practices:
+        spec = PRACTICES[practices[0]]
+        parts.append(
+            f'<a href="{practice_url(practices[0])}">{esc(spec.get("chip") or spec["label"])}</a>'
+        )
+    elif host:
+        parts.append(f'<a href="{organizer_page_url(host[0])}">{esc(host[1])}</a>')
+    sep = '<span aria-hidden="true">·</span>'
+    return (
+        f'<nav class="static-crumbs" aria-label="breadcrumb">{sep.join(parts)}</nav>'
+        + _BACK_SCRIPT
+    )
+
+
 def event_page(event: dict, past: bool = False) -> str:
     """An event's own page. `past`: it has happened — the page stays up
     for the searches still landing on it, minus the ticket offer, and
@@ -3177,6 +3214,7 @@ def event_page(event: dict, past: bool = False) -> str:
   {static_controls(home_date_strip_html(event), None, "event")}
   <article class="static-event">
     <div class="static-event-head">
+      {event_crumbs(event)}
       <h1 class="static-title">{esc(event["title"])}</h1>
       {hook}
       {top_cta}{cta}
