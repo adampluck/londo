@@ -2147,6 +2147,24 @@ body.static-page {
   font-variant-numeric: tabular-nums;
 }
 
+/* a thin month's listings past its end, by month: lines like the past
+   list, but a little brighter, as these can still be gone to */
+.static-ahead {
+  margin-top: 2.2rem;
+}
+
+.static-ahead h3 {
+  margin: 1rem 0 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.static-ahead ul {
+  opacity: 0.95;
+}
+
 /* /o/: every host, busiest first */
 .static-hosts {
   margin: 1.4rem 0 0;

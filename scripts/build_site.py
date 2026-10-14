@@ -1817,6 +1817,30 @@ MIN_WEEK_EVENTS = 3  # below this the week is too thin to lead with
 # Topics and categories are for "what's on this week"; a practice page
 # answers "where do I find one of these", which a month serves better.
 LEAD_WINDOW = {"topic": 7, "category": 7, "practice": 30}
+# A month page with fewer listings than this also shows what's further
+# ahead (up to AHEAD_DAYS out) and, on a topic, what ran recently: a
+# practice that meets every six weeks shouldn't look like it's gone.
+SPARSE_BELOW = 15
+AHEAD_DAYS = 90
+AHEAD_SHOWN = 24
+# below this many in the month, a practice page points at its neighbours
+THIN_BELOW = 8
+# practices that draw the same people, nearest first
+RELATED_PRACTICES = {
+    "ecstatic-dance": ["5rhythms", "contact-improvisation", "cacao-ceremony"],
+    "5rhythms": ["ecstatic-dance", "contact-improvisation", "somatics"],
+    "sound-bath": ["breathwork", "kirtan", "cacao-ceremony"],
+    "cacao-ceremony": ["ecstatic-dance", "sound-bath", "breathwork"],
+    "breathwork": ["somatics", "sound-bath", "qigong"],
+    "somatics": ["breathwork", "qigong", "contact-improvisation"],
+    "qigong": ["somatics", "breathwork", "sound-bath"],
+    "tantra": ["authentic-relating", "somatics", "breathwork"],
+    "family-constellations": ["authentic-relating", "breathwork", "somatics"],
+    "authentic-relating": ["bohm-dialogue", "tantra", "family-constellations"],
+    "contact-improvisation": ["5rhythms", "ecstatic-dance", "somatics"],
+    "bohm-dialogue": ["authentic-relating", "family-constellations"],
+    "kirtan": ["sound-bath", "cacao-ceremony", "ecstatic-dance"],
+}
 
 
 def placeholder_gradient(event: dict) -> str:
@@ -1893,6 +1917,13 @@ def within_window(events: list[dict], days: int) -> list[dict]:
     """The events starting inside the next `days` days, London time."""
     last = datetime.now(LONDON).date() + timedelta(days=days - 1)
     return [e for e in events if _start_london(e).date() <= last]
+
+
+def beyond_window(events: list[dict], days: int, until: int = AHEAD_DAYS) -> list[dict]:
+    """The events after the next `days` days, up to `until` days out."""
+    today = datetime.now(LONDON).date()
+    first, last = today + timedelta(days=days), today + timedelta(days=until - 1)
+    return [e for e in events if first <= _start_london(e).date() <= last]
 
 
 def _tick_cell(i: int, day) -> str:
@@ -3487,6 +3518,7 @@ def listing_page(
     head_html: str = "",
     past_html: str = "",
     json_ld_extra: list[dict] | None = None,
+    ahead: list[dict] | None = None,
 ) -> str:
     paras = intro or listing_intro_paragraphs(key, kind, label, len(events), days)
     lead_html = "".join(f'<p class="static-lead">{esc(p)}</p>' for p in paras)
@@ -3496,6 +3528,13 @@ def listing_page(
         meta_desc = meta_desc[:157].rsplit(" ", 1)[0] + "…"
 
     groups = week_groups(events[:200])
+    # a thin month carries on past its end; the week page has the month
+    # one click away instead
+    ahead_html = (
+        further_ahead_html(ahead)
+        if ahead and days == 30 and len(events) < SPARSE_BELOW
+        else ""
+    )
     # a host's or a room's page is its whole diary, not a range of the
     # calendar: its strip opens the main page on a day instead
     diary = kind in ("organizer", "venue")
@@ -3553,6 +3592,7 @@ def listing_page(
     {own_site}{head_html}
   </header>
   {groups}
+  {ahead_html}
   {extra_html}
   {past or past_html}
   {faq}
@@ -3597,6 +3637,53 @@ def past_events_html(past: list[dict], heading: str = "Recently hosted") -> str:
         f'<section class="static-past"><h2>{esc(heading)}</h2>'
         f'<ul>{"".join(items)}</ul></section>'
     )
+
+
+def further_ahead_html(ahead: list[dict]) -> str:
+    """Past the month, as lines by month rather than cards: dates that
+    far out still move, so they're a heads-up, not the main listing."""
+    if not ahead:
+        return ""
+    months: dict[str, list[str]] = {}
+    for e in ahead[:AHEAD_SHOWN]:
+        start = _start_london(e)
+        bits = [f'<a href="{event_url(e)}">{esc(e["title"])}</a>']
+        if e.get("venue_name"):
+            bits.append(esc(e["venue_name"]))
+        months.setdefault(start.strftime("%B"), []).append(
+            f'<li><time datetime="{start.date().isoformat()}">'
+            f'{esc(start.strftime("%a %-d %b"))}</time> · {" · ".join(bits)}</li>'
+        )
+    more = len(ahead) - AHEAD_SHOWN
+    return (
+        '<section class="static-past static-ahead"><h2>Further ahead</h2>'
+        + "".join(
+            f"<h3>{esc(m)}</h3><ul>{''.join(rows)}</ul>" for m, rows in months.items()
+        )
+        + (f'<p class="static-glance-note">and {more} more</p>' if more > 0 else "")
+        + "</section>"
+    )
+
+
+def related_practices_html(slug_: str, count: int) -> str:
+    """For a quiet month: the practices nearest this one, with what they
+    have on, so a visitor has somewhere to go."""
+    if count >= THIN_BELOW:
+        return ""
+    on = {s: len(within_window(m, 30)) for s, _, m in SITE_PRACTICES}
+    near = [
+        s for s in RELATED_PRACTICES.get(slug_, [])
+        if on.get(s, 0) > count and s in PRACTICES
+    ][:3]
+    if not near:
+        return ""
+    links = " · ".join(
+        f'<a href="{practice_url(s)}">{esc(PRACTICES[s].get("chip") or PRACTICES[s]["label"])}</a>'
+        f" ({on[s]})"
+        for s in near
+    )
+    # the intro has already said how few: this is just where else to look
+    return f'<p class="static-back static-areas static-thin">More on in similar practices: {links}</p>'
 
 
 def organizers_index_page() -> str:
@@ -4421,6 +4508,7 @@ def practice_page_extras(slug_: str, spec: dict, matched: list[dict]) -> dict:
         else ""
     )
     return {
+        "head_html": related_practices_html(slug_, len(within_window(matched, 30))),
         "extra_html": glance
         + by_area
         + past_events_html(past, "Recently in London"),
@@ -4492,6 +4580,7 @@ def area_page(
     return listing_page(
         slug_, label, area_title(spec, area), area_url(slug_, area), month,
         kind="area", days=30, css_prefix="../../..", intro=intro,
+        ahead=beyond_window(upcoming, 30),
         extra_html=glance + rooms_html
         + past_events_html(past, f"Recently in {area} London") + back,
         faq_items=[price_faq] if price_faq else [],
@@ -4539,6 +4628,7 @@ def write_listing(
         return
 
     week, month = (within_window(events, n) for n in LISTING_WINDOWS)
+    page_kw.setdefault("ahead", beyond_window(events, 30))
     lead_days = LEAD_WINDOW.get(kind, 7)
     if lead_days == 7 and len(week) < MIN_WEEK_EVENTS:
         lead_days = 30
@@ -4722,6 +4812,11 @@ def build(outdir: Path) -> None:
         canonical = topic_url(slug_)
         month = within_window(topic_events, 30)
         view = {"topic": slug_}
+        since = datetime.now(timezone.utc) - timedelta(days=PRACTICE_PAST_DAYS)
+        recent = [
+            e for e in past_events
+            if key in (e.get("topics") or []) and _parse_ts(e["start_at"]) >= since
+        ]
         write_listing(
             outdir, ("t", slug_), canonical,
             key, key, seo_title, topic_events, "topic", urls,
@@ -4733,6 +4828,9 @@ def build(outdir: Path) -> None:
                 map_href=home_view_url(view, on_map=True),
             ),
             placeholder=search_placeholder(key),
+            past_html=past_events_html(recent, "Recently in London")
+            if len(month) < SPARSE_BELOW
+            else "",
         )
         write_html_redirect(outdir / "t" / f"{slug_}.html", canonical)
 
