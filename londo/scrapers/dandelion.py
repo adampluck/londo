@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
+from londo.text import html_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,12 @@ class DandelionScraper(BaseScraper):
         location = self._build_location(json_ld)
         price_tiers = self._build_price_tiers(json_ld)
         organizer = self._build_organizer(json_ld)
+        # the JSON-LD description has its tags stripped with nothing in
+        # their place ("Workshop15th November"); the page's own copy keeps
+        # the paragraphs
+        body = soup.select_one("div.wysiwyg")
+        description = html_to_text(str(body)) if body else None
+        description = description or json_ld.get("description")
 
         is_online = "OnlineEventAttendanceMode" in json_ld.get(
             "eventAttendanceMode", ""
@@ -134,7 +141,7 @@ class DandelionScraper(BaseScraper):
             source_url=url,
             external_ref=external_ref(uid, day) if day else None,
             title=json_ld.get("name", ""),
-            description=json_ld.get("description"),
+            description=description,
             short_description=json_ld.get("description"),
             start_datetime=start_dt,
             end_datetime=end_dt,

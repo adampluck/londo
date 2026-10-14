@@ -1988,8 +1988,30 @@ body.static-page {
   margin: 0 0 1rem;
 }
 
-.static-prose p:last-child {
+.static-prose p:last-child,
+.static-prose ul:last-child {
   margin-bottom: 0;
+}
+
+/* the organiser's own subheads, kept from their page */
+.static-prose h3 {
+  margin: 1.5rem 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.static-prose h3:first-child {
+  margin-top: 0;
+}
+
+.static-prose ul {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+}
+
+.static-prose li + li {
+  margin-top: 0.3rem;
 }
 
 .static-cta {

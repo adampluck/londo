@@ -2697,6 +2697,80 @@ def strip_meeting_links(text: str) -> str:
     return _MEETING_LINK_RE.sub("the Zoom link on the ticket page", text)
 
 
+_BULLET_RE = re.compile(r"^[•·\-*]\s+")
+# sentences, prices, links, times, addresses and numbered points read as
+# lines of their own, not subheads
+_NOT_HEADING_RE = re.compile(
+    r"[.;!…)\"'”’]$|[,£$€@]|https?:|www\.|\.(com|org|co\.uk)\b"
+    r"|^[•·\-*]\s|^\d+\s*[.)]|\d\s*(am|pm)\b|\d[.:]\d\d"
+    r"|\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b",
+    re.I,
+)
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", text.lower())
+
+
+def description_blocks(event: dict, limit: int = 6000) -> list[str]:
+    """The blurb as the scrapers keep it: blocks between blank lines, a
+    line per <br> or list item. Cut at a block edge once it runs long,
+    with an opening line that only repeats the title left out."""
+    text = strip_meeting_links(event.get("description") or "")
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", text) if b.strip()]
+    if blocks:
+        first, _, rest = blocks[0].partition("\n")
+        line, title = _norm(first), _norm(event.get("title") or "")
+        if len(line) >= 12 and (line in title or title in line):
+            blocks = ([rest.strip()] if rest.strip() else []) + blocks[1:]
+    kept, size = [], 0
+    for b in blocks:
+        if kept and size + len(b) > limit:
+            break
+        kept.append(b)
+        size += len(b)
+    return kept
+
+
+def _is_heading(block: str) -> bool:
+    """A short line on its own, not a sentence: how the organisers' bold
+    subheads come through ("What to expect", "Who this is for")."""
+    return (
+        "\n" not in block
+        and len(block) <= 60
+        and len(block.split()) <= 9
+        and re.search(r"[A-Za-z]", block) is not None
+        and not _NOT_HEADING_RE.search(block)
+    )
+
+
+def _inline(line: str) -> str:
+    """Escaped, with Markdown **bold** (Luma, Meetup) made bold."""
+    return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", esc(line))
+
+
+def prose_html(blocks: list[str]) -> str:
+    # a subhead stands alone between longer blocks: a stack of short
+    # lines is a poster's worth of details, not a run of headings
+    # (a lone bullet over a section is a subhead in a list item's clothes)
+    heads = [b if "\n" in b else _BULLET_RE.sub("", b) for b in blocks]
+    short = [_is_heading(h) for h in heads] + [True]
+    out = []
+    for i, b in enumerate(blocks):
+        lines = [ln.strip() for ln in b.split("\n") if ln.strip()]
+        if short[i] and not short[i + 1] and not (i and short[i - 1]):
+            out.append(f"<h3>{esc(heads[i].replace('**', '').rstrip(': '))}</h3>")
+        elif all(_BULLET_RE.match(ln) for ln in lines):
+            out.append(
+                "<ul>"
+                + "".join(f"<li>{_inline(_BULLET_RE.sub('', ln))}</li>" for ln in lines)
+                + "</ul>"
+            )
+        else:
+            out.append("<p>" + "<br>".join(_inline(ln) for ln in lines) + "</p>")
+    return '<div class="static-prose">' + "".join(out) + "</div>"
+
+
 def _trim(text: str, n: int = 160) -> str:
     return text if len(text) <= n else text[: n - 3].rsplit(" ", 1)[0] + "…"
 
@@ -3208,19 +3282,9 @@ def event_page(event: dict, past: bool = False) -> str:
             f"onerror=\"this.onerror=null;this.src='{fallback}'\">"
             f"</figure>"
         )
-    paragraphs = [
-        p.strip()
-        for p in re.split(
-            r"\n\n+", strip_meeting_links(event.get("description") or "")
-        )
-        if p.strip()
-    ][:12]
+    paragraphs = description_blocks(event)
     if paragraphs:
-        desc_html = (
-            '<div class="static-prose">'
-            + "".join(f"<p>{esc(p)}</p>" for p in paragraphs)
-            + "</div>"
-        )
+        desc_html = prose_html(paragraphs)
     else:
         desc_html = (
             '<div class="static-prose">'
@@ -3255,9 +3319,10 @@ def event_page(event: dict, past: bool = False) -> str:
 
     # past: the old blurb is context, not the point — what's on instead is
     if past and paragraphs:
+        flat = re.sub(r"\s+", " ", " ".join(paragraphs).replace("**", ""))
         desc_html = (
             '<div class="static-prose">'
-            f"<p>{esc(_trim(' '.join(paragraphs), 420))}</p>"
+            f"<p>{esc(_trim(flat, 420))}</p>"
             "</div>"
         )
     # title, line and ticket button first; the picture with the details

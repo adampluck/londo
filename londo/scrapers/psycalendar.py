@@ -6,11 +6,11 @@ import re
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from bs4 import BeautifulSoup
 
 from londo.links import LinkFetcher, classify_url
 from londo.models import Event, Location, PriceTier
 from londo.scrapers.base import BaseScraper
+from londo.text import html_to_text
 from londo.scrapers.eventbrite import BROWSER_UA
 
 logger = logging.getLogger(__name__)
@@ -186,10 +186,7 @@ def _price_from_text(text: str | None) -> tuple[list[PriceTier], bool]:
 def _body_text(body: str | None) -> str | None:
     if not body:
         return None
-    soup = BeautifulSoup(body, "html.parser")
-    for tag in soup(["style", "script"]):
-        tag.decompose()
-    return soup.get_text(" ", strip=True) or None
+    return html_to_text(body)
 
 
 def _clean(value) -> str | None:

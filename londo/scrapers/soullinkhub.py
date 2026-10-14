@@ -7,11 +7,11 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from zoneinfo import ZoneInfo
 
-from bs4 import BeautifulSoup
 
 from londo.geo import is_london
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
+from londo.text import html_to_text
 from londo.scrapers.tickettailor import EVENT_URL_RE as TICKETTAILOR_RE
 from londo.scrapers.tickettailor import external_ref as tickettailor_ref
 
@@ -266,7 +266,4 @@ def _to_float(value) -> float | None:
 
 
 def _html_text(value: str | None) -> str | None:
-    if not value:
-        return None
-    soup = BeautifulSoup(value, "html.parser")
-    return soup.get_text(" ", strip=True) or None
+    return html_to_text(value)

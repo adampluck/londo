@@ -14,6 +14,7 @@ from curl_cffi import requests as curl_requests
 from londo.geo import is_london
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
+from londo.text import html_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -299,7 +300,7 @@ def _parse_detail(html: str) -> dict | None:
 
     return {
         "title": h1.get_text(" ", strip=True),
-        "description": desc.get_text(" ", strip=True) if desc else None,
+        "description": html_to_text(str(desc)) if desc else None,
         "location": loc.get_text(" ", strip=True) if loc else None,
         "image": _image_url(hero.get("src")) if hero else None,
         "organizer": organizer,

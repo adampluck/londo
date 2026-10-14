@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
+from londo.text import html_to_text
 from londo.scrapers.dandelion import DandelionScraper
 from londo.scrapers.dandelion import external_ref as dandelion_ref
 from londo.scrapers.eventbrite import BROWSER_UA
@@ -464,7 +465,4 @@ def _ticket_url(item: dict) -> str | None:
 
 
 def _html_text(value: str | None) -> str | None:
-    if not value:
-        return None
-    soup = BeautifulSoup(value, "html.parser")
-    return soup.get_text(" ", strip=True) or None
+    return html_to_text(value)

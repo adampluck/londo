@@ -7,11 +7,11 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from zoneinfo import ZoneInfo
 
-from bs4 import BeautifulSoup
 
 from londo.geo import is_london
 from londo.models import Event, Location, Organizer, PriceTier
 from londo.scrapers.base import BaseScraper
+from londo.text import html_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ GROUP_URL = "https://consciouscafe.org/events/category/group-events/"
 
 # Descriptions state the address on a "Venue: ..." line when the event has
 # no venue record attached.
-VENUE_LINE_RE = re.compile(r"Venue:\s*(.+?)(?:\s{2,}|\s*Admission\b|$)", re.I)
+VENUE_LINE_RE = re.compile(r"Venue:\s*(.+?)(?:\s{2,}|\s*Admission\b|$)", re.I | re.M)
 CENTRAL_RE = re.compile(r"\bcentral london\b", re.I)
 
 
@@ -191,7 +191,4 @@ def _to_float(value) -> float | None:
 
 
 def _html_text(value: str | None) -> str | None:
-    if not value:
-        return None
-    soup = BeautifulSoup(value, "html.parser")
-    return soup.get_text(" ", strip=True) or None
+    return html_to_text(value)
