@@ -204,13 +204,13 @@ def _pick_curated(
     exclude_terms = [t.lower() for t in cfg.get("exclude") or []]
     today = now.astimezone(LONDON).date()
 
-    def eligible(e: dict, days: int) -> bool:
+    def eligible(e: dict, days: int, allow_today: bool = False) -> bool:
         if exclude_source_url and e.get("source_url") == exclude_source_url:
             return False
         start = _parse_ts(e["start_at"])
         if not (now < start <= now + timedelta(days=days)):
             return False
-        if start.astimezone(LONDON).date() == today:
+        if not allow_today and start.astimezone(LONDON).date() == today:
             return False
         title = (e.get("title") or "").lower()
         return not any(term in title for term in exclude_terms)
@@ -234,7 +234,7 @@ def _pick_curated(
         return any(term in text for term in always_terms)
 
     pinned = [
-        e for e in events if always_terms and eligible(e, stages[-1]) and is_always(e)
+        e for e in events if always_terms and eligible(e, stages[-1], True) and is_always(e)
     ][: min(limit, cfg.get("alwaysPickMax") or limit)]
     if always_terms:
         candidates = [e for e in candidates if not is_always(e)]

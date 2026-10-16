@@ -2106,11 +2106,12 @@
     // today's events head the list straight below the strip, so a pick
     // from today only repeats the first cards; picks look further ahead
     const today = londonDate(now);
-    const eligible = (e, days) => {
+    // (alwaysPick events are exempt: the site wants them seen even on the day)
+    const eligible = (e, days, allowToday) => {
       if (excludeSourceUrl && e.source_url === excludeSourceUrl) return false;
       const t = new Date(e.start_at).getTime();
       if (!(t > now && t <= now + days * 86400000)) return false;
-      if (londonDate(e.start_at) === today) return false;
+      if (!allowToday && londonDate(e.start_at) === today) return false;
       const title = (e.title || "").toLowerCase();
       return !excludeTerms.some((term) => title.includes(term));
     };
@@ -2155,7 +2156,7 @@
     };
     const pinned = alwaysTerms.length
       ? state.events
-          .filter((e) => eligible(e, stages[stages.length - 1]) && isAlways(e))
+          .filter((e) => eligible(e, stages[stages.length - 1], true) && isAlways(e))
           .slice(0, Math.min(maxTotal, cfg.alwaysPickMax || maxTotal))
       : [];
     if (alwaysTerms.length) candidates = candidates.filter((e) => !isAlways(e));
