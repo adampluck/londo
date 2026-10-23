@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import re
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
@@ -281,13 +282,32 @@ def _place_slug(event: Event) -> str:
     return re.sub(r"[^a-z0-9]+", "", f"{loc.venue_name or ''} {loc.address or ''}".lower())
 
 
+# Pins closer than this are one building geocoded two ways.
+_NEAR_M = 300
+
+
+def _metres_apart(a: Event, b: Event) -> float | None:
+    la, lb = a.location, b.location
+    if not la or not lb or None in (la.latitude, la.longitude, lb.latitude, lb.longitude):
+        return None
+    lat = math.radians((la.latitude + lb.latitude) / 2)
+    dy = (la.latitude - lb.latitude) * 111_320
+    dx = (la.longitude - lb.longitude) * 111_320 * math.cos(lat)
+    return math.hypot(dx, dy)
+
+
 def _same_place(a: Event, b: Event) -> bool:
-    """Same postcode, the very same venue name, or one side's venue name
+    """Same postcode, the very same venue name, one side's venue name
     sits inside the other's venue + address (SoulLinkHub folds the venue
-    into its address)."""
+    into its address), or pins a street apart when one side has no
+    postcode (Ecstatic Dance London's Dandelion venue is walking
+    directions; its Eventbrite one has the NW5 address)."""
     pa, pb = _postcode(a), _postcode(b)
     if pa and pb:
         return pa == pb
+    dist = _metres_apart(a, b)
+    if dist is not None and dist <= _NEAR_M:
+        return True
     # a short name ("Om Being") is too loose to find inside an address,
     # but both pages naming it exactly is as good as a postcode
     va, vb = _venue_slug(a), _venue_slug(b)
