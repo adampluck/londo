@@ -23,7 +23,7 @@ from londo.whatsapp import Post
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-haiku-4-5"  # flyer reads are simple extraction; keep the bill low
+MODEL = "claude-haiku-5-5"  # flyer reads are simple extraction; keep the bill low
 LONDON = ZoneInfo("Europe/London")
 MAX_PHOTOS = 3  # flyer + a couple of extras; the rest are repeats
 
@@ -110,11 +110,15 @@ def extract_event(client, post: Post, media_dir: Path) -> ChatEvent | None:
     response = client.messages.parse(
         model=MODEL,
         max_tokens=4000,
+        output_config={"effort": "low"},
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": content}],
         output_format=ChatEvent,
     )
-    extracted: ChatEvent = response.parsed_output
+    extracted: ChatEvent | None = response.parsed_output
+    if extracted is None:
+        logger.warning("No extraction from %s post (stop_reason=%s)", post.sender, response.stop_reason)
+        return None
     logger.info("Extracted from %s post: %s — %s", post.sender, extracted.title, extracted.reason)
     return extracted
 

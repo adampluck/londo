@@ -13,7 +13,7 @@ from londo.models import Event
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-haiku-4-5"
+MODEL = "claude-haiku-5-5"
 
 # Intent categories — the frontend's primary navigation.
 CATEGORIES = ("move", "connect", "expand", "think", "make")
@@ -162,11 +162,14 @@ def enrich_events(
 def _classify(client, event: Event) -> Enrichment:
     response = client.messages.parse(
         model=MODEL,
-        max_tokens=1000,
+        max_tokens=2000,
+        output_config={"effort": "low"},
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": _event_brief(event)}],
         output_format=Enrichment,
     )
+    if response.parsed_output is None:
+        raise ValueError(f"no enrichment returned (stop_reason={response.stop_reason})")
     return response.parsed_output
 
 
