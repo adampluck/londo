@@ -3040,6 +3040,38 @@ EXPLORE_ICONS = {
 _SPARK_ICON = '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>'
 
 
+# The explore tiles' tones as literal light-theme colours (--peach, the
+# peach/gold mix, --gold) and the tile's 14% tint of each over --card.
+EMAIL_TONES = (("#6d4160", "#ece0e1"), ("#7c5039", "#efe4dc"), ("#8a5f14", "#f1e6d4"))
+# "this weekend" has no explore tile; the email's browse row needs one
+_CALENDAR_ICON = (
+    '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'
+    '<path d="M8 14h3M13 14h3M8 17h3"/>'
+)
+
+
+def write_email_icons(outdir: Path, site_topics: list[str] | None) -> None:
+    """The explore tiles as stand-alone SVGs, one per tone, for the weekly
+    email (scripts/weekly_email.py), which has wsrv.nl turn them into PNGs:
+    mail apps won't render inline SVG. Named by practice or topic slug."""
+    outdir.mkdir(parents=True, exist_ok=True)
+    icons = {s: EXPLORE_ICONS.get(s, _SPARK_ICON) for s in PRACTICES}
+    icons |= {
+        slug_: EXPLORE_ICONS.get(key, _SPARK_ICON)
+        for key, (slug_, _) in TOPICS.items()
+        if site_topics is None or key in site_topics
+    }
+    icons |= {"spark": _SPARK_ICON, "weekend": _CALENDAR_ICON}
+    for name, paths in icons.items():
+        for tone, (ink, tint) in enumerate(EMAIL_TONES):
+            (outdir / f"{name}-{tone}.svg").write_text(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">'
+                f'<rect width="24" height="24" rx="5" fill="{tint}"/>'
+                f'<g transform="translate(5.5 5.5) scale(.5417)" fill="none" stroke="{ink}" '
+                f'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{paths}</g></svg>'
+            )
+
+
 def explore_icon(key: str, tone: int) -> str:
     return (
         f'<span class="explore-art explore-tone-{tone % 3}" aria-hidden="true">'
@@ -5028,6 +5060,9 @@ def build(outdir: Path) -> None:
             if k in PRACTICES or site_topics is None or k in site_topics
         } | {"_": _SPARK_ICON})
     )
+
+    if SITE_JSON.get("signup"):
+        write_email_icons(outdir / "icons" / "email", site_topics)
 
     (outdir / "404.html").write_text(not_found_page())
     # Unlisted, like /join-community/: Kit's confirmation link lands here.

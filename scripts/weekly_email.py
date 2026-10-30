@@ -3,9 +3,11 @@ from the same events and filters as the site, handed to Kit as broadcasts.
 
 Each subscriber carries exactly one `edition:<topic>` tag in Kit — the
 Worker (workers/subscribe) sets it from the page they signed up on, and
-`tidy_editions` below repairs anyone with none or several. Each edition's
-email leads with its topic, then related gatherings; everyone without an
-edition gets the general version. One tag per person is what stops anyone
+`tidy_editions` below repairs anyone with none or several. Each email
+runs: PsyConnect's own next event; four top picks as cards, chosen by the
+site's top-picks rules within the edition's topic; the rest of the week as
+text, by day, leaning to the topic and its neighbours; then the site's
+explore tiles. Everyone without an edition gets the general version. One tag per person is what stops anyone
 getting two emails: Kit's broadcast filter takes a single all/any/none
 group, so "general" is "none of the edition tags".
 
@@ -62,9 +64,11 @@ RELATED = {
 }
 TEMPLATE = bs.ROOT / "kit" / "email-template.html"
 TEMPLATE_NAME = "PsyConnect"
-LEAD_MAX = 6
-ALSO_MAX = 6
-ORG_MAX = 2  # per host, per email: one busy venue shouldn't fill it
+PICKS_MAX = 4  # the site's curated.maxTotal
+ORG_MAX = 2  # per host among the picks: one busy venue shouldn't fill them
+LIST_MAX = 16  # the rest of the week, as text
+LIST_ORG_MAX = 3
+TILES_MAX = 6
 SEND_WEEKDAY = 3  # Thursday: lands before the weekend's plans are made
 SEND_HOUR = 9
 WINDOW = timedelta(days=7)
@@ -109,8 +113,11 @@ def next_send(now: datetime) -> datetime:
     return at if at > local else at + timedelta(days=7)
 
 
-def week_events(send_at: datetime) -> list[dict]:
-    events = [e for e in bs.fetch_events() if bs.site_match(e)]
+def site_events() -> list[dict]:
+    return [e for e in bs.fetch_events() if bs.site_match(e)]
+
+
+def week_events(events: list[dict], send_at: datetime) -> list[dict]:
     end = send_at + WINDOW
     return [e for e in events if send_at <= bs._parse_ts(e["start_at"]) < end]
 
@@ -129,66 +136,143 @@ def is_featured(e: dict) -> bool:
     return (e.get("organizer_name") or "").lower() in orgs
 
 
+def series_key(e: dict) -> str:
+    return re.sub(r"\W+", " ", (e.get("title") or "").lower()).strip()
+
+
 def one_per_series(events: list[dict]) -> list[dict]:
     """A weekly class shouldn't fill a section: keep its best-placed date."""
     seen: set[str] = set()
     out = []
     for e in events:
-        key = re.sub(r"\W+", " ", (e.get("title") or "").lower()).strip()
+        key = series_key(e)
         if key not in seen:
             seen.add(key)
             out.append(e)
     return out
 
 
-def edition_sections(edition: str | None, events: list[dict]) -> dict:
-    """{featured, lead, also} for one edition (None = general)."""
+def hosts(e: dict) -> set[str]:
+    """Organiser and venue: a venue's many teachers count as the venue too."""
+    return {x.lower() for x in (e.get("organizer_name"), e.get("venue_name")) if x}
+
+
+def take(pool: list[dict], n: int, cap: int, counts: dict[str, int]) -> list[dict]:
+    """Best first, but no host more than `cap` times (counts carries over)."""
+    out = []
+    for e in pool:
+        if len(out) >= n:
+            break
+        if any(counts.get(h, 0) >= cap for h in hosts(e)):
+            continue
+        for h in hosts(e):
+            counts[h] = counts.get(h, 0) + 1
+        out.append(e)
+    return out
+
+
+def top_picks(pool: list[dict], send_at: datetime) -> list[dict]:
+    """The site's top-picks rules (bs._pick_curated: trusted hosts and
+    series, Bohm dialogue pinned, one per host first), topped up by score
+    when an edition's topic has fewer curated events than slots.
+
+    _pick_curated counts its window from "now" and skips today's events,
+    as the site's row should; the email's week is already cut, so it
+    starts the evening before the send and Thursday's events count."""
+    by_date = one_per_series(sorted(pool, key=lambda e: e["start_at"]))
+    picks = bs._pick_curated(by_date, send_at - timedelta(hours=SEND_HOUR + 1), None, PICKS_MAX)
+    counts: dict[str, int] = {}
+    for e in picks:
+        for h in hosts(e):
+            counts[h] = counts.get(h, 0) + 1
+    taken = {series_key(e) for e in picks}
+    ranked = one_per_series(sorted(pool, key=score, reverse=True))
+    picks += take([e for e in ranked if series_key(e) not in taken],
+                  PICKS_MAX - len(picks), ORG_MAX, counts)
+    return sorted(picks, key=lambda e: e["start_at"])
+
+
+def edition_sections(edition: str | None, events: list[dict], send_at: datetime) -> dict:
+    """{featured, picks, rest, browse} for one edition (None = general)."""
     featured = sorted((e for e in events if is_featured(e)), key=lambda e: e["start_at"])[:1]
-    rest = [e for e in events if e not in featured]
-    ranked = one_per_series(sorted(rest, key=score, reverse=True))
-    per_org: dict[str, int] = {}
+    pool = [e for e in events if e not in featured]
+    mine = [e for e in pool if edition in topic_slugs(e)] if edition else pool
+    picks = top_picks(mine, send_at)
 
-    def take(pool: list[dict], n: int) -> list[dict]:
-        """Best first, but no host more than ORG_MAX times in one email."""
-        out = []
-        for e in pool:
-            org = (e.get("organizer_name") or e.get("venue_name") or "").lower()
-            if len(out) >= n or per_org.get(org, 0) >= ORG_MAX:
-                continue
-            per_org[org] = per_org.get(org, 0) + 1
-            out.append(e)
-        return out
+    shown = {series_key(e) for e in featured + picks}
+    near = set(RELATED[edition]) if edition else set()
 
+    def weight(e: dict) -> float:
+        t = topic_slugs(e)
+        return score(e) + (20 if edition in t else 0) + (10 if t & near else 0)
+
+    ranked = one_per_series(sorted(pool, key=weight, reverse=True))
+    rest = take([e for e in ranked if series_key(e) not in shown], LIST_MAX, LIST_ORG_MAX, {})
+    return {
+        "featured": featured,
+        "picks": picks,
+        "rest": sorted(rest, key=lambda e: e["start_at"]),
+        "browse": browse_tiles(edition, events),
+    }
+
+
+# Practices with a page on the site: set by main() via bs.site_practices
+PRACTICE_PAGES: list[tuple[str, dict, list[dict]]] = []
+
+
+def browse_tiles(edition: str | None, week: list[dict]) -> list[dict]:
+    """The site's explore tiles, counted for the week: the edition's own
+    topic first, then the practices with most on (an edition's practices
+    first), then this weekend's page."""
+    keys = {(e["source"], e["source_id"]) for e in week}
+    tiles = []
     if edition:
-        lead = take([e for e in ranked if edition in topic_slugs(e)], LEAD_MAX)
-        near = set(RELATED[edition])
-        others = [e for e in ranked if e not in lead]
-        others.sort(key=lambda e: score(e) + (15 if topic_slugs(e) & near else 0), reverse=True)
-        also = take(others, ALSO_MAX)
-    else:
-        lead = take(ranked, LEAD_MAX + 2)
-        also = take([e for e in ranked if e not in lead], ALSO_MAX)
-    by_date = lambda xs: sorted(xs, key=lambda e: e["start_at"])  # noqa: E731
-    return {"featured": featured, "lead": by_date(lead), "also": by_date(also)}
+        n = sum(1 for e in week if edition in topic_slugs(e))
+        if n:
+            tiles.append({"name": EDITIONS[edition], "icon": edition,
+                          "path": f"/t/{edition}/", "n": n, "track": f"topic-{edition}"})
+    practices = []
+    for slug_, spec, matched in PRACTICE_PAGES:
+        on = [e for e in matched if (e["source"], e["source_id"]) in keys]
+        if on:
+            ours = sum(1 for e in on if edition in topic_slugs(e)) if edition else 0
+            label = spec.get("chip") or spec["label"]
+            practices.append(((ours, len(on)), {
+                "name": label[:1].upper() + label[1:], "icon": slug_,
+                "path": f"/p/{slug_}/", "n": len(on), "track": f"practice-{slug_}",
+            }))
+    practices.sort(key=lambda t: t[0], reverse=True)
+    tiles += [t for _, t in practices][: TILES_MAX - 1 - len(tiles)]
+    if bs._when_pages_on():
+        n = sum(1 for e in week if bs._parse_ts(e["start_at"]).astimezone(bs.LONDON).weekday() >= 5)
+        if n:
+            tiles.append({"name": "This weekend", "icon": "weekend",
+                          "path": "/this-weekend/", "n": n, "track": "when-weekend"})
+    return tiles
 
 
 # ---------- rendering ------------------------------------------------------
 
-def link(e: dict, slugs: dict[str, str], campaign: str) -> str:
+def tracked(url: str, campaign: str, content: str) -> str:
+    """utm tags for the site's analytics; utm_content is the section the
+    click came from, which also makes each section's link its own row in
+    Kit's click report."""
+    q = urllib.parse.urlencode({
+        "utm_source": "kit", "utm_medium": "email",
+        "utm_campaign": campaign, "utm_content": content,
+    })
+    return f"{url}?{q}"
+
+
+def link(e: dict, slugs: dict[str, str], campaign: str, content: str) -> str:
     slug = slugs.get(f"{e['source']}:{e['source_id']}")
     if slug:
-        q = urllib.parse.urlencode(
-            {"utm_source": "kit", "utm_medium": "email", "utm_campaign": campaign}
-        )
-        return f"{bs.BASE_URL}/e/{slug}/?{q}"
+        return tracked(f"{bs.BASE_URL}/e/{slug}/", campaign, content)
     return e.get("source_url") or ""
 
 
-def site_link(path: str, campaign: str) -> str:
-    q = urllib.parse.urlencode(
-        {"utm_source": "kit", "utm_medium": "email", "utm_campaign": campaign}
-    )
-    return f"{bs.BASE_URL}{path}?{q}"
+def site_link(path: str, campaign: str, content: str) -> str:
+    return tracked(f"{bs.BASE_URL}{path}", campaign, content)
 
 
 def email_img(url: str, width: int) -> str:
@@ -202,6 +286,31 @@ def email_img(url: str, width: int) -> str:
         "https://wsrv.nl/?url=" + urllib.parse.quote(src, safe="")
         + f"{keep}&w={width * 2}&h={width}&fit=cover&output=jpg&q=72"
     )
+
+
+ICON_PX = 44
+
+
+def icon_img(name: str, tone: int) -> str:
+    """An explore-tile icon as a PNG: build_site.write_email_icons publishes
+    the SVGs, wsrv.nl rasterises them (mail apps won't show SVG)."""
+    svg = f"{bs.BASE_URL}/icons/email/{name}-{tone}.svg"
+    return (
+        "https://wsrv.nl/?url=" + urllib.parse.quote(svg, safe="")
+        + f"&w={ICON_PX * 2}&h={ICON_PX * 2}&output=png"
+    )
+
+
+def icons_live() -> bool:
+    """The icons go up with the site build: until a build has deployed
+    them, tiles go without rather than show broken images."""
+    req = urllib.request.Request(f"{bs.BASE_URL}/icons/email/spark-0.svg",
+                                 method="HEAD", headers={"User-Agent": "psyconnect-weekly"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as res:
+            return res.status == 200
+    except (urllib.error.URLError, TimeoutError):
+        return False
 
 
 def blurb(e: dict) -> str:
@@ -222,6 +331,13 @@ def meta_line(e: dict) -> str:
     if price:
         parts.append(price)
     return " · ".join(parts)
+
+
+def heading(title: str) -> str:
+    return f"""
+<tr><td style="padding:8px 0 12px;">
+  <p style="margin:0;font:600 12px/1.4 {SANS};letter-spacing:.08em;text-transform:uppercase;color:{OCHRE};">{bs.esc(title)}</p>
+</td></tr>"""
 
 
 COL = 272  # two cards and a 16px gap fill the template's 560px column
@@ -266,15 +382,72 @@ def card_pair(cards: list[str]) -> str:
     return f'<tr><td style="font-size:0;line-height:0;text-align:left;">{inner}</td></tr>'
 
 
-def section(title: str, events: list[dict], slugs: dict[str, str], campaign: str) -> str:
-    cards = [event_card(e, href) for e in events if (href := link(e, slugs, campaign))]
+def grid(cards: list[str]) -> str:
+    return "".join(card_pair(cards[i:i + 2]) for i in range(0, len(cards), 2))
+
+
+def picks_section(title: str, events: list[dict], slugs: dict[str, str], campaign: str) -> str:
+    cards = [event_card(e, href) for e in events if (href := link(e, slugs, campaign, "pick"))]
+    return heading(title) + grid(cards) if cards else ""
+
+
+def list_section(title: str, events: list[dict], slugs: dict[str, str], campaign: str) -> str:
+    """The rest of the week as text, by day: quick to scan, and a dozen
+    lines weigh less than one image."""
+    days: dict[str, list[str]] = {}
+    for e in events:
+        href = link(e, slugs, campaign, "list")
+        if not href:
+            continue
+        start = bs._parse_ts(e["start_at"]).astimezone(bs.LONDON)
+        meta = " · ".join(x for x in (f"{start:%H:%M}", bs.clean_venue(e), bs.fmt_price(e)) if x)
+        days.setdefault(f"{start:%A %-d %B}", []).append(
+            f'<p style="margin:0 0 10px;font:600 15px/1.35 {SANS};">'
+            f'<a href="{bs.esc(href)}" style="color:{INK};text-decoration:none;">{bs.esc(e.get("title") or "")}</a><br>'
+            f'<span style="font:13px/1.5 {SANS};color:{DIM};">{bs.esc(meta)}</span></p>'
+        )
+    if not days:
+        return ""
+    body = "".join(
+        f'<tr><td style="padding:12px 0 2px;border-top:1px solid {EDGE};">'
+        f'<p style="margin:0 0 8px;font:600 13px/1.4 {SANS};color:{PLUM};">{bs.esc(day)}</p>'
+        f'{"".join(rows)}</td></tr>'
+        for day, rows in days.items()
+    )
+    return heading(title) + body + '<tr><td style="padding:0 0 14px;"></td></tr>'
+
+
+def browse_section(tiles: list[dict], campaign: str, icons: bool) -> str:
+    """The site's explore tiles: icon, name, how many this week."""
+    cards = []
+    for i, t in enumerate(tiles):
+        href = site_link(t["path"], campaign, f"browse-{t['track']}")
+        icon = (
+            f'<td width="{ICON_PX}" style="padding:0 12px 0 0;"><img src="{bs.esc(icon_img(t["icon"], i % 3))}" '
+            f'width="{ICON_PX}" height="{ICON_PX}" alt="" style="display:block;border:0;border-radius:10px;"></td>'
+            if icons else ""
+        )
+        cards.append(
+            f'<a href="{bs.esc(href)}" style="display:block;text-decoration:none;">'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            f'style="background:{CARD};border:1px solid {EDGE};border-radius:14px;"><tr><td style="padding:8px;">'
+            f'<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>{icon}'
+            f'<td style="text-align:left;"><p style="margin:0;font:600 15px/1.3 {SANS};color:{INK};">{bs.esc(t["name"])}</p>'
+            f'<p style="margin:2px 0 0;font:12px/1.4 {SANS};color:{DIM};">{t["n"]} this week</p></td>'
+            f'</tr></table></td></tr></table></a>'
+        )
     if not cards:
         return ""
-    rows = "".join(card_pair(cards[i:i + 2]) for i in range(0, len(cards), 2))
-    return f"""
-<tr><td style="padding:8px 0 12px;">
-  <p style="margin:0;font:600 12px/1.4 {SANS};letter-spacing:.08em;text-transform:uppercase;color:{OCHRE};">{bs.esc(title)}</p>
-</td></tr>{rows}"""
+    # small enough to stay two across on a phone, so a plain table
+    rows = "".join(
+        "<tr>" + "".join(
+            f'<td width="50%" valign="top" style="padding:0 {5 if j == 0 else 0}px 10px {5 if j else 0}px;">{c}</td>'
+            for j, c in enumerate(cards[i:i + 2])
+        ) + ("<td width=\"50%\"></td>" if len(cards[i:i + 2]) == 1 else "") + "</tr>"
+        for i in range(0, len(cards), 2)
+    )
+    return (heading("Explore") + '<tr><td><table role="presentation" width="100%" '
+            f'cellpadding="0" cellspacing="0" border="0">{rows}</table></td></tr>')
 
 
 def featured_block(e: dict, href: str) -> str:
@@ -299,38 +472,41 @@ def featured_block(e: dict, href: str) -> str:
 </td></tr>"""
 
 
-def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, str]) -> dict:
+def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, str],
+           icons: bool) -> dict:
     """{subject, preview_text, content} for one edition."""
     campaign = f"weekly-{send_at:%Y-%m-%d}-{edition or 'general'}"
     end = send_at + WINDOW - timedelta(days=1)
     span = f"{send_at:%a %-d %b} – {end:%a %-d %b}"
-    lead_title = f"{EDITIONS[edition]} this week" if edition else "Picks this week"
-    also_title = "Also this week" if edition else "More this week"
+    picks_title = f"Our {EDITIONS[edition].lower()} picks" if edition else "Our top picks this week"
+    rest_title = "Also this week" if edition else "More this week"
 
     featured = "".join(
-        featured_block(e, href) for e in secs["featured"] if (href := link(e, slugs, campaign))
+        featured_block(e, href)
+        for e in secs["featured"] if (href := link(e, slugs, campaign, "featured"))
     )
     body = (
         featured
-        + section(lead_title, secs["lead"], slugs, campaign)
-        + section(also_title, secs["also"], slugs, campaign)
+        + picks_section(picks_title, secs["picks"], slugs, campaign)
+        + list_section(rest_title, secs["rest"], slugs, campaign)
+        + browse_section(secs["browse"], campaign, icons)
     )
     # Just the body: the background, footer, unsubscribe link and postal
     # address come from the PsyConnect template in Kit (kit/email-template.html).
     content = f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td style="padding:0 0 6px;"><a href="{bs.esc(site_link('/', campaign))}"><img src="{bs.BASE_URL}/logo.png" width="180" alt="PsyConnect" style="display:block;border:0;width:180px;height:auto;"></a></td></tr>
+<tr><td style="padding:0 0 6px;"><a href="{bs.esc(site_link('/', campaign, 'logo'))}"><img src="{bs.BASE_URL}/logo.png" width="180" alt="PsyConnect" style="display:block;border:0;width:180px;height:auto;"></a></td></tr>
 <tr><td style="padding:0 0 22px;">
   <p style="margin:0;font:15px/1.5 {SANS};color:{DIM};">In-person gatherings across London · {bs.esc(span)}</p>
 </td></tr>
 {body}
-<tr><td style="padding:8px 0 28px;">
-  <a href="{bs.esc(site_link('/', campaign))}" style="display:inline-block;background:{PLUM};color:#fdf6ee;font:600 15px/1 {SANS};text-decoration:none;padding:13px 20px;border-radius:12px;">See everything on PsyConnect</a>
+<tr><td style="padding:12px 0 28px;">
+  <a href="{bs.esc(site_link('/', campaign, 'cta'))}" style="display:inline-block;background:{PLUM};color:#fdf6ee;font:600 15px/1 {SANS};text-decoration:none;padding:13px 20px;border-radius:12px;">See everything on PsyConnect</a>
 </td></tr>
 </table>"""
 
     # the subject names the strongest picks, not merely the soonest
-    picks = [e for e in secs["featured"] + sorted(secs["lead"], key=score, reverse=True)
-             if link(e, slugs, campaign)]
+    picks = [e for e in secs["featured"] + sorted(secs["picks"], key=score, reverse=True)
+             if link(e, slugs, campaign, "")]
     names = [e.get("title") or "" for e in picks[:2]]  # plain text, not HTML
     if edition:
         subject = f"{EDITIONS[edition]} this week: {names[0]}" if names else f"{EDITIONS[edition]} this week in London"
@@ -338,7 +514,7 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
         subject = f"This week: {names[0]}" if names else "This week in London"
     if len(subject) > 80:
         subject = subject[:77].rsplit(" ", 1)[0] + "…"
-    count = len(secs["featured"]) + len(secs["lead"]) + len(secs["also"])
+    count = len(secs["featured"]) + len(secs["picks"]) + len(secs["rest"])
     preview = (
         f"{names[1]} and {count - 2} more gatherings across London, {span}."
         if len(names) > 1 and count > 2
@@ -478,12 +654,20 @@ def main() -> None:
         send_at = send_at.astimezone(bs.LONDON)
     else:
         send_at = next_send(now)
-    events = week_events(send_at)
+    upcoming = site_events()
+    events = week_events(upcoming, send_at)
     slugs = live_slugs()
-    print(f"Week from {send_at:%a %d %b %H:%M %Z}: {len(events)} events")
+    # the practices with a page, as the site build decides it
+    PRACTICE_PAGES[:] = bs.site_practices(upcoming, [e for e in bs.fetch_past_events() if bs.site_match(e)])
+    icons = icons_live()
+    print(f"Week from {send_at:%a %d %b %H:%M %Z}: {len(events)} events"
+          + ("" if icons else " (icons not deployed yet: tiles without them)"))
 
     editions: list[str | None] = [*EDITIONS, None]
-    built = {ed: render(ed, edition_sections(ed, events), send_at, slugs) for ed in editions}
+    built = {
+        ed: render(ed, edition_sections(ed, events, send_at), send_at, slugs, icons)
+        for ed in editions
+    }
 
     if args.mode == "preview":
         args.out.mkdir(parents=True, exist_ok=True)
