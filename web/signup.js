@@ -168,6 +168,17 @@
     );
   }
 
+  // GoatCounter events, one path per step and page type, so its dashboard
+  // shows the funnel: signup/shown/event → signup/joined/event (and the
+  // Kit confirmations as /welcome/ page views)
+  function track(step) {
+    const gc = window.goatcounter;
+    if (!gc || !gc.count) return;
+    try {
+      gc.count({ path: `signup/${step}/${kind}`, title: `Sign-up ${step}: ${kind}`, event: true });
+    } catch {}
+  }
+
   function show() {
     if (shown) return;
     if (!forced && busyElsewhere()) {
@@ -175,6 +186,7 @@
       return;
     }
     shown = true;
+    track(forced ? "shown-link" : "shown");
     lastFocus = document.activeElement;
     opened = Date.now();
     const [title, body] = copy();
@@ -252,7 +264,10 @@
 
   function dismiss() {
     const s = store();
-    if (!s.joined) store({ ...s, dismissed: Date.now() });
+    if (!s.joined) {
+      store({ ...s, dismissed: Date.now() });
+      track("dismissed");
+    }
     close();
   }
 
@@ -319,9 +334,11 @@
     } catch {}
     if (ok) {
       store({ joined: Date.now() });
+      track("joined");
       done(card);
       return;
     }
+    track(code === "email" ? "error-email" : "error");
     go.disabled = false;
     go.textContent = "Count me in";
     say(code === "email"

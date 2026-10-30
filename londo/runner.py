@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+from pathlib import Path
 
 import click
 
@@ -51,11 +52,31 @@ SUPABASE_ONLY_SOURCES = ("seeds", "submissions", "whatsapp")
 UNWANTED_TITLE_RE = re.compile(r"book[\s-]*signing", re.IGNORECASE)
 
 
+# Cancellations most sources only announce in the title: "CANCELLED EVENT -
+# Dance with your Grief", "Sound Bath (postponed)". Only as a marker — at
+# the start, after a separator or in brackets — so a title that merely
+# uses the word stays. Dropped like Eventbrite's is_cancelled, so a copy
+# already stored ages out with the stale cutoff.
+CANCELLED_TITLE_RE = re.compile(
+    r"(?:^\W*|[-–—:|•]\s*|[(\[]\s*)(?:cancel+ed|postponed)\b(?!\s+(?:by|due|to|until)\b)",
+    re.IGNORECASE,
+)
+
+
 def drop_unwanted(events: list[Event]) -> list[Event]:
-    kept = [e for e in events if not UNWANTED_TITLE_RE.search(e.title or "")]
-    dropped = len(events) - len(kept)
-    if dropped:
-        click.echo(f"Dropped {dropped} unwanted event(s) (book signings)")
+    kept = []
+    dropped = {"book signings": 0, "cancelled": 0}
+    for e in events:
+        title = e.title or ""
+        if UNWANTED_TITLE_RE.search(title):
+            dropped["book signings"] += 1
+        elif CANCELLED_TITLE_RE.search(title):
+            dropped["cancelled"] += 1
+        else:
+            kept.append(e)
+    for why, n in dropped.items():
+        if n:
+            click.echo(f"Dropped {n} unwanted event(s) ({why})")
     return kept
 
 
@@ -76,6 +97,50 @@ def _stored_context(store) -> tuple[dict, list[dict]]:
     except Exception:
         log.exception("Could not fetch known places")
     return existing, places
+
+
+# A source is flagged when it fails, or brings back under a quarter of the
+# upcoming listings it has on the site (and it normally has a handful): a
+# broken scraper otherwise just lets its events fade off the site. A
+# source that has nothing listed (Ticket Tailor, blocked from CI) can fail
+# quietly.
+HEALTH_MIN_SHARE = 0.25
+HEALTH_MIN_USUAL = 5
+
+
+def write_health_report(path: str, results: dict[str, int | str]) -> None:
+    """Markdown for the scrape workflow to post as a GitHub issue; empty
+    when every source looks normal."""
+    usual: dict[str, int] = {}
+    if os.environ.get("SUPABASE_URL"):
+        from londo.storage import SupabaseStore
+
+        try:
+            usual = SupabaseStore().upcoming_counts()
+        except Exception:
+            logging.getLogger(__name__).exception("Couldn't read usual counts")
+    rows = []
+    for src, got in results.items():
+        if src in SUPABASE_ONLY_SOURCES:
+            continue  # re-emitted from the table, not scraped
+        had = usual.get(src, 0)
+        if isinstance(got, str):
+            if not had:
+                continue
+            rows.append(f"| {src} | failed: `{got}` | {had} |")
+        elif had >= HEALTH_MIN_USUAL and got < had * HEALTH_MIN_SHARE:
+            rows.append(f"| {src} | {got} events | {had} |")
+    text = ""
+    if rows:
+        text = (
+            "These sources failed or came back short in the latest scrape. "
+            "Their listings drop off the site after three days unseen. "
+            "Close this issue once fixed; the next problem opens a new one.\n\n"
+            "| source | this run | upcoming in the table |\n|---|---|---|\n"
+            + "\n".join(rows) + "\n"
+        )
+        click.echo(f"Health: {len(rows)} source(s) flagged")
+    Path(path).write_text(text)
 
 
 @click.group()
@@ -110,12 +175,19 @@ def cli() -> None:
     help="Seconds between requests.",
 )
 @click.option("--verbose", "-v", is_flag=True, help="Enable debug logging.")
+@click.option(
+    "--health-report",
+    type=click.Path(dir_okay=False),
+    help="Write a Markdown note of sources that failed or came back short "
+    "(empty file when all is well). Needs Supabase for the usual counts.",
+)
 def scrape(
     source: str | None,
     store: str,
     output_dir: str,
     rate_limit: float,
     verbose: bool,
+    health_report: str | None,
 ) -> None:
     """Scrape events from registered sources, dedupe, and store."""
     logging.basicConfig(
@@ -127,6 +199,7 @@ def scrape(
     sources = [source] if source else list(SCRAPERS.keys())
 
     all_events: list[Event] = []
+    results: dict[str, int | str] = {}  # source -> events found, or the error
     for src in sources:
         if src in SUPABASE_ONLY_SOURCES and not os.environ.get("SUPABASE_URL"):
             click.echo(f"Skipping {src} (no Supabase credentials)")
@@ -139,9 +212,14 @@ def scrape(
             # one broken source shouldn't lose the others' results
             logging.getLogger(__name__).exception("Scraper %s failed", src)
             click.echo(f"  FAILED: {exc}", err=True)
+            results[src] = f"{type(exc).__name__}: {exc}"[:300]
             continue
         click.echo(f"  {len(events)} events")
+        results[src] = len(events)
         all_events.extend(events)
+
+    if health_report:
+        write_health_report(health_report, results)
 
     all_events = drop_unwanted(all_events)
 

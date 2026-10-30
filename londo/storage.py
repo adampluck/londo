@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -183,7 +183,6 @@ class SupabaseStore:
     def purge_old_submissions(self, days: int = 30) -> None:
         """Delete resolved submissions after a while: keeps the table small
         under flooding, and frees their URLs for honest resubmission."""
-        from datetime import timedelta
 
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
         response = self.session.delete(
@@ -275,6 +274,32 @@ class SupabaseStore:
         )
         response.raise_for_status()
         return [_row_to_event(r) for r in response.json()]
+
+    def upcoming_counts(self, seen_days: int = 3) -> dict[str, int]:
+        """Upcoming rows per source that a scrape has seen lately (the
+        frontend's three days by default): what each source normally
+        brings, for the scrape's health check."""
+        now = datetime.now(timezone.utc)
+        fmt = "%Y-%m-%dT%H:%M:%SZ"
+        url = (
+            f"{self.url}/rest/v1/events?select=source"
+            f"&start_at=gte.{now.strftime(fmt)}"
+            f"&last_seen_at=gte.{(now - timedelta(days=seen_days)).strftime(fmt)}"
+        )
+        counts: dict[str, int] = {}
+        offset = 0
+        while True:
+            response = self.session.get(
+                f"{url}&order=source.asc,source_id.asc&offset={offset}&limit={self.PAGE}",
+                timeout=60,
+            )
+            response.raise_for_status()
+            rows = response.json()
+            for r in rows:
+                counts[r["source"]] = counts.get(r["source"], 0) + 1
+            if len(rows) < self.PAGE:
+                return counts
+            offset += self.PAGE
 
     def fetch_active_seeds(self) -> list[dict]:
         response = self.session.get(

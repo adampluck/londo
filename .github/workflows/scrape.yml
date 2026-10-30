@@ -13,6 +13,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write  # the source-health issue
 
 jobs:
   scrape:
@@ -33,7 +34,26 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: londo scrape --store supabase
+        run: londo scrape --store supabase --health-report scrape-health.md
+
+      # A source that failed or came back short opens (or refreshes) one
+      # issue, so a broken scraper doesn't just let its listings fade away.
+      # Left open until closed by hand.
+      - name: Report source health
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -s scrape-health.md ] || exit 0
+          printf '\n[Latest run](%s)\n' "$RUN_URL" >> scrape-health.md
+          title="Scraper health: sources failing or short"
+          open=$(gh issue list --state open --search "\"$title\" in:title" --json number -q '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue edit "$open" --body-file scrape-health.md
+          else
+            gh issue create --title "$title" --body-file scrape-health.md
+          fi
 
       # Rebuild the static site (per-event SEO/OG pages) from fresh data
       - name: Build site
