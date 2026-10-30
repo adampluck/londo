@@ -2211,13 +2211,13 @@ def page(
 </head>
 <body class="{body_class}">
   <div class="sky" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div><div class="grain"></div></div>
-  {static_topbar(css_prefix, map_href)}
+  {static_topbar(css_prefix, map_href, bool(signup))}
   <main class="static-main">
   {body}
   </main>
   <footer class="static-footer">
     {seo_nav_html()}{channel_link_html()}
-    <p class="static-footer-home"><a href="{BASE_URL}/">{esc(display_name())}</a> — {esc(SITE["tagline"])}{about_link_html()}{privacy_link_html()}</p>
+    <p class="static-footer-home"><a href="{BASE_URL}/">{esc(display_name())}</a> — {esc(SITE["tagline"])}{about_link_html()}{privacy_link_html()}{' · <a href="#signup" data-signup-open="footer">weekly email</a>' if signup else ""}</p>
     <p class="static-footer-home credit">Made by your friendly <a href="https://www.digitalhandyman.london" rel="noopener">digital handyman</a></p>
   </footer>
   {signup}</body>
@@ -2560,7 +2560,22 @@ def map_available() -> bool:
     return (SITE_JSON.get("features") or {}).get("map", True) is not False
 
 
-def static_topbar(css_prefix: str, map_href: str | None = None) -> str:
+MAIL_SVG = (
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/>'
+    '<path d="m3.5 7 8.5 6.2L20.5 7"/></svg>'
+)
+
+
+def signup_button() -> str:
+    """The header's envelope: opens the weekly-email sign-up (signup.js
+    listens for data-signup-open). Keep in step with the shell index.html."""
+    return (
+        '<button class="theme-toggle signup-toggle" type="button" data-signup-open="header" '
+        f'aria-label="Get the weekly email">{MAIL_SVG}</button>'
+    )
+
+
+def static_topbar(css_prefix: str, map_href: str | None = None, signup: bool = False) -> str:
     """The main page's header: wordmark and tagline, then the map pin (on
     pages with something to map) and the theme switch. The wordmark sits
     in a <p>, not an <h1> — the page's own title is its one heading."""
@@ -2576,7 +2591,7 @@ def static_topbar(css_prefix: str, map_href: str | None = None) -> str:
       <p class="site-title"><a class="home" href="{BASE_URL}/" aria-label="{esc(display_name())} home">{site_wordmark(css_prefix)}</a></p>
       <p class="tagline">{esc(SITE["tagline"])}</p>
     </div>
-    <div class="topbar-actions">{pin}{theme_toggle_html()}</div>
+    <div class="topbar-actions">{signup_button() if signup else ""}{pin}{theme_toggle_html()}</div>
   </header>"""
 
 

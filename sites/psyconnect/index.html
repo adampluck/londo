@@ -59,6 +59,9 @@
       <p class="tagline"><a href="?topic=consciousness">consciousness</a>, <a href="?topic=connection">connection</a>, <a href="?topic=spirituality">ceremony</a> &amp; <a href="?topic=psychedelics">psychedelics</a><span class="tagline-tail"> — in person in london</span></p>
     </div>
     <div class="topbar-actions">
+    <!-- opens the weekly-email sign-up (signup.js); keep in step with
+         signup_button() in build_site.py -->
+    <button class="theme-toggle signup-toggle" type="button" data-signup-open="header" aria-label="Get the weekly email"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m3.5 7 8.5 6.2L20.5 7"/></svg></button>
     <!-- the map's way in from the header; app.js wires it to openMap/closeMap -->
     <button class="theme-toggle map-toggle" id="map-toggle" type="button" aria-label="Show events on a map" aria-pressed="false">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>
@@ -211,7 +214,7 @@
   <footer>
     <nav class="seo-nav" id="seo-nav" aria-label="topics"></nav>
     <p id="last-updated" hidden></p>
-    <p>Made by your friendly <a href="https://www.digitalhandyman.london" rel="noopener">digital handyman</a> · <a href="about/">about</a> · <a href="privacy/">privacy</a></p>
+    <p>Made by your friendly <a href="https://www.digitalhandyman.london" rel="noopener">digital handyman</a> · <a href="about/">about</a> · <a href="privacy/">privacy</a> · <a href="#signup" data-signup-open="footer">weekly email</a></p>
   </footer>
 
   <nav class="bottom-tabs" id="bottom-tabs" aria-label="views" hidden>

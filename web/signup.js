@@ -12,7 +12,9 @@
      navigate within the site, or they stay 45s and scroll halfway;
    - never again within 30 days of a dismissal, and never after a sign-up;
    - never to visitors arriving from the email itself.
-   #signup in the URL forces it (for previewing).
+   #signup in the URL forces it (for previewing), and anything marked
+   data-signup-open (the header's envelope, the footer link) opens it on a
+   click, whatever the rules above say.
 
    Interests are never asked for: the tags come from the page, and the
    worker files the subscriber under them in Kit. */
@@ -89,17 +91,31 @@
     }
   }
 
-  if (!forced) {
-    if (!endpoint) return;
+  if (!endpoint && !forced) return;
+
+  // The header's envelope and the footer link open it on a click, whatever
+  // the automatic rules below say: someone who closed it on reflex can
+  // still find their way back.
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest && e.target.closest("[data-signup-open]");
+    if (!t) return;
+    e.preventDefault();
+    show(t.dataset.signupOpen || "link");
+  });
+
+  function autoAllowed() {
+    if (forced) return true;
     // crawlers and test robots never see it, even if they sit out the timer
     if (navigator.webdriver ||
-        /bot|crawl|spider|slurp|lighthouse|inspection|headless/i.test(navigator.userAgent)) return;
+        /bot|crawl|spider|slurp|lighthouse|inspection|headless/i.test(navigator.userAgent)) return false;
     const s = store();
-    if (s.joined) return;
-    if (s.dismissed && Date.now() - s.dismissed < SNOOZE_MS) return;
+    if (s.joined) return false;
+    if (s.dismissed && Date.now() - s.dismissed < SNOOZE_MS) return false;
     if (/email/i.test(params.get("utm_source") || "") ||
-        /email/i.test(params.get("utm_medium") || "")) return;
+        /email/i.test(params.get("utm_medium") || "")) return false;
+    return true;
   }
+  const auto = autoAllowed();
 
   let internal = false;
   try {
@@ -126,7 +142,7 @@
   }
 
   function maybe() {
-    if (shown) return;
+    if (shown || !auto) return;
     if (forced || internal || (scrolled && Date.now() - start >= DWELL_MS)) {
       whenIdle(show);
     }
@@ -138,9 +154,11 @@
     else addEventListener("load", go, { once: true });
   }
 
-  addEventListener("scroll", onScroll, { passive: true });
-  setTimeout(maybe, DWELL_MS);
-  maybe();
+  if (auto) {
+    addEventListener("scroll", onScroll, { passive: true });
+    setTimeout(maybe, DWELL_MS);
+    maybe();
+  }
 
   // ---- the dialog -----------------------------------------------------------
   let root, lastFocus, opened, token = "", tokenWait;
@@ -179,14 +197,19 @@
     } catch {}
   }
 
-  function show() {
-    if (shown) return;
-    if (!forced && busyElsewhere()) {
+  // how: undefined for the automatic trigger, else what was clicked
+  function show(how) {
+    if (root) return;
+    if (!how && shown) return;
+    if (!how && !forced && busyElsewhere()) {
       setTimeout(show, 5000);
       return;
     }
     shown = true;
-    track(forced ? "shown-link" : "shown");
+    track(how ? `shown-${how}` : forced ? "shown-link" : "shown");
+    // a fresh Turnstile widget for this card (a token is good for one go)
+    token = "";
+    tokenWait = null;
     lastFocus = document.activeElement;
     opened = Date.now();
     const [title, body] = copy();
@@ -276,7 +299,7 @@
   function turnstile() {
     if (!sitekey || tokenWait) return;
     tokenWait = new Promise((resolve) => {
-      window.__pcsTs = () => {
+      const render = () => {
         const box = root && root.querySelector(".pcs-ts");
         if (!box) return resolve("");
         window.turnstile.render(box, {
@@ -286,6 +309,8 @@
           "error-callback": () => resolve(""),
         });
       };
+      if (window.turnstile) return render();  // reopened: script's here
+      window.__pcsTs = render;
       const s = document.createElement("script");
       s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=__pcsTs&render=explicit";
       s.async = true;
