@@ -2,8 +2,9 @@
 <!-- psyconnect's Kit email template. Paste into Kit: Send → Email
      Templates → New template → HTML (code) editor, name it "PsyConnect".
      scripts/weekly_email.py picks a template with that name for the weekly
-     broadcasts. Kit fills {{ message_content }} with each email's body and
-     needs {{ unsubscribe_url }} and {{ address }} in the footer. -->
+     broadcasts. Kit fills the message_content tag with each email's body
+     and needs the unsubscribe_url and address tags in the footer. (Name no
+     tag in this comment with its braces: Kit fills those in here too.) -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -16,6 +17,9 @@
     a { color: #6d4160; }
     @media (max-width: 600px) {
       .pc-pad { padding-left: 16px !important; padding-right: 16px !important; }
+      /* the weekly email's two-up event cards stack full width */
+      .pc-col { display: block !important; max-width: none !important; }
+      .pc-gap { display: none !important; }
     }
   </style>
 </head>

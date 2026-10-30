@@ -191,11 +191,16 @@ def site_link(path: str, campaign: str) -> str:
     return f"{bs.BASE_URL}{path}?{q}"
 
 
-def email_thumb(url: str, size: int) -> str:
-    # jpg, not the site's webp: Outlook and older mail apps can't show webp
+def email_img(url: str, width: int) -> str:
+    """The site's card crop: 2:1, centred, from the full-res original
+    (bs.full_res, as the site's thumb() does). jpg, not the site's webp:
+    Outlook and older mail apps can't show webp. Sized at 2x for retina."""
+    src, crop = bs.full_res(url, width * 2)
+    # keep an Eventbrite organiser's own crop box; drop its ratio, we set ours
+    keep = crop if "precrop" in crop else ""
     return (
-        "https://wsrv.nl/?url=" + urllib.parse.quote(url, safe="")
-        + f"&w={size * 2}&h={size * 2}&fit=cover&a=attention&output=jpg&q=72"
+        "https://wsrv.nl/?url=" + urllib.parse.quote(src, safe="")
+        + f"{keep}&w={width * 2}&h={width}&fit=cover&output=jpg&q=72"
     )
 
 
@@ -219,39 +224,53 @@ def meta_line(e: dict) -> str:
     return " · ".join(parts)
 
 
-def event_row(e: dict, href: str) -> str:
-    img = ""
+COL = 272  # two cards and a 16px gap fill the template's 560px column
+
+
+def event_card(e: dict, href: str) -> str:
+    """One site-style card: 2:1 art over the text."""
     if e.get("image_url"):
-        img = (
-            f'<td width="96" valign="top" style="padding:0 14px 0 0;">'
-            f'<a href="{bs.esc(href)}"><img src="{bs.esc(email_thumb(e["image_url"], 96))}" '
-            f'width="96" height="96" alt="" style="display:block;border:0;border-radius:12px;'
-            f'width:96px;height:96px;object-fit:cover;"></a></td>'
+        art = (
+            f'<a href="{bs.esc(href)}"><img src="{bs.esc(email_img(e["image_url"], COL))}" '
+            f'width="{COL}" height="{COL // 2}" alt="" style="display:block;border:0;width:100%;'
+            f'height:auto;border-radius:14px 14px 0 0;"></a>'
+        )
+    else:
+        # the site's imageless banner: sand gradient (solid where unsupported)
+        art = (
+            f'<div style="height:{COL // 2}px;border-radius:14px 14px 0 0;background:#eadbc4;'
+            f'background-image:linear-gradient(160deg,#f1e6d4,#e3cfb2);"></div>'
         )
     hook = blurb(e)
     hook_html = (
         f'<p style="margin:4px 0 0;font:14px/1.45 {SANS};color:{DIM};">{bs.esc(hook)}</p>'
         if hook else ""
     )
-    return f"""
-<tr><td style="padding:0 0 18px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-    {img}
-    <td valign="top">
-      <p style="margin:0;font:600 12px/1.4 {SANS};color:{OCHRE};">{bs.esc(meta_line(e))}</p>
-      <p style="margin:3px 0 0;font:600 17px/1.3 {SANS};"><a href="{bs.esc(href)}" style="color:{INK};text-decoration:none;">{bs.esc(e.get("title") or "")}</a></p>
-      {hook_html}
-    </td>
-  </tr></table>
-</td></tr>"""
+    return f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{CARD};border:1px solid {EDGE};border-radius:16px;">
+<tr><td>{art}</td></tr>
+<tr><td style="padding:12px 14px 14px;text-align:left;">
+  <p style="margin:0;font:600 12px/1.4 {SANS};color:{OCHRE};">{bs.esc(meta_line(e))}</p>
+  <p style="margin:3px 0 0;font:600 16px/1.3 {SANS};"><a href="{bs.esc(href)}" style="color:{INK};text-decoration:none;">{bs.esc(e.get("title") or "")}</a></p>
+  {hook_html}
+</td></tr></table>"""
+
+
+def card_pair(cards: list[str]) -> str:
+    """Two cards side by side that stack on a phone: inline-blocks wrap by
+    themselves and the template's media query widens them to full width.
+    No Outlook [if mso] tables — Outlook desktop simply stacks them."""
+    col = (f'<div class="pc-col" style="display:inline-block;width:100%;max-width:{COL}px;'
+           f'vertical-align:top;padding:0 0 16px;">')
+    gap = '<div class="pc-gap" style="display:inline-block;width:16px;"></div>'
+    inner = gap.join(col + c + "</div>" for c in cards)
+    return f'<tr><td style="font-size:0;line-height:0;text-align:left;">{inner}</td></tr>'
 
 
 def section(title: str, events: list[dict], slugs: dict[str, str], campaign: str) -> str:
-    rows = "".join(
-        event_row(e, href) for e in events if (href := link(e, slugs, campaign))
-    )
-    if not rows:
+    cards = [event_card(e, href) for e in events if (href := link(e, slugs, campaign))]
+    if not cards:
         return ""
+    rows = "".join(card_pair(cards[i:i + 2]) for i in range(0, len(cards), 2))
     return f"""
 <tr><td style="padding:8px 0 12px;">
   <p style="margin:0;font:600 12px/1.4 {SANS};letter-spacing:.08em;text-transform:uppercase;color:{OCHRE};">{bs.esc(title)}</p>
@@ -261,12 +280,9 @@ def section(title: str, events: list[dict], slugs: dict[str, str], campaign: str
 def featured_block(e: dict, href: str) -> str:
     img = ""
     if e.get("image_url"):
-        src = (
-            "https://wsrv.nl/?url=" + urllib.parse.quote(e["image_url"], safe="")
-            + "&w=1040&h=546&fit=cover&a=attention&output=jpg&q=72"
-        )
+        src = email_img(e["image_url"], 520)
         img = (
-            f'<a href="{bs.esc(href)}"><img src="{bs.esc(src)}" width="520" alt="" '
+            f'<a href="{bs.esc(href)}"><img src="{bs.esc(src)}" width="520" height="260" alt="" '
             f'style="display:block;border:0;width:100%;max-width:520px;height:auto;border-radius:12px;margin:0 0 12px;"></a>'
         )
     label = (bs.SITE_JSON.get("featured") or {}).get("label") or "Our next event"
