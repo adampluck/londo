@@ -81,6 +81,30 @@
     }
   }
 
+  // The callout's copy: calmer than the modal's, since it's found at the
+  // foot of the page rather than put in front of anyone
+  function calloutCopy() {
+    switch (kind) {
+      case "event":
+        return ["Never miss the next one",
+          "One email every Thursday with the week’s gatherings across London, picked for you."];
+      case "practice":
+      case "area":
+        return [`The week’s ${name}, every Thursday`,
+          `All of London’s ${name}, plus a few kindred gatherings, in one weekly email.`];
+      case "organizer":
+      case "venue":
+        return ["More nights like these, every Thursday",
+          "One email with the week’s gatherings across London, picked for you."];
+      case "tonight":
+        return ["Plan the week, not just tonight",
+          "One email every Thursday with the week’s gatherings across London, picked for you."];
+      default:
+        return ["The week ahead, every Thursday",
+          "Ceremonies, circles, talks and dance floors across London, in one weekly email."];
+    }
+  }
+
   // ---- whether to show at all ----------------------------------------------
   function store(v) {
     try {
@@ -102,6 +126,37 @@
     e.preventDefault();
     show(t.dataset.signupOpen || "link");
   });
+
+  // The callout above the explore tiles on event and listing pages:
+  // always there (it's found, not pushed), except for subscribers.
+  function callout() {
+    const at = document.querySelector(".static-explore");
+    if (!at || store().joined || document.querySelector(".pcs-callout")) return;
+    const [title, body] = calloutCopy();
+    const box = document.createElement("section");
+    box.className = "pcs-callout";
+    box.setAttribute("aria-labelledby", "pcs-callout-title");
+    const h = document.createElement("h2");
+    h.id = "pcs-callout-title";
+    h.textContent = title;
+    const p = document.createElement("p");
+    p.className = "pcs-callout-body";
+    p.textContent = body;
+    const go = document.createElement("button");
+    go.type = "button";
+    go.className = "pcs-callout-go";
+    go.dataset.signupOpen = "callout";
+    go.textContent = "Get the weekly email";
+    const fine = document.createElement("p");
+    fine.className = "pcs-callout-fine";
+    fine.textContent = "Free · unsubscribe in one click";
+    box.append(h, p, go, fine);
+    at.before(box);
+  }
+  if (endpoint) {
+    if (document.readyState === "loading") addEventListener("DOMContentLoaded", callout, { once: true });
+    else callout();
+  }
 
   function autoAllowed() {
     if (forced) return true;
@@ -360,6 +415,7 @@
     if (ok) {
       store({ joined: Date.now() });
       track("joined");
+      document.querySelectorAll(".pcs-callout").forEach((n) => n.remove());
       done(card);
       return;
     }

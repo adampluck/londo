@@ -1340,6 +1340,58 @@ body.theme-night .blob { opacity: 0.3; }
 }
 .pcs:focus { outline: none; }
 
+/* the sign-up callout signup.js puts above the explore tiles */
+.pcs-callout {
+  margin: 3.5rem 0 0;
+  padding: 1.7rem 1.6rem 1.5rem;
+  border-radius: var(--radius, 18px);
+  border: 1px solid color-mix(in srgb, var(--peach) 28%, var(--card-edge));
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--gold) 14%, transparent), transparent 60%),
+    color-mix(in srgb, var(--peach) 8%, var(--card));
+}
+.pcs-callout h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(1.35rem, 3.2vw, 1.7rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+.pcs-callout-body {
+  margin: 0.55rem 0 1.2rem;
+  max-width: 34rem;
+  color: var(--ink-dim);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.pcs-callout-go {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.85rem 1.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--peach);
+  color: var(--cta-ink, #fdf6ee);
+  font-family: var(--display);
+  font-size: 1.02rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--peach) 70%, transparent);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.pcs-callout-go:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.pcs-callout-go:focus-visible { outline: 2px solid var(--peach); outline-offset: 3px; }
+.pcs-callout-fine {
+  margin: 0.7rem 0 0;
+  color: var(--ink-dim);
+  font-size: 0.82rem;
+}
+@media (max-width: 560px) {
+  .pcs-callout { padding: 1.4rem 1.2rem 1.25rem; }
+  .pcs-callout-go { width: 100%; justify-content: center; }
+}
+
 /* three keycaps (sign-up, map, theme) beside the wordmark on a phone */
 @media (max-width: 440px) {
   .topbar { gap: 0.6rem; }
