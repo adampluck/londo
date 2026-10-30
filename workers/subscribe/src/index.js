@@ -21,6 +21,9 @@ const MAX_TAGS = 4;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 // bare topic slugs, or practice:/host:/venue: plus a page slug
 const TAG = /^(?:[a-z0-9-]{1,40}|(?:practice|host|venue):[a-z0-9-]{1,60})$/;
+// One edition per subscriber decides which weekly version they get (see
+// scripts/weekly_email.py): the page's first topic, the one it's mostly about.
+const EDITIONS = new Set(["psychedelics", "consciousness", "spirituality", "connection", "healing"]);
 const KINDS = new Set(["home", "event", "practice", "area", "topic", "organizer", "venue", "tonight"]);
 
 export default {
@@ -125,8 +128,10 @@ async function handle(request, env, origin) {
     if (!joined.ok) throw new Error(`form ${joined.status}`);
 
     // 3. interests — best effort: a tag hiccup shouldn't lose the sign-up
-    if (tags.length) {
-      const ids = await tagIds(kit, tags);
+    const edition = tags.find((t) => EDITIONS.has(t));
+    const names = edition ? [...tags, `edition:${edition}`] : tags;
+    if (names.length) {
+      const ids = await tagIds(kit, names);
       await Promise.all(ids.map((id) =>
         kit(`/tags/${id}/subscribers`, {
           method: "POST",

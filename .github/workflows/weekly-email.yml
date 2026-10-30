@@ -1,0 +1,53 @@
+name: Weekly email
+
+# Builds psyconnect's weekly email (one version per interest) and hands it
+# to Kit the evening before it goes out — Thursday 09:00 London, set in
+# scripts/weekly_email.py. The evening gap leaves time to look over the
+# drafts or cancel a scheduled send in Kit.
+#
+# Mode: the repo variable WEEKLY_EMAIL_MODE (Settings → Secrets and
+# variables → Actions → Variables): "draft" (default — review and send
+# from Kit) or "schedule" (sends itself). A manual run can override it.
+
+on:
+  schedule:
+    - cron: "0 18 * * 3" # Wednesdays 18:00 UTC
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "preview (no Kit), draft or schedule"
+        type: choice
+        options: [preview, draft, schedule]
+        default: preview
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-email
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # stdlib only — no installs
+      - name: Build and send to Kit
+        env:
+          KIT_API_KEY: ${{ secrets.KIT_API_KEY }}
+          MODE: ${{ inputs.mode || vars.WEEKLY_EMAIL_MODE || 'draft' }}
+        run: |
+          python3 scripts/weekly_email.py preview --out build-email
+          if [ "$MODE" != "preview" ]; then
+            python3 scripts/weekly_email.py "$MODE"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weekly-email-preview
+          path: build-email
+          retention-days: 30

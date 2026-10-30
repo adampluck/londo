@@ -11,3 +11,4 @@ node_modules/
 .dev.vars
 chat_export/
 chat.txt
+build-email/
