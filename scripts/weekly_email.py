@@ -291,16 +291,31 @@ def email_img(url: str, width: int) -> str:
 ICON_PX = 44
 
 
+def site_png(path: str, width: int) -> str:
+    """A PNG on the site, served through wsrv.nl like the event art: on
+    2026-10-30 the site's own images failed in a phone's mail app while
+    wsrv's loaded (a stale DNS answer from Kit's A records, most likely),
+    so every image in the email comes from the one host that worked."""
+    return (
+        "https://wsrv.nl/?url=" + urllib.parse.quote(f"{bs.BASE_URL}{path}", safe="")
+        + f"&w={width}&output=png"
+    )
+
+
+def icon_path(name: str, tone: int) -> str:
+    """An explore-tile icon: a PNG on the site (scripts/email_icons.py makes
+    them), since mail apps won't show SVG."""
+    return f"/icons/email/{name}-{tone}.png"
+
+
 def icon_img(name: str, tone: int) -> str:
-    """An explore-tile icon: a PNG on the site itself (scripts/email_icons.py
-    makes them), since mail apps won't show SVG."""
-    return f"{bs.BASE_URL}/icons/email/{name}-{tone}.png"
+    return site_png(icon_path(name, tone), ICON_PX * 2)
 
 
 def icons_live() -> bool:
     """The icons go up with the site build: until a build has deployed
     them, the email goes without rather than show broken images."""
-    req = urllib.request.Request(icon_img("spark", 0),
+    req = urllib.request.Request(bs.BASE_URL + icon_path("spark", 0),
                                  method="HEAD", headers={"User-Agent": "psyconnect-weekly"})
     try:
         with urllib.request.urlopen(req, timeout=20) as res:
@@ -521,7 +536,7 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
     # Just the body: the background, footer, unsubscribe link and postal
     # address come from the PsyConnect template in Kit (kit/email-template.html).
     content = f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td style="padding:0 0 6px;"><a href="{bs.esc(site_link('/', campaign, 'logo'))}"><img src="{bs.BASE_URL}/logo.png" width="180" alt="PsyConnect" style="display:block;border:0;width:180px;height:auto;"></a></td></tr>
+<tr><td style="padding:0 0 6px;"><a href="{bs.esc(site_link('/', campaign, 'logo'))}"><img src="{bs.esc(site_png('/logo.png', 360))}" width="180" alt="PsyConnect" style="display:block;border:0;width:180px;height:auto;"></a></td></tr>
 <tr><td style="padding:0 0 22px;">
   <p style="margin:0;font:15px/1.5 {SANS};color:{DIM};">In-person gatherings across London · {bs.esc(span)}</p>
 </td></tr>
