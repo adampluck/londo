@@ -60,6 +60,8 @@ RELATED = {
     "connection": ("healing", "spirituality"),
     "healing": ("connection", "spirituality"),
 }
+TEMPLATE = bs.ROOT / "kit" / "email-template.html"
+TEMPLATE_NAME = "PsyConnect"
 LEAD_MAX = 6
 ALSO_MAX = 6
 ORG_MAX = 2  # per host, per email: one busy venue shouldn't fill it
@@ -297,21 +299,18 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
         + section(lead_title, secs["lead"], slugs, campaign)
         + section(also_title, secs["also"], slugs, campaign)
     )
-    content = f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{CREAM};">
-<tr><td align="center" style="padding:24px 12px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+    # Just the body: the background, footer, unsubscribe link and postal
+    # address come from the PsyConnect template in Kit (kit/email-template.html).
+    content = f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr><td style="padding:0 0 6px;"><a href="{bs.esc(site_link('/', campaign))}"><img src="{bs.BASE_URL}/logo.png" width="180" alt="PsyConnect" style="display:block;border:0;width:180px;height:auto;"></a></td></tr>
 <tr><td style="padding:0 0 22px;">
   <p style="margin:0;font:15px/1.5 {SANS};color:{DIM};">In-person gatherings across London · {bs.esc(span)}</p>
 </td></tr>
 {body}
-<tr><td style="padding:8px 0 24px;">
+<tr><td style="padding:8px 0 28px;">
   <a href="{bs.esc(site_link('/', campaign))}" style="display:inline-block;background:{PLUM};color:#fdf6ee;font:600 15px/1 {SANS};text-decoration:none;padding:13px 20px;border-radius:12px;">See everything on PsyConnect</a>
 </td></tr>
-<tr><td style="border-top:1px solid {EDGE};padding:14px 0 0;">
-  <p style="margin:0;font:12px/1.5 {SANS};color:{DIM};">You signed up at psyconnect.london. <a href="{{{{ unsubscribe_url }}}}" style="color:{DIM};">Unsubscribe</a> in one click.</p>
-</td></tr>
-</table></td></tr></table>"""
+</table>"""
 
     # the subject names the strongest picks, not merely the soonest
     picks = [e for e in secs["featured"] + sorted(secs["lead"], key=score, reverse=True)
@@ -431,9 +430,14 @@ def clear_previous(kit: Kit, prefix: str) -> None:
 
 
 def html_template(kit: Kit) -> int | None:
-    """An HTML-category template: 'Starting point' ones can't take API content."""
+    """The PsyConnect template if it's in Kit, else the default HTML one
+    ('Starting point' templates can't take API content)."""
     temps = kit.paged("/email_templates", "email_templates")
     html_ones = [t for t in temps if (t.get("category") or "").lower() == "html"]
+    for t in html_ones:
+        if (t.get("name") or "").strip().lower() == TEMPLATE_NAME.lower():
+            return t["id"]
+    print(f"  no '{TEMPLATE_NAME}' template in Kit: using the default (paste {TEMPLATE.relative_to(bs.ROOT)} into Kit)")
     for t in html_ones:
         if t.get("is_default"):
             return t["id"]
@@ -470,13 +474,21 @@ def main() -> None:
         links = []
         for ed, mail in built.items():
             name = ed or "general"
-            (args.out / f"{name}.html").write_text(
-                f"<!doctype html><meta charset='utf-8'><title>{bs.esc(mail['subject'])}</title>"
-                f"<body style='margin:0;background:{CREAM}'>"
-                f"<p style='font:13px {SANS};padding:12px;margin:0;background:#222;color:#eee'>"
-                f"<b>Subject:</b> {bs.esc(mail['subject'])}<br><b>Preview:</b> {bs.esc(mail['preview_text'])}</p>"
-                + mail["content"]
+            # as Kit will send it: wrapped in the template, footer filled in
+            page = (
+                TEMPLATE.read_text()
+                .replace("{{ message_content }}", mail["content"])
+                .replace("{{ unsubscribe_url }}", "#")
+                .replace("{{ address }}", "[your postal address, from Kit]")
+                .replace(
+                    "<body style=\"margin:0;padding:0;background:#f6efe4;\">",
+                    "<body style=\"margin:0;padding:0;background:#f6efe4;\">"
+                    f"<p style='font:13px {SANS};padding:12px;margin:0;background:#222;color:#eee'>"
+                    f"<b>Subject:</b> {bs.esc(mail['subject'])}<br>"
+                    f"<b>Preview:</b> {bs.esc(mail['preview_text'])}</p>",
+                )
             )
+            (args.out / f"{name}.html").write_text(page)
             links.append(f"<li><a href='{name}.html'>{name}</a> — {bs.esc(mail['subject'])}</li>")
         (args.out / "index.html").write_text(
             f"<!doctype html><meta charset='utf-8'><title>Weekly email preview</title>"
