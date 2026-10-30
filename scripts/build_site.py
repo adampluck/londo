@@ -4350,6 +4350,56 @@ def join_community_page(join: dict) -> str:
     )
 
 
+def welcome_url() -> str:
+    return f"{BASE_URL}/welcome/"
+
+
+def welcome_page() -> str:
+    """Where Kit sends people after they confirm the weekly email. Unlisted
+    and noindex like /join-community/: only the confirmation link leads
+    here. It also tells signup.js on this browser that they've joined, for
+    the people who signed up on another device."""
+    practices = "".join(
+        f'<a class="static-chip" href="{practice_url(slug_)}">'
+        f'{esc(spec.get("chip") or spec["label"])}</a>'
+        for slug_, spec, matched in SITE_PRACTICES
+        if matched and not spec.get("parent")
+    )
+    when = (
+        "".join(
+            f'<a class="static-chip" href="{BASE_URL}/{w}/">{w.replace("-", " ")}</a>'
+            for w in WHEN_PAGES
+        )
+        if _when_pages_on()
+        else ""
+    )
+    body = f"""
+  <header class="static-list-head">
+    <p class="static-kicker">the weekly email</p>
+    <h1 class="static-title">You’re in</h1>
+    <div class="static-intro">
+      <p class="static-lead">Thanks for confirming. Your first email comes
+      with the next weekly round-up: London’s gatherings, with the kind you
+      were looking at first.</p>
+      <p class="static-lead">To keep it out of spam, add the address it comes
+      from to your contacts. Every email has a one-click unsubscribe.</p>
+    </div>
+  </header>
+  <p class="static-lead">Can’t wait? Here’s what’s on:</p>
+  <p class="static-chips">{when}{practices}</p>
+  <p class="static-back"><a href="{BASE_URL}/">← everything on {esc(display_name())}</a></p>
+  <script>try{{localStorage.setItem("pc-signup",JSON.stringify({{joined:Date.now()}}))}}catch(e){{}}</script>"""
+    return page(
+        f"You’re in — {display_name()}",
+        f"You’re subscribed to the {display_name()} weekly email.",
+        welcome_url(),
+        None,
+        body,
+        css_prefix="..",
+        head_extra='<meta name="robots" content="noindex, nofollow">',
+    )
+
+
 # Practice pages by London area (/p/<practice>/<area>/): the searches
 # that reach the practice pages name a part of town ("sound bath east
 # london", "breathwork shoreditch"). An area gets a page once it has had
@@ -4980,6 +5030,9 @@ def build(outdir: Path) -> None:
     )
 
     (outdir / "404.html").write_text(not_found_page())
+    # Unlisted, like /join-community/: Kit's confirmation link lands here.
+    if SITE_JSON.get("signup"):
+        write_index(outdir / "welcome", welcome_page())
 
     today = datetime.now(timezone.utc).date().isoformat()
     sitemap = (
