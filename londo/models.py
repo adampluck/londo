@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from londo.text import tidy_title
 
 
 class PriceTier(BaseModel):
@@ -70,3 +72,10 @@ class Event(BaseModel):
     enriched_at: datetime | None = None
 
     scraped_at: datetime
+
+    # every source's titles pass through here on the way in: emoji, maths
+    # italics and ALL CAPS evened out, lightly (londo/text.py)
+    @field_validator("title")
+    @classmethod
+    def _tidy_title(cls, value: str) -> str:
+        return tidy_title(value)
