@@ -292,25 +292,36 @@ ICON_PX = 44
 
 
 def icon_img(name: str, tone: int) -> str:
-    """An explore-tile icon as a PNG: build_site.write_email_icons publishes
-    the SVGs, wsrv.nl rasterises them (mail apps won't show SVG)."""
-    svg = f"{bs.BASE_URL}/icons/email/{name}-{tone}.svg"
-    return (
-        "https://wsrv.nl/?url=" + urllib.parse.quote(svg, safe="")
-        + f"&w={ICON_PX * 2}&h={ICON_PX * 2}&output=png"
-    )
+    """An explore-tile icon: a PNG on the site itself (scripts/email_icons.py
+    makes them), since mail apps won't show SVG."""
+    return f"{bs.BASE_URL}/icons/email/{name}-{tone}.png"
 
 
 def icons_live() -> bool:
     """The icons go up with the site build: until a build has deployed
-    them, tiles go without rather than show broken images."""
-    req = urllib.request.Request(f"{bs.BASE_URL}/icons/email/spark-0.svg",
+    them, the email goes without rather than show broken images."""
+    req = urllib.request.Request(icon_img("spark", 0),
                                  method="HEAD", headers={"User-Agent": "psyconnect-weekly"})
     try:
         with urllib.request.urlopen(req, timeout=20) as res:
             return res.status == 200
     except (urllib.error.URLError, TimeoutError):
         return False
+
+
+def event_icon(e: dict) -> str:
+    """The icon the site would file this under: its most specific practice
+    (5Rhythms before ecstatic dance), else its first topic, else a spark."""
+    key = (e["source"], e["source_id"])
+    practices = sorted(
+        (slug_ for slug_, spec, matched in PRACTICE_PAGES
+         if any((m["source"], m["source_id"]) == key for m in matched)),
+        key=lambda p: not bs.PRACTICES[p].get("parent"),
+    )
+    if practices:
+        return practices[0]
+    topics = [t for t in EDITIONS if t in topic_slugs(e)]
+    return topics[0] if topics else "spark"
 
 
 def blurb(e: dict) -> str:
@@ -391,7 +402,11 @@ def picks_section(title: str, events: list[dict], slugs: dict[str, str], campaig
     return heading(title) + grid(cards) if cards else ""
 
 
-def list_section(title: str, events: list[dict], slugs: dict[str, str], campaign: str) -> str:
+LIST_ICON_PX = 32
+
+
+def list_section(title: str, events: list[dict], slugs: dict[str, str], campaign: str,
+                 icons: bool) -> str:
     """The rest of the week as text, by day: quick to scan, and a dozen
     lines weigh less than one image."""
     days: dict[str, list[str]] = {}
@@ -401,10 +416,21 @@ def list_section(title: str, events: list[dict], slugs: dict[str, str], campaign
             continue
         start = bs._parse_ts(e["start_at"]).astimezone(bs.LONDON)
         meta = " · ".join(x for x in (f"{start:%H:%M}", bs.clean_venue(e), bs.fmt_price(e)) if x)
-        days.setdefault(f"{start:%A %-d %B}", []).append(
-            f'<p style="margin:0 0 10px;font:600 15px/1.35 {SANS};">'
+        text = (
+            f'<p style="margin:0;font:600 15px/1.35 {SANS};">'
             f'<a href="{bs.esc(href)}" style="color:{INK};text-decoration:none;">{bs.esc(e.get("title") or "")}</a><br>'
             f'<span style="font:13px/1.5 {SANS};color:{DIM};">{bs.esc(meta)}</span></p>'
+        )
+        rows = days.setdefault(f"{start:%A %-d %B}", [])
+        icon = (
+            f'<td width="{LIST_ICON_PX}" valign="top" style="padding:1px 12px 0 0;">'
+            f'<img src="{bs.esc(icon_img(event_icon(e), len(rows) % 3))}" width="{LIST_ICON_PX}" '
+            f'height="{LIST_ICON_PX}" alt="" style="display:block;border:0;border-radius:8px;"></td>'
+            if icons else ""
+        )
+        rows.append(
+            '<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
+            f'style="margin:0 0 10px;"><tr>{icon}<td valign="top">{text}</td></tr></table>'
         )
     if not days:
         return ""
@@ -423,18 +449,19 @@ def browse_section(tiles: list[dict], campaign: str, icons: bool) -> str:
     for i, t in enumerate(tiles):
         href = site_link(t["path"], campaign, f"browse-{t['track']}")
         icon = (
-            f'<td width="{ICON_PX}" style="padding:0 12px 0 0;"><img src="{bs.esc(icon_img(t["icon"], i % 3))}" '
-            f'width="{ICON_PX}" height="{ICON_PX}" alt="" style="display:block;border:0;border-radius:10px;"></td>'
+            f'<td width="{ICON_PX}" style="padding:0 12px 0 0;"><a href="{bs.esc(href)}">'
+            f'<img src="{bs.esc(icon_img(t["icon"], i % 3))}" width="{ICON_PX}" height="{ICON_PX}" '
+            f'alt="" style="display:block;border:0;border-radius:10px;"></a></td>'
             if icons else ""
         )
         cards.append(
-            f'<a href="{bs.esc(href)}" style="display:block;text-decoration:none;">'
             f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
             f'style="background:{CARD};border:1px solid {EDGE};border-radius:14px;"><tr><td style="padding:8px;">'
             f'<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>{icon}'
-            f'<td style="text-align:left;"><p style="margin:0;font:600 15px/1.3 {SANS};color:{INK};">{bs.esc(t["name"])}</p>'
-            f'<p style="margin:2px 0 0;font:12px/1.4 {SANS};color:{DIM};">{t["n"]} this week</p></td>'
-            f'</tr></table></td></tr></table></a>'
+            f'<td style="text-align:left;"><a href="{bs.esc(href)}" style="text-decoration:none;">'
+            f'<span style="display:block;font:600 15px/1.3 {SANS};color:{INK};">{bs.esc(t["name"])}</span>'
+            f'<span style="display:block;margin:2px 0 0;font:12px/1.4 {SANS};color:{DIM};">{t["n"]} this week</span></a></td>'
+            f'</tr></table></td></tr></table>'
         )
     if not cards:
         return ""
@@ -488,7 +515,7 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
     body = (
         featured
         + picks_section(picks_title, secs["picks"], slugs, campaign)
-        + list_section(rest_title, secs["rest"], slugs, campaign)
+        + list_section(rest_title, secs["rest"], slugs, campaign, icons)
         + browse_section(secs["browse"], campaign, icons)
     )
     # Just the body: the background, footer, unsubscribe link and postal
