@@ -1275,3 +1275,67 @@ body.theme-night .blob { opacity: 0.3; }
 }
 /* the open panel's modality row is the same pills again — one copy */
 .controls:has(#filters-panel:not([hidden])) .practice-rail { display: none; }
+
+/* ---------- weekly-email sign-up (signup.js) ----------
+   Built by script after the page settles, so none of it is in the HTML.
+   Fixed overlay: nothing on the page moves when it appears. On phones it
+   is a bottom sheet, never a full-screen cover. Tokens only, so each
+   site's skin carries through. */
+.pcs-root { position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
+.pcs-scrim { position: absolute; inset: 0; background: light-dark(rgba(40, 26, 18, 0.38), rgba(0, 0, 0, 0.5)); opacity: 0; transition: opacity 0.25s ease; pointer-events: auto; }
+.pcs {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, calc(-50% + 14px));
+  width: min(440px, calc(100% - 32px));
+  box-sizing: border-box;
+  padding: 34px 30px 18px;
+  background: var(--hint-bg, #18201c);
+  color: var(--ink);
+  border: 1px solid var(--card-edge);
+  border-radius: var(--radius, 20px);
+  box-shadow: 0 24px 60px -18px rgba(40, 24, 12, 0.45);
+  font-family: var(--mono);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: auto;
+}
+.pcs-root.open .pcs-scrim, .pcs-root.open .pcs { opacity: 1; }
+.pcs-root.open .pcs { transform: translate(-50%, -50%); }
+.pcs-x { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--ink-dim); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.pcs-x:hover, .pcs-x:focus-visible { background: var(--sel-wash, rgba(127, 127, 127, 0.15)); color: var(--ink); }
+.pcs-title { margin: 8px 24px 8px; font-family: var(--display); font-weight: 600; font-size: 1.9rem; line-height: 1.15; letter-spacing: -0.01em; color: var(--ink); text-wrap: balance; }
+.pcs-body { margin: 0 0 20px; font-size: 0.92rem; line-height: 1.5; color: var(--ink-dim); text-wrap: pretty; }
+.pcs-row { display: flex; gap: 8px; }
+.pcs-email { flex: 1; min-width: 0; font: inherit; font-size: 1rem; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--edge-soft, var(--card-edge)); background: var(--surface-solid, transparent); color: var(--ink); }
+.pcs-email:focus { outline: 2px solid var(--peach); outline-offset: 1px; border-color: transparent; }
+.pcs-email[aria-invalid="true"] { border-color: #b3412e; }
+.pcs-go { font: inherit; font-weight: 600; font-size: 0.95rem; padding: 12px 18px; border-radius: 14px; border: 0; background: var(--peach); color: var(--cta-ink, #fff); cursor: pointer; white-space: nowrap; }
+.pcs-go:hover { filter: brightness(1.08); }
+.pcs-go[disabled] { opacity: 0.7; cursor: progress; }
+.pcs-err { margin: 6px 2px 0; font-size: 0.8rem; color: light-dark(#a33a28, #f0a08f); }
+.pcs-err:empty { display: none; }
+.pcs-ts:not(:empty) { margin-top: 10px; }
+.pcs-fine { margin: 12px 0 0; font-size: 0.72rem; color: var(--ui-soft, var(--ink-dim)); }
+.pcs-fine a { color: var(--peach); }
+.pcs-no { display: block; margin: 10px auto 0; background: none; border: 0; font: inherit; font-size: 0.82rem; color: var(--ui-soft, var(--ink-dim)); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 6px 10px; }
+.pcs-done-mark { width: 46px; height: 46px; margin: 4px auto 0; border-radius: 50%; display: grid; place-items: center; background: var(--sel-wash, rgba(127, 127, 127, 0.15)); color: var(--peach); font-size: 22px; }
+.pcs-sr, .pcs-hp { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; }
+@media (max-width: 560px) {
+  .pcs-scrim { background: transparent; }
+  .pcs {
+    left: 0; right: 0; top: auto; bottom: 0; width: auto;
+    transform: translateY(30px);
+    max-height: 70vh; overflow: auto;
+    border-radius: var(--radius, 20px) var(--radius, 20px) 0 0; border-bottom: 0;
+    padding: 22px 20px calc(18px + env(safe-area-inset-bottom));
+  }
+  .pcs::before { content: ""; display: block; width: 38px; height: 4px; border-radius: 4px; background: var(--edge-soft, var(--card-edge)); margin: -8px auto 14px; }
+  .pcs-root.open .pcs { transform: none; }
+  .pcs-title { font-size: 1.55rem; margin-top: 4px; }
+  .pcs-row { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pcs, .pcs-scrim { transition: none; }
+}
+.pcs:focus { outline: none; }

@@ -100,12 +100,16 @@ self.LONDO_CONFIG = {
       "url": "",
       "label": "follow psyconnect on WhatsApp"
     },
+    "signup": {
+      "workerUrl": "",
+      "turnstileSiteKey": "0x4AAAAAAEG-S32kYG1X6qMl"
+    },
     "joinCommunity": {
       "workerUrl": "https://psyconnect-join.plucky101.workers.dev",
       "turnstileSiteKey": "0x4AAAAAAEG-S32kYG1X6qMl",
       "passphraseHint": ""
     },
     "logo": "logo.png",
-    "shellExtras": ["theme.css", "logo.png"]
+    "shellExtras": ["theme.css", "logo.png", "signup.js"]
   } /*END-SITE-JSON*/,
 };

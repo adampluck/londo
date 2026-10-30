@@ -1,0 +1,19 @@
+name = "psyconnect-subscribe"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# 5 sign-up attempts per minute per IP (the binding only takes 10s or 60s).
+[[unsafe.bindings]]
+name = "SUBSCRIBE_RL"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 5, period = 60 }
+
+[vars]
+ALLOWED_ORIGIN = "https://psyconnect.london"
+
+# Secrets (never in this file — `wrangler secret put NAME`, or the dashboard at
+# Workers → psyconnect-subscribe → Settings → Variables):
+#   TURNSTILE_SECRET  Turnstile secret key (same widget as psyconnect-join)
+#   KIT_API_KEY       Kit v4 API key (Settings → Developer in Kit)
+#   KIT_FORM_ID       numeric id of the Kit form with double opt-in on

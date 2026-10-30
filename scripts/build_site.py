@@ -1229,8 +1229,14 @@ ABOUT_CONTENT: dict[str, list[str]] = {
 # a site with no entry gets no privacy page.
 PRIVACY_CONTENT: dict[str, list[str]] = {
     "psyconnect": [
-        "PsyConnect has no user accounts, no sign-up, and no cookies. "
-        "It doesn't collect or store any personal data about visitors.",
+        "PsyConnect has no user accounts and no cookies. The only personal "
+        "data it keeps is from the weekly email, and only if you sign up.",
+        "If you sign up, we keep your email address and the page you signed "
+        "up on. We use that page to choose which gatherings come first in "
+        "your email; you're never asked to fill in a profile. The list is "
+        "held by Kit (kit.com), which sends the emails. Every email has a "
+        "one-click unsubscribe, and replying to ask will get your address "
+        "deleted entirely.",
         "Page views and outbound clicks (e.g. to a ticket link) are "
         "counted with GoatCounter, a cookieless analytics tool that "
         "doesn't track individuals or build profiles across sites.",
@@ -1240,9 +1246,9 @@ PRIVACY_CONTENT: dict[str, list[str]] = {
         "Clicking through to buy a ticket takes you to the organiser's "
         "own site or ticketing platform, which has its own privacy "
         "policy; this site has no visibility into what happens there.",
-        "One exception: the community join page runs a Cloudflare Turnstile "
-        "check, which sends your IP address to Cloudflare to confirm you're "
-        "not a bot. Nothing about that check is stored here.",
+        "The community join page and the email sign-up run a Cloudflare "
+        "Turnstile check, which sends your IP address to Cloudflare to "
+        "confirm you're not a bot. Nothing about that check is stored here.",
     ],
 }
 
@@ -1441,6 +1447,44 @@ def robots_meta() -> str:
     if not SITE.get("noindex"):
         return ""
     return '<meta name="robots" content="noindex, nofollow">'
+
+
+# Weekly-email sign-up (web/signup.js), off unless the site's SITE-JSON has a
+# "signup" block. Its kind/name/tags pick the modal's copy and the Kit tags
+# the subscriber is filed under; the dialog itself is built in the browser,
+# so nothing here changes what a crawler sees.
+SIGNUP_PREFIXES = {"practice": "practice", "area": "practice",
+                   "organizer": "host", "venue": "venue"}
+
+
+def signup_topic_tags(events: list[dict], limit: int = 2) -> list[str]:
+    """The site's topics these events lean towards, most common first."""
+    site_topics = SITE_JSON.get("topics") or list(TOPICS)
+    counts: dict[str, int] = {}
+    for e in events:
+        for t in e.get("topics") or []:
+            if t in site_topics and t in TOPICS:
+                counts[t] = counts.get(t, 0) + 1
+    ranked = sorted(counts, key=lambda t: -counts[t])
+    return [TOPICS[t][0] for t in ranked[:limit]]
+
+
+def signup_script(
+    css_prefix: str, kind: str, name: str = "", tags: list[str] | None = None
+) -> str:
+    conf = SITE_JSON.get("signup")
+    if not conf:
+        return ""
+    attrs = {
+        "kind": kind,
+        "name": name,
+        "tags": ",".join(tags or []),
+        "endpoint": conf.get("workerUrl", ""),
+        "sitekey": conf.get("turnstileSiteKey", ""),
+        "privacy": privacy_url(),
+    }
+    data = "".join(f' data-{k}="{esc(v)}"' for k, v in attrs.items() if v)
+    return f'<script src="{css_prefix}/signup.js"{data} defer></script>\n'
 
 
 def goatcounter_snippet() -> str:
@@ -2125,6 +2169,7 @@ def page(
     head_extra: str = "",
     body_class: str = "static-page",
     map_href: str | None = None,
+    signup: str = "",
 ) -> str:
     # "</" must not appear inside a <script> block: a scraped description
     # containing "</script>" would otherwise break out and execute (XSS)
@@ -2175,7 +2220,7 @@ def page(
     <p class="static-footer-home"><a href="{BASE_URL}/">{esc(display_name())}</a> — {esc(SITE["tagline"])}{about_link_html()}{privacy_link_html()}</p>
     <p class="static-footer-home credit">Made by your friendly <a href="https://www.digitalhandyman.london" rel="noopener">digital handyman</a></p>
   </footer>
-</body>
+  {signup}</body>
 </html>
 """
 
@@ -3391,6 +3436,10 @@ def event_page(event: dict, past: bool = False) -> str:
         event.get("image_url") or DEFAULT_OG_IMAGE,
         body,
         json_ld,
+        signup=signup_script(
+            NESTED_PREFIX, "event", event.get("title") or "",
+            signup_topic_tags([event], limit=3),
+        ),
     )
 
 
@@ -3610,7 +3659,17 @@ def listing_page(
         css_prefix=css_prefix,
         body_class="static-page static-listing",
         map_href=map_href,
+        signup=signup_script(css_prefix, kind, label, signup_listing_tags(key, kind, events)),
     )
+
+
+def signup_listing_tags(key: str, kind: str, events: list[dict]) -> list[str]:
+    if kind == "topic":
+        return [TOPICS[key][0]] if key in TOPICS else []
+    tags = signup_topic_tags(events)
+    if kind in SIGNUP_PREFIXES:
+        tags.append(f"{SIGNUP_PREFIXES[kind]}:{key}")
+    return tags
 
 
 def past_events_html(past: list[dict], heading: str = "Recently hosted") -> str:
@@ -4025,6 +4084,7 @@ def when_page(which: str, events: list[dict]) -> str:
         css_prefix="..",
         body_class="static-page static-listing",
         map_href=home_view_url(None, on_map=True),
+        signup=signup_script("..", "tonight" if which == "tonight" else "home"),
     )
 
 
