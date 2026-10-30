@@ -1340,9 +1340,9 @@ body.theme-night .blob { opacity: 0.3; }
 }
 .pcs:focus { outline: none; }
 
-/* the sign-up callout signup.js puts above the explore tiles */
+/* the sign-up callout signup.js puts under the event, or partway down a listing */
 .pcs-callout {
-  margin: 3.5rem 0 0;
+  margin: 2.5rem 0;
   padding: 1.7rem 1.6rem 1.5rem;
   border-radius: var(--radius, 18px);
   border: 1px solid color-mix(in srgb, var(--peach) 28%, var(--card-edge));

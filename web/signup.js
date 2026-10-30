@@ -127,10 +127,22 @@
     show(t.dataset.signupOpen || "link");
   });
 
-  // The callout above the explore tiles on event and listing pages:
-  // always there (it's found, not pushed), except for subscribers.
+  // Where the callout goes: under the event itself on an event page; on a
+  // listing, after the second day of events (or the last, when there are
+  // fewer), so it's met while browsing rather than at the foot of the page.
+  function calloutSpot() {
+    const event = document.querySelector(".static-event");
+    if (event) return [event, "after"];
+    const days = document.querySelectorAll(".day-group:not(.static-related)");
+    if (days.length) return [days[days.length > 2 ? 1 : days.length - 1], "after"];
+    const explore = document.querySelector(".static-explore");
+    return explore ? [explore, "before"] : [null];
+  }
+
+  // The callout on event and listing pages: always there (it's found, not
+  // pushed), except for subscribers.
   function callout() {
-    const at = document.querySelector(".static-explore");
+    const [at, where] = calloutSpot();
     if (!at || store().joined || document.querySelector(".pcs-callout")) return;
     const [title, body] = calloutCopy();
     const box = document.createElement("section");
@@ -151,7 +163,7 @@
     fine.className = "pcs-callout-fine";
     fine.textContent = "Free · unsubscribe in one click";
     box.append(h, p, go, fine);
-    at.before(box);
+    at[where](box);
   }
   if (endpoint) {
     if (document.readyState === "loading") addEventListener("DOMContentLoaded", callout, { once: true });
