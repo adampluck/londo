@@ -721,7 +721,7 @@ def main() -> None:
                 TEMPLATE.read_text()
                 .replace("{{ message_content }}", mail["content"])
                 .replace("{{ unsubscribe_url }}", "#")
-                .replace("{{ address }}", "[your postal address, from Kit]")
+                .replace("{{ address }}", "[Kit’s postal address]")
                 .replace(
                     "<body style=\"margin:0;padding:0;background:#f6efe4;\">",
                     "<body style=\"margin:0;padding:0;background:#f6efe4;\">"

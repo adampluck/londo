@@ -34,11 +34,20 @@
             </td>
           </tr>
           <tr>
-            <td style="border-top:1px solid #e6d8c3;padding:16px 0 28px;font:12px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#7a6553;">
+            <td style="border-top:1px solid #e6d8c3;padding:16px 0 0;font:12px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#7a6553;">
               You’re getting this because you signed up at
               <a href="https://psyconnect.london/" style="color:#7a6553;">psyconnect.london</a>.
               <a href="{{ unsubscribe_url }}" style="color:#7a6553;">Unsubscribe</a> in one click.<br>
-              {{ address }}
+              Made by your friendly <a href="https://www.digitalhandyman.london" style="color:#7a6553;">digital handyman</a>
+              · <a href="https://psyconnect.london/about/" style="color:#7a6553;">About</a>
+              · <a href="https://psyconnect.london/privacy/" style="color:#7a6553;">Privacy</a>
+            </td>
+          </tr>
+          <!-- Kit's sending address, set well apart and labelled, so it
+               doesn't read as PsyConnect's own -->
+          <tr>
+            <td style="padding:40px 0 28px;font:11px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#a08d7a;">
+              Email sent using <a href="https://kit.com" style="color:#a08d7a;">kit.com</a> · {{ address }}
             </td>
           </tr>
         </table>
