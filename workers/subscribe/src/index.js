@@ -1,6 +1,7 @@
 /* psyconnect weekly email — takes a sign-up from the site's modal
-   (web/signup.js) and hands it to Kit, which owns the list, sends the
-   double opt-in confirmation and the weekly emails.
+   (web/signup.js) and hands it to Kit, which owns the list and sends the
+   weekly emails. Single opt-in: the form's own confirmation email is off
+   in Kit, and the sign-up on the site is the consent.
 
    The Kit API key can't live in a static page, so this Worker holds it.
    Same gates as psyconnect-join, cheapest first: origin, rate limit,
@@ -8,9 +9,10 @@
    datacentre before Kit does).
 
    Kit steps, all keyed by email address:
-   1. create the subscriber as `inactive` (an upsert — an existing
-      subscriber keeps their state), recording the sign-up page;
-   2. add them to the form, whose double opt-in sends the confirmation;
+   1. create the subscriber as `active` (an upsert — an existing
+      subscriber keeps their state, so someone who unsubscribed isn't
+      quietly put back), recording the sign-up page;
+   2. add them to the form, which records where they came from;
    3. tag them with the page's interests (tags are created on first use). */
 
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -99,13 +101,14 @@ async function handle(request, env, origin) {
     });
 
   try {
-    // 1. the subscriber, unconfirmed until they click the email link.
+    // 1. the subscriber, active from the start (Kit only sets the state
+    // when it creates them).
     // A 422 is Kit refusing a parameter: the address itself, or (if the
     // custom fields haven't been created in Kit yet) the fields — in which
     // case keep the sign-up and drop the fields.
     const create = (fields) => kit("/subscribers", {
       method: "POST",
-      body: JSON.stringify({ email_address: email, state: "inactive", ...fields }),
+      body: JSON.stringify({ email_address: email, state: "active", ...fields }),
     });
     let created = await create({ fields: { signup_page: page, signup_kind: kind } });
     if (created.status === 422) {
@@ -117,7 +120,7 @@ async function handle(request, env, origin) {
     }
     if (!created.ok) throw new Error(`subscriber ${created.status}`);
 
-    // 2. the form: its double opt-in sends the confirmation email
+    // 2. the form, for its record of the sign-up (double opt-in is off)
     const joined = await kit(`/forms/${env.KIT_FORM_ID}/subscribers`, {
       method: "POST",
       body: JSON.stringify({

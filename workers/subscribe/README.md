@@ -2,17 +2,16 @@
 
 Backs the weekly-email sign-up modal (`web/signup.js`). Checks origin, rate
 limit, honeypot, dwell time and Cloudflare Turnstile, then hands the email to
-Kit: creates the subscriber (unconfirmed), adds them to the form (whose double
-opt-in sends the confirmation email) and tags them with the interests of the
-page they signed up on.
+Kit: creates the subscriber (active: single opt-in), adds them to the form and
+tags them with the interests of the page they signed up on.
 
 Deployed by hand, not by CI, so the secrets stay out of GitHub.
 
 ## One-time Kit setup
 
 1. **Form:** Grow → Landing Pages & Forms → create a form (any style; it's
-   never shown). In its settings → Incentive, turn on **"Send incentive
-   email"** (this is Kit's double opt-in) and write the confirmation copy.
+   never shown). In its settings → Incentive, leave **"Send incentive
+   email"** off: that's Kit's double opt-in, and the sign-up is single opt-in.
    The form's number is in its URL: `app.kit.com/forms/<ID>/edit`.
 2. **Custom fields:** Subscribers → any subscriber → add fields named
    `signup_page` and `signup_kind` (or create them via the API). Kit may

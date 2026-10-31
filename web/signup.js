@@ -254,8 +254,7 @@
   }
 
   // GoatCounter events, one path per step and page type, so its dashboard
-  // shows the funnel: signup/shown/event → signup/joined/event (and the
-  // Kit confirmations as /welcome/ page views)
+  // shows the funnel: signup/shown/event → signup/joined/event
   function track(step) {
     const gc = window.goatcounter;
     if (!gc || !gc.count) return;
@@ -443,8 +442,8 @@
     card.replaceChildren(
       closeButton(),
       el("div", { class: "pcs-done-mark", "aria-hidden": "true" }, "✓"),
-      el("h2", { class: "pcs-title", id: "pcs-title" }, "Check your inbox"),
-      el("p", { class: "pcs-body" }, "Tap the link we sent to confirm."));
+      el("h2", { class: "pcs-title", id: "pcs-title" }, "You’re in"),
+      el("p", { class: "pcs-body" }, "Your first email arrives on Thursday morning."));
     card.querySelector(".pcs-x").focus();
   }
 })();
