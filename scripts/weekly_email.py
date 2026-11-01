@@ -66,6 +66,7 @@ TEMPLATE = bs.ROOT / "kit" / "email-template.html"
 TEMPLATE_NAME = "PsyConnect"
 PICKS_MAX = 4  # the site's curated.maxTotal
 ORG_MAX = 2  # per host among the picks: one busy venue shouldn't fill them
+TOPIC_MAX = 2  # per main topic among the general edition's picks
 LIST_MAX = 16  # the rest of the week, as text
 LIST_ORG_MAX = 3
 TILES_MAX = 6
@@ -171,22 +172,65 @@ def take(pool: list[dict], n: int, cap: int, counts: dict[str, int]) -> list[dic
     return out
 
 
-def top_picks(pool: list[dict], send_at: datetime) -> list[dict]:
+def main_topic(e: dict) -> str | None:
+    """An event's first edition topic (its topics list leads with the one
+    it's mostly about), else its first topic of any kind."""
+    slugs = [bs.TOPICS[t][0] for t in e.get("topics") or [] if t in bs.TOPICS]
+    return next((t for t in slugs if t in EDITIONS), slugs[0] if slugs else None)
+
+
+def spread(ordered: list[dict], n: int, cap: int, seed: list[dict] = ()) -> list[dict]:
+    """`seed` plus up to n in all from `ordered`, keeping its order of
+    preference: a topic not yet shown first, then a second of a topic,
+    never more than `cap`, and ORG_MAX per host as elsewhere."""
+    out: list[dict] = list(seed)
+    for limit in range(1, cap + 1):
+        for e in ordered:
+            if len(out) >= n:
+                return out
+            t = main_topic(e)
+            if (e not in out and all(sum(h in hosts(o) for o in out) < ORG_MAX for h in hosts(e))
+                    and (t is None or sum(main_topic(o) == t for o in out) < limit)):
+                out.append(e)
+    return out
+
+
+def top_picks(pool: list[dict], send_at: datetime, varied: bool = False) -> list[dict]:
     """The site's top-picks rules (bs._pick_curated: trusted hosts and
     series, Bohm dialogue pinned, one per host first), topped up by score
     when an edition's topic has fewer curated events than slots.
+
+    `varied` (the general edition) also spreads the picks across topics:
+    a different main topic for each where it can (curated events first,
+    then by score), never more than TOPIC_MAX of one.
 
     _pick_curated counts its window from "now" and skips today's events,
     as the site's row should; the email's week is already cut, so it
     starts the evening before the send and Thursday's events count."""
     by_date = one_per_series(sorted(pool, key=lambda e: e["start_at"]))
-    picks = bs._pick_curated(by_date, send_at - timedelta(hours=SEND_HOUR + 1), None, PICKS_MAX)
+    since = send_at - timedelta(hours=SEND_HOUR + 1)
+    picks = bs._pick_curated(by_date, since, None, PICKS_MAX)
+    if varied:
+        # the site's own picks first (alwaysPick ahead: _pick_curated
+        # returns them by date), then the curated events it passed over,
+        # so one of those can stand in for a topic already shown
+        terms = [t.lower() for t in bs.SITE_JSON["curated"].get("alwaysPick") or []]
+        pinned = [e for e in picks if any(
+            t in f"{e.get('title') or ''} {e.get('description') or ''}".lower() for t in terms)]
+        more = bs._pick_curated(by_date, since, None, len(by_date))
+        ordered = pinned + [e for e in picks if e not in pinned] + [e for e in more if e not in picks]
+        # then the rest by score: a topic missing from the curated events
+        # beats a second of one already shown
+        ordered += [e for e in one_per_series(sorted(pool, key=score, reverse=True))
+                    if series_key(e) not in {series_key(o) for o in ordered}]
+        picks = spread(ordered, PICKS_MAX, TOPIC_MAX)
     counts: dict[str, int] = {}
     for e in picks:
         for h in hosts(e):
             counts[h] = counts.get(h, 0) + 1
     taken = {series_key(e) for e in picks}
     ranked = one_per_series(sorted(pool, key=score, reverse=True))
+    # (the general edition only lands here if the topic cap left a gap)
     picks += take([e for e in ranked if series_key(e) not in taken],
                   PICKS_MAX - len(picks), ORG_MAX, counts)
     return sorted(picks, key=lambda e: e["start_at"])
@@ -197,7 +241,7 @@ def edition_sections(edition: str | None, events: list[dict], send_at: datetime)
     featured = sorted((e for e in events if is_featured(e)), key=lambda e: e["start_at"])[:1]
     pool = [e for e in events if e not in featured]
     mine = [e for e in pool if edition in topic_slugs(e)] if edition else pool
-    picks = top_picks(mine, send_at)
+    picks = top_picks(mine, send_at, varied=edition is None)
 
     shown = {series_key(e) for e in featured + picks}
     near = set(RELATED[edition]) if edition else set()
