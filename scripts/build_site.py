@@ -3424,7 +3424,7 @@ def event_page(event: dict, past: bool = False) -> str:
     elif event.get("source_url"):
         # one button, up by the title, where a visitor from a search wants it
         top_cta = f"""<p class="static-cta-wrap static-cta-top">
-      <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" rel="noopener"
+      <a class="static-cta" href="{esc(with_utm(event["source_url"]))}" target="_blank" rel="noopener"
          data-goatcounter-click="out/{esc(organizer_slug(org))}"
          data-goatcounter-title="{esc(event["title"])}">
         Tickets &amp; details <span aria-hidden="true">↗</span>
