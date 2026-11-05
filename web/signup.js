@@ -11,7 +11,8 @@
      pop-ups that cover content straight after a search click. Either they
      navigate within the site, or they stay 45s and scroll halfway;
    - never again within 30 days of a dismissal, and never after a sign-up;
-   - never to visitors arriving from the email itself.
+   - never to visitors arriving from the email itself, then or later: the
+     visit is remembered, and the callouts stay away for them too.
    #signup in the URL forces it (for previewing), and anything marked
    data-signup-open (the header's envelope, the footer link) opens it on a
    click, whatever the rules above say.
@@ -117,6 +118,15 @@
 
   if (!endpoint && !forced) return;
 
+  // Arrived from the weekly email: a reader already, so remember it and
+  // treat them as signed up from here on (see `reader` below).
+  if (/email/i.test(params.get("utm_source") || "") ||
+      /email/i.test(params.get("utm_medium") || "")) {
+    const s = store();
+    if (!s.fromEmail) store({ ...s, fromEmail: Date.now() });
+  }
+  const reader = () => { const s = store(); return !!(s.joined || s.fromEmail); };
+
   // The header's envelope and the footer link open it on a click, whatever
   // the automatic rules below say: someone who closed it on reflex can
   // still find their way back.
@@ -143,7 +153,7 @@
   // pushed), except for subscribers.
   function callout() {
     const [at, where] = calloutSpot();
-    if (!at || store().joined || document.querySelector(".pcs-callout")) return;
+    if (!at || reader() || document.querySelector(".pcs-callout")) return;
     const [title, body] = calloutCopy();
     const box = document.createElement("section");
     box.className = "pcs-callout";
@@ -175,11 +185,9 @@
     // crawlers and test robots never see it, even if they sit out the timer
     if (navigator.webdriver ||
         /bot|crawl|spider|slurp|lighthouse|inspection|headless/i.test(navigator.userAgent)) return false;
+    if (reader()) return false;
     const s = store();
-    if (s.joined) return false;
     if (s.dismissed && Date.now() - s.dismissed < SNOOZE_MS) return false;
-    if (/email/i.test(params.get("utm_source") || "") ||
-        /email/i.test(params.get("utm_medium") || "")) return false;
     return true;
   }
   const auto = autoAllowed();
@@ -424,7 +432,7 @@
       if (!ok) code = ((await res.json().catch(() => ({}))).error) || "";
     } catch {}
     if (ok) {
-      store({ joined: Date.now() });
+      store({ ...store(), joined: Date.now() });
       track("joined");
       document.querySelectorAll(".pcs-callout").forEach((n) => n.remove());
       done(card);
