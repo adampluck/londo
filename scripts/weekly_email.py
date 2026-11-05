@@ -356,10 +356,11 @@ def icon_img(name: str, tone: int) -> str:
     return site_png(icon_path(name, tone), ICON_PX * 2)
 
 
-def icons_live() -> bool:
-    """The icons go up with the site build: until a build has deployed
-    them, the email goes without rather than show broken images."""
-    req = urllib.request.Request(bs.BASE_URL + icon_path("spark", 0),
+def live(path: str) -> bool:
+    """Whether the site serves this file yet. The email's own images go up
+    with the site build: until a build has deployed them, the email does
+    without (or makes do) rather than show a broken image."""
+    req = urllib.request.Request(bs.BASE_URL + path,
                                  method="HEAD", headers={"User-Agent": "psyconnect-weekly"})
     try:
         with urllib.request.urlopen(req, timeout=20) as res:
@@ -406,7 +407,7 @@ def meta_line(e: dict) -> str:
 def heading(title: str) -> str:
     return f"""
 <tr><td style="padding:8px 0 12px;">
-  <p style="margin:0;font:600 12px/1.4 {SANS};letter-spacing:.08em;text-transform:uppercase;color:{OCHRE};">{bs.esc(title)}</p>
+  <p style="margin:0;font-weight:600;font-size:12px;line-height:1.4;font-family:{SANS};letter-spacing:.08em;text-transform:uppercase;color:{OCHRE};">{bs.esc(title)}</p>
 </td></tr>"""
 
 
@@ -429,14 +430,14 @@ def event_card(e: dict, href: str) -> str:
         )
     hook = blurb(e)
     hook_html = (
-        f'<p style="margin:4px 0 0;font:14px/1.45 {SANS};color:{DIM};">{bs.esc(hook)}</p>'
+        f'<p style="margin:4px 0 0;font-size:14px;line-height:1.45;font-family:{SANS};color:{DIM};">{bs.esc(hook)}</p>'
         if hook else ""
     )
     return f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{CARD};border:1px solid {EDGE};border-radius:16px;">
 <tr><td>{art}</td></tr>
 <tr><td style="padding:12px 14px 14px;text-align:left;">
-  <p style="margin:0;font:600 12px/1.4 {SANS};color:{OCHRE};">{bs.esc(meta_line(e))}</p>
-  <p style="margin:3px 0 0;font:600 16px/1.3 {SANS};"><a href="{bs.esc(href)}" style="color:{INK};text-decoration:none;">{bs.esc(e.get("title") or "")}</a></p>
+  <p style="margin:0;font-weight:600;font-size:12px;line-height:1.4;font-family:{SANS};color:{OCHRE};">{bs.esc(meta_line(e))}</p>
+  <p style="margin:3px 0 0;font-weight:600;font-size:16px;line-height:1.3;font-family:{SANS};"><a href="{bs.esc(href)}" style="color:{INK};text-decoration:none;">{bs.esc(e.get("title") or "")}</a></p>
   {hook_html}
 </td></tr></table>"""
 
@@ -444,9 +445,12 @@ def event_card(e: dict, href: str) -> str:
 def card_pair(cards: list[str]) -> str:
     """Two cards side by side that stack on a phone: inline-blocks wrap by
     themselves and the template's media query widens them to full width.
-    No Outlook [if mso] tables — Outlook desktop simply stacks them."""
+    No Outlook [if mso] tables — Outlook desktop simply stacks them.
+    The row's font-size:0 (no whitespace gap between the blocks) is undone
+    on each card: a client that drops the cards' own font styles would
+    otherwise inherit the zero and show them blank."""
     col = (f'<div class="pc-col" style="display:inline-block;width:100%;max-width:{COL}px;'
-           f'vertical-align:top;padding:0 0 16px;">')
+           f'vertical-align:top;padding:0 0 16px;font-size:14px;line-height:1.45;">')
     gap = '<div class="pc-gap" style="display:inline-block;width:16px;"></div>'
     inner = gap.join(col + c + "</div>" for c in cards)
     return f'<tr><td style="font-size:0;line-height:0;text-align:left;">{inner}</td></tr>'
@@ -476,9 +480,9 @@ def list_section(title: str, events: list[dict], slugs: dict[str, str], campaign
         start = bs._parse_ts(e["start_at"]).astimezone(bs.LONDON)
         meta = " · ".join(x for x in (f"{start:%H:%M}", bs.clean_venue(e), bs.fmt_price(e)) if x)
         text = (
-            f'<p style="margin:0;font:600 15px/1.35 {SANS};">'
+            f'<p style="margin:0;font-weight:600;font-size:15px;line-height:1.35;font-family:{SANS};">'
             f'<a href="{bs.esc(href)}" style="color:{INK};text-decoration:none;">{bs.esc(e.get("title") or "")}</a><br>'
-            f'<span style="font:13px/1.5 {SANS};color:{DIM};">{bs.esc(meta)}</span></p>'
+            f'<span style="font-size:13px;line-height:1.5;font-family:{SANS};color:{DIM};">{bs.esc(meta)}</span></p>'
         )
         rows = days.setdefault(f"{start:%A %-d %B}", [])
         icon = (
@@ -495,7 +499,7 @@ def list_section(title: str, events: list[dict], slugs: dict[str, str], campaign
         return ""
     body = "".join(
         f'<tr><td style="padding:12px 0 2px;border-top:1px solid {EDGE};">'
-        f'<p style="margin:0 0 8px;font:600 13px/1.4 {SANS};color:{PLUM};">{bs.esc(day)}</p>'
+        f'<p style="margin:0 0 8px;font-weight:600;font-size:13px;line-height:1.4;font-family:{SANS};color:{PLUM};">{bs.esc(day)}</p>'
         f'{"".join(rows)}</td></tr>'
         for day, rows in days.items()
     )
@@ -518,8 +522,8 @@ def browse_section(tiles: list[dict], campaign: str, icons: bool) -> str:
             f'style="background:{CARD};border:1px solid {EDGE};border-radius:14px;"><tr><td style="padding:8px;">'
             f'<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>{icon}'
             f'<td style="text-align:left;"><a href="{bs.esc(href)}" style="text-decoration:none;">'
-            f'<span style="display:block;font:600 15px/1.3 {SANS};color:{INK};">{bs.esc(t["name"])}</span>'
-            f'<span style="display:block;margin:2px 0 0;font:12px/1.4 {SANS};color:{DIM};">{t["n"]} this week</span></a></td>'
+            f'<span style="display:block;font-weight:600;font-size:15px;line-height:1.3;font-family:{SANS};color:{INK};">{bs.esc(t["name"])}</span>'
+            f'<span style="display:block;margin:2px 0 0;font-size:12px;line-height:1.4;font-family:{SANS};color:{DIM};">{t["n"]} this week</span></a></td>'
             f'</tr></table></td></tr></table>'
         )
     if not cards:
@@ -549,17 +553,17 @@ def featured_block(e: dict, href: str) -> str:
 <tr><td style="padding:0 0 22px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{CARD};border:1px solid {EDGE};border-radius:16px;">
   <tr><td style="padding:16px;">
-    <p style="margin:0 0 10px;font:600 12px/1.4 {SANS};letter-spacing:.08em;text-transform:uppercase;color:{PLUM};">{bs.esc(label)}</p>
+    <p style="margin:0 0 10px;font-weight:600;font-size:12px;line-height:1.4;font-family:{SANS};letter-spacing:.08em;text-transform:uppercase;color:{PLUM};">{bs.esc(label)}</p>
     {img}
-    <p style="margin:0;font:600 12px/1.4 {SANS};color:{OCHRE};">{bs.esc(meta_line(e))}</p>
-    <p style="margin:3px 0 0;font:600 19px/1.3 {SANS};"><a href="{bs.esc(href)}" style="color:{INK};text-decoration:none;">{bs.esc(e.get("title") or "")}</a></p>
-    <p style="margin:4px 0 0;font:14px/1.45 {SANS};color:{DIM};">{bs.esc(blurb(e))}</p>
+    <p style="margin:0;font-weight:600;font-size:12px;line-height:1.4;font-family:{SANS};color:{OCHRE};">{bs.esc(meta_line(e))}</p>
+    <p style="margin:3px 0 0;font-weight:600;font-size:19px;line-height:1.3;font-family:{SANS};"><a href="{bs.esc(href)}" style="color:{INK};text-decoration:none;">{bs.esc(e.get("title") or "")}</a></p>
+    <p style="margin:4px 0 0;font-size:14px;line-height:1.45;font-family:{SANS};color:{DIM};">{bs.esc(blurb(e))}</p>
   </td></tr></table>
 </td></tr>"""
 
 
 def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, str],
-           icons: bool) -> dict:
+           icons: bool, logo: str = "/logo.png") -> dict:
     """{subject, preview_text, content} for one edition."""
     campaign = f"weekly-{send_at:%Y-%m-%d}-{edition or 'general'}"
     end = send_at + WINDOW - timedelta(days=1)
@@ -580,13 +584,13 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
     # Just the body: the background, footer, unsubscribe link and postal
     # address come from the PsyConnect template in Kit (kit/email-template.html).
     content = f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td style="padding:0 0 6px;"><a href="{bs.esc(site_link('/', campaign, 'logo'))}"><img src="{bs.esc(site_png('/logo.png', 360))}" width="180" alt="PsyConnect" style="display:block;border:0;width:180px;height:auto;"></a></td></tr>
+<tr><td style="padding:0 0 6px;"><a href="{bs.esc(site_link('/', campaign, 'logo'))}"><img src="{bs.esc(site_png(logo, 360))}" width="180" alt="PsyConnect" style="display:block;border:0;width:180px;height:auto;"></a></td></tr>
 <tr><td style="padding:0 0 22px;">
-  <p style="margin:0;font:15px/1.5 {SANS};color:{DIM};">In-person gatherings across London · {bs.esc(span)}</p>
+  <p style="margin:0;font-size:15px;line-height:1.5;font-family:{SANS};color:{DIM};">In-person gatherings across London · {bs.esc(span)}</p>
 </td></tr>
 {body}
 <tr><td style="padding:12px 0 28px;">
-  <a href="{bs.esc(site_link('/', campaign, 'cta'))}" style="display:inline-block;background:{PLUM};color:#fdf6ee;font:600 15px/1 {SANS};text-decoration:none;padding:13px 20px;border-radius:12px;">See everything on PsyConnect</a>
+  <a href="{bs.esc(site_link('/', campaign, 'cta'))}" style="display:inline-block;background:{PLUM};color:#fdf6ee;font-weight:600;font-size:15px;line-height:1;font-family:{SANS};text-decoration:none;padding:13px 20px;border-radius:12px;">See everything on PsyConnect</a>
 </td></tr>
 </table>"""
 
@@ -745,13 +749,15 @@ def main() -> None:
     slugs = live_slugs()
     # the practices with a page, as the site build decides it
     PRACTICE_PAGES[:] = bs.site_practices(upcoming, [e for e in bs.fetch_past_events() if bs.site_match(e)])
-    icons = icons_live()
+    icons = live(icon_path("spark", 0))
+    # the logo outlined for dark mode (scripts/email_logo.py), else the site's
+    logo = "/logo-email.png" if live("/logo-email.png") else "/logo.png"
     print(f"Week from {send_at:%a %d %b %H:%M %Z}: {len(events)} events"
           + ("" if icons else " (icons not deployed yet: tiles without them)"))
 
     editions: list[str | None] = [*EDITIONS, None]
     built = {
-        ed: render(ed, edition_sections(ed, events, send_at), send_at, slugs, icons)
+        ed: render(ed, edition_sections(ed, events, send_at), send_at, slugs, icons, logo)
         for ed in editions
     }
 
@@ -769,7 +775,7 @@ def main() -> None:
                 .replace(
                     "<body style=\"margin:0;padding:0;background:#f6efe4;\">",
                     "<body style=\"margin:0;padding:0;background:#f6efe4;\">"
-                    f"<p style='font:13px {SANS};padding:12px;margin:0;background:#222;color:#eee'>"
+                    f"<p style='font-size:13px;font-family:{SANS};padding:12px;margin:0;background:#222;color:#eee'>"
                     f"<b>Subject:</b> {bs.esc(mail['subject'])}<br>"
                     f"<b>Preview:</b> {bs.esc(mail['preview_text'])}</p>",
                 )
@@ -778,7 +784,7 @@ def main() -> None:
             links.append(f"<li><a href='{name}.html'>{name}</a> — {bs.esc(mail['subject'])}</li>")
         (args.out / "index.html").write_text(
             f"<!doctype html><meta charset='utf-8'><title>Weekly email preview</title>"
-            f"<body style='font:15px {SANS};padding:24px'><h1>Weekly email {send_at:%-d %b}</h1><ul>{''.join(links)}</ul>"
+            f"<body style='font-size:15px;font-family:{SANS};padding:24px'><h1>Weekly email {send_at:%-d %b}</h1><ul>{''.join(links)}</ul>"
         )
         print(f"Wrote {len(built)} previews -> {args.out}/index.html")
         return
