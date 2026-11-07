@@ -1,11 +1,19 @@
-"""The weekly email's logo: the site's plum wordmark with a cream outline.
+"""The weekly email's logos, from the site's plum wordmark (logo.png).
 
-Mail apps in dark mode (Gmail's, Outlook's) darken the email's cream
-background but leave images alone, so the plain plum-on-transparent logo
-all but vanishes. Outlined in the email's own cream, it looks unchanged on
-the light background and still reads on a dark one. Saved into the
-psyconnect overlay, so it deploys with the site; re-run after changing
-logo.png (stdlib only, like the rest of scripts/):
+Mail apps can't take the site's dark-mode trick (a CSS filter repainting
+the stitches bone-white) or its SVG, so the email carries two PNGs:
+
+- logo-email-plate.png: the wordmark on a rounded cream plate, the default.
+  On the email's cream page the plate disappears; in apps that darken the
+  email by themselves (the Gmail apps), which leave images alone, it reads
+  as a cream header plate instead of plum lost on a dark ground.
+- logo-email-dark.png: the same pixels recoloured bone, as the site's dark
+  theme shows it. The Kit template's dark-mode styles swap it in where a
+  mail app honours them (Apple Mail, Outlook).
+
+Saved into the psyconnect overlay, so they deploy with the site; re-run
+after changing logo.png (stdlib only, like the rest of scripts/). Give
+them new names if they change: mail image proxies cache by URL.
 
     python3 scripts/email_logo.py
 """
@@ -18,9 +26,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "sites" / "psyconnect" / "logo.png"
-OUT = ROOT / "sites" / "psyconnect" / "logo-email.png"
-HALO = (0xF6, 0xEF, 0xE4)  # weekly_email.CREAM
-RADIUS = 9  # px at the logo's 960 wide; about 1.7px in the email's 180
+PLATE = ROOT / "sites" / "psyconnect" / "logo-email-plate.png"
+DARK = ROOT / "sites" / "psyconnect" / "logo-email-dark.png"
+CREAM = (0xF6, 0xEF, 0xE4)  # weekly_email.CREAM
+BONE = (0xED, 0xED, 0xED)  # the site's brightness(0) invert(0.93)
+PAD_X, PAD_Y, CORNER = 44, 34, 40  # px at the logo's 960 wide
 
 
 def chunks(data: bytes):
@@ -72,10 +82,6 @@ def read_rgba(path: Path) -> tuple[int, int, list[list[tuple[int, int, int, int]
 
 def write_rgba(path: Path, w: int, h: int, px: list[list[tuple[int, ...]]]) -> None:
     raw = b"".join(b"\0" + bytes(v for p in row for v in p) for row in px)
-
-    def chunk(kind: bytes, body: bytes) -> bytes:
-        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body))
-
     path.write_bytes(
         b"\x89PNG\r\n\x1a\n"
         + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
@@ -84,46 +90,52 @@ def write_rgba(path: Path, w: int, h: int, px: list[list[tuple[int, ...]]]) -> N
     )
 
 
-def main() -> None:
-    w, h, src = read_rgba(SRC)
-    pad = RADIUS + 1
-    W, H = w + 2 * pad, h + 2 * pad
-    # the halo's alpha: each opaque pixel stamps a soft-edged disc
-    disc = [
-        (dx, dy, max(0.0, min(1.0, RADIUS + 0.5 - math.hypot(dx, dy))))
-        for dy in range(-RADIUS - 1, RADIUS + 2)
-        for dx in range(-RADIUS - 1, RADIUS + 2)
-    ]
-    disc = [d for d in disc if d[2] > 0]
-    halo = [[0.0] * W for _ in range(H)]
-    for y, row in enumerate(src):
-        for x, p in enumerate(row):
-            if not p[3]:
-                continue
-            a = p[3] / 255
-            for dx, dy, k in disc:
-                cell = halo[y + pad + dy]
-                v = a * k
-                if v > cell[x + pad + dx]:
-                    cell[x + pad + dx] = v
-    # the wordmark over the halo
-    out = []
+def chunk(kind: bytes, body: bytes) -> bytes:
+    return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body))
+
+
+def recolour(src: Path, out: Path, rgb: tuple[int, int, int]) -> None:
+    """Every palette entry painted one colour, transparency untouched: the
+    site's filter, done once, with the original's own anti-aliasing."""
+    data = src.read_bytes()
+    parts = [data[:8]]
+    for kind, body in chunks(data):
+        if kind == b"PLTE":
+            body = bytes(rgb) * (len(body) // 3)
+        parts.append(chunk(kind, body))
+    out.write_bytes(b"".join(parts))
+
+
+def corner_cover(x: int, y: int, w: int, h: int) -> float:
+    """How much of pixel (x, y) the rounded plate covers."""
+    cx = CORNER - x - 0.5 if x < CORNER else x + 0.5 - (w - CORNER) if x >= w - CORNER else 0
+    cy = CORNER - y - 0.5 if y < CORNER else y + 0.5 - (h - CORNER) if y >= h - CORNER else 0
+    if cx <= 0 or cy <= 0:
+        return 1.0
+    return max(0.0, min(1.0, CORNER + 0.5 - math.hypot(cx, cy)))
+
+
+def plate(src: Path, out: Path) -> None:
+    w, h, px = read_rgba(src)
+    W, H = w + 2 * PAD_X, h + 2 * PAD_Y
+    rows = []
     for Y in range(H):
         line = []
         for X in range(W):
-            ha = halo[Y][X]
-            y, x = Y - pad, X - pad
-            r, g, b, a = src[y][x] if 0 <= y < h and 0 <= x < w else (0, 0, 0, 0)
+            y, x = Y - PAD_Y, X - PAD_X
+            r, g, b, a = px[y][x] if 0 <= y < h and 0 <= x < w else (0, 0, 0, 0)
             a /= 255
-            oa = a + ha * (1 - a)
-            if not oa:
-                line.append((0, 0, 0, 0))
-                continue
-            mix = [round((c * a + hc * ha * (1 - a)) / oa) for c, hc in zip((r, g, b), HALO)]
-            line.append((*mix, round(oa * 255)))
-        out.append(line)
-    write_rgba(OUT, W, H, out)
-    print(f"wrote {OUT.relative_to(ROOT)} ({W}x{H})")
+            mix = tuple(round(c * a + p * (1 - a)) for c, p in zip((r, g, b), CREAM))
+            line.append((*mix, round(corner_cover(X, Y, W, H) * 255)))
+        rows.append(line)
+    write_rgba(out, W, H, rows)
+
+
+def main() -> None:
+    plate(SRC, PLATE)
+    recolour(SRC, DARK, BONE)
+    for f in (PLATE, DARK):
+        print(f"wrote {f.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
