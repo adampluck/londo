@@ -46,6 +46,9 @@ jobs:
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
+      # what the live site lists now, for IndexNow's diff after deploy
+      - name: Snapshot live sitemap
+        run: python3 scripts/indexnow.py snapshot "$RUNNER_TEMP/live-sitemap.xml"
       - name: Build psyconnect
         run: python3 scripts/build_site.py --site psyconnect build-psyconnect
       - uses: peaceiris/actions-gh-pages@v4
@@ -57,3 +60,10 @@ jobs:
           force_orphan: true
           # keeps the custom-domain CNAME file across force-pushes
           cname: psyconnect.london
+      # new and changed pages to Bing (and ChatGPT search, which reads
+      # Bing): after Pages has had a minute to publish them
+      - name: Ping IndexNow
+        continue-on-error: true
+        run: |
+          sleep 90
+          python3 scripts/indexnow.py submit "$RUNNER_TEMP/live-sitemap.xml" build-psyconnect/sitemap.xml

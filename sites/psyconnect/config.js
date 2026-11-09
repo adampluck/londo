@@ -73,7 +73,8 @@ self.LONDO_CONFIG = {
       "organizerPages": true,
       "practiceRail": true,
       "venuePages": true,
-      "whenPages": true
+      "whenPages": true,
+      "seasonPages": true
     },
     "mapTiles": "light_all",
     "featured": {

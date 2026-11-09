@@ -640,6 +640,14 @@ DEPLOY / CI
   gh run list --limit 5          see how the last runs went
   Pushing to main auto-deploys when web/, sites/ or build_site.py change.
 
+TRAFFIC & SEARCH (psyconnect)
+  .venv/bin/python scripts/search_console.py report      Google: clicks, queries,
+                                                         near misses (--days 28)
+  .venv/bin/python scripts/search_console.py queries --page /p/sound-bath/
+  .venv/bin/python scripts/click_report.py               what we sent each host
+  Keys live in ~/.config/londo/ (gsc-service-account.json, goatcounter-key).
+  New/changed pages go to Bing via IndexNow after each deploy (scripts/indexnow.py).
+
 ONE-OFFS
   python3 scripts/backfill_topics.py   re-enrich events missing topics
 

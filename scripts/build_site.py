@@ -21,7 +21,7 @@ import statistics
 import unicodedata
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -1253,6 +1253,256 @@ PRIVACY_CONTENT: dict[str, list[str]] = {
 }
 
 
+# Seasonal pages: the dates people search for every year ("winter solstice
+# london", "sober nye london"). Each keeps one address with no year in it,
+# so what it earns carries over from one year to the next. A page is
+# always up — an evergreen intro, last time's gatherings — and lists this
+# year's as hosts announce them. `window` is (month, day) to (month, day),
+# London dates; a listing counts when it starts inside the window and its
+# title, host or tags name the occasion (or its description does, for the
+# `deep` phrases), as practice pages match. The footer links a season
+# from SEASON_LEAD_DAYS before it until it ends.
+SEASON_LEAD_DAYS = 45
+SEASONS = {
+    "winter-solstice": {
+        "label": "winter solstice",
+        "seo_title": "Winter solstice gatherings in London",
+        "window": ((12, 13), (12, 24)),
+        "terms": ["solstice", "yule", "midwinter", "longest night"],
+        "deep": ["winter solstice", "yule"],
+        "intro": (
+            "The winter solstice, around 21 December, is the longest night of "
+            "the year: from here the days start getting longer again. Across "
+            "London it's marked with candlelit ceremonies, sound baths, cacao "
+            "circles, fire and drumming, Yule rituals, and quiet evenings for "
+            "letting go of the year and setting intentions for the next.",
+            "These are the in-person gatherings we've found around the "
+            "solstice, from sunrise meditations to all-night dances. More get "
+            "announced through early December, so it's worth checking back.",
+        ),
+        "faq": [
+            ("When is the winter solstice?",
+             "In the UK it falls on 21 or 22 December, the shortest day and "
+             "longest night of the year. Many gatherings are held on the "
+             "nearest weekend instead."),
+            ("What happens at a solstice ceremony?",
+             "It varies by host, but most mix a reflective element (writing "
+             "down what to let go of, often burned in a fire or candle) with "
+             "something embodied: sound, breath, movement or song. Many share "
+             "food or cacao afterwards."),
+        ],
+    },
+    "new-year": {
+        "label": "New Year",
+        "seo_title": "New Year's Eve & New Year ceremonies in London",
+        "window": ((12, 27), (1, 6)),
+        "terms": ["new year", "nye", "hogmanay", "intention", "vision board", "year ahead"],
+        "deep": ["new year's eve", "new years eve", "new year ceremony"],
+        "intro": (
+            "Not everyone wants to see the year in at a bar. London has a "
+            "growing number of sober New Year's Eve parties, ecstatic dances, "
+            "cacao ceremonies, sound baths and intention-setting circles, "
+            "plus workshops in the first week of January for planning the "
+            "year ahead.",
+            "These are the in-person gatherings we've found between Christmas "
+            "and the first weekend of January. Hosts often announce New Year's "
+            "Eve plans late, so more turn up through December.",
+        ),
+        "faq": [
+            ("Are there sober New Year's Eve events in London?",
+             "Yes — ecstatic dances and conscious parties run alcohol-free "
+             "New Year's Eve nights, often with cacao, a ceremony at midnight "
+             "and dancing until late. They tend to sell out, so book early."),
+            ("What is an intention-setting ceremony?",
+             "A guided session, often with cacao, breathwork or journaling, "
+             "for reflecting on the past year and naming what you want from "
+             "the next. Most are held on New Year's Day or the first weekend "
+             "of January."),
+        ],
+    },
+    "valentines": {
+        "label": "Valentine's",
+        "seo_title": "Valentine's Day events for connection in London",
+        "window": ((2, 7), (2, 15)),
+        "terms": ["valentine", "galentine", "tantra", "intimacy", "dating", "love"],
+        "deep": ["valentine"],
+        "intro": (
+            "An alternative to a set menu: Valentine's week in London brings "
+            "tantra and couples' workshops, slow-dating and speed-dating "
+            "nights, cuddle parties, cacao ceremonies, heart-opening sound "
+            "baths and authentic relating evenings, whether you go as a "
+            "couple, with friends or on your own.",
+            "These are the in-person gatherings we've found in the week "
+            "around 14 February.",
+        ),
+        "faq": [
+            ("What can I do for Valentine's Day in London that isn't dinner?",
+             "Couples' tantra and massage workshops, partner yoga, ecstatic "
+             "dances and cacao ceremonies are all popular. For singles, "
+             "slow-dating and authentic relating nights are built around "
+             "actually meeting people."),
+            ("Are these events OK to go to alone?",
+             "Most are. Authentic relating, dating and community events are "
+             "designed for people coming on their own, and couples' "
+             "workshops say clearly if a partner is needed."),
+        ],
+    },
+    "spring-equinox": {
+        "label": "spring equinox",
+        "seo_title": "Spring equinox gatherings in London",
+        "window": ((3, 14), (3, 23)),
+        "terms": ["equinox", "ostara", "spring"],
+        "deep": ["spring equinox", "ostara"],
+        "intro": (
+            "The spring equinox, around 20 March, is when day and night are "
+            "of equal length and the light starts to win. It's marked with "
+            "ceremonies for new beginnings: seed and intention rituals, "
+            "Ostara celebrations, sound baths, cacao and dance.",
+            "These are the in-person gatherings we've found in London around "
+            "the equinox.",
+        ),
+        "faq": [
+            ("When is the spring equinox?",
+             "Around 20 March in the UK, when day and night are roughly equal "
+             "length. In the pagan wheel of the year it's Ostara."),
+        ],
+    },
+    "beltane": {
+        "label": "Beltane",
+        "seo_title": "Beltane & May Day celebrations in London",
+        "window": ((4, 26), (5, 4)),
+        "terms": ["beltane", "may day", "mayday", "maypole", "may queen"],
+        "deep": ["beltane"],
+        "intro": (
+            "Beltane, on 1 May, is the old Celtic fire festival of summer's "
+            "start: fertility, flowers, maypoles and bonfires. In London it's "
+            "celebrated with rituals, dances, women's and men's circles, "
+            "Green Man walks and May Day gatherings.",
+            "These are the in-person gatherings we've found around 1 May.",
+        ),
+        "faq": [
+            ("What is Beltane?",
+             "One of the four Gaelic fire festivals, held on 1 May to mark the "
+             "beginning of summer. Traditions include bonfires, dancing around "
+             "the maypole and decorating with spring flowers."),
+        ],
+    },
+    "summer-solstice": {
+        "label": "summer solstice",
+        "seo_title": "Summer solstice gatherings in London",
+        "window": ((6, 14), (6, 25)),
+        "terms": ["solstice", "midsummer", "litha", "longest day"],
+        "deep": ["summer solstice", "midsummer"],
+        "intro": (
+            "The summer solstice, around 21 June, is the longest day of the "
+            "year. London marks it with sunrise ceremonies, outdoor sound "
+            "baths and dances, fire circles, Litha rituals and midsummer "
+            "celebrations in parks and on rooftops.",
+            "These are the in-person gatherings we've found around the "
+            "solstice.",
+        ),
+        "faq": [
+            ("When is the summer solstice?",
+             "On 20 or 21 June in the UK, the longest day of the year, with "
+             "around 16 and a half hours of daylight in London."),
+        ],
+    },
+    "autumn-equinox": {
+        "label": "autumn equinox",
+        "seo_title": "Autumn equinox gatherings in London",
+        "window": ((9, 16), (9, 26)),
+        "terms": ["equinox", "mabon", "harvest"],
+        "deep": ["autumn equinox", "mabon"],
+        "intro": (
+            "The autumn equinox, around 22 September, balances day and night "
+            "before the dark half of the year. It's a harvest festival — "
+            "Mabon in the pagan calendar — marked with gratitude ceremonies, "
+            "sound baths, shared meals and rituals for letting go.",
+            "These are the in-person gatherings we've found in London around "
+            "the equinox.",
+        ),
+        "faq": [
+            ("When is the autumn equinox?",
+             "Around 22 or 23 September in the UK, when day and night are "
+             "roughly equal. In the pagan wheel of the year it's Mabon."),
+        ],
+    },
+    "samhain": {
+        "label": "Samhain",
+        "seo_title": "Samhain & Halloween gatherings in London",
+        "window": ((10, 24), (11, 3)),
+        "terms": ["samhain", "halloween", "hallowe", "all hallows", "day of the dead",
+                  "dia de los muertos", "día de los muertos", "dia de muertos", "ancestor"],
+        "deep": ["samhain", "halloween", "day of the dead", "dia de los muertos"],
+        "intro": (
+            "Samhain, on the night of 31 October, is the Celtic new year and "
+            "the root of Halloween: the time when the veil between the living "
+            "and the dead is said to be thinnest. In London it's marked with "
+            "ancestor rituals, witchy women's circles, Día de los Muertos "
+            "gatherings, candlelit sound baths, and spooky walks and dances.",
+            "These are the in-person gatherings we've found around Samhain "
+            "and Halloween.",
+        ),
+        "faq": [
+            ("What is Samhain?",
+             "A Gaelic festival held from sunset on 31 October to 1 November, "
+             "marking the end of the harvest and the start of winter. It's "
+             "traditionally a time to honour ancestors, and it's where many "
+             "Halloween customs come from."),
+            ("What happens at a Samhain ritual?",
+             "Usually an altar for ancestors with photos and offerings, a "
+             "candle or fire ceremony for letting go of the old year, and "
+             "shared food, song or storytelling."),
+        ],
+    },
+}
+
+
+def _season_windows(spec: dict, years) -> list[tuple]:
+    """The season's (start, end) London dates for each year it starts in."""
+    (m1, d1), (m2, d2) = spec["window"]
+    out = []
+    for y in years:
+        start = date(y, m1, d1)
+        end = date(y + 1 if (m2, d2) < (m1, d1) else y, m2, d2)
+        out.append((start, end))
+    return out
+
+
+def season_occurrences(spec: dict, today: date | None = None) -> tuple[tuple, tuple]:
+    """(the coming or current window, the one before it)."""
+    today = today or datetime.now(LONDON).date()
+    wins = _season_windows(spec, range(today.year - 2, today.year + 2))
+    i = next(i for i, (_, end) in enumerate(wins) if end >= today)
+    return wins[i], wins[i - 1]
+
+
+def season_in_lead(spec: dict, today: date | None = None) -> bool:
+    today = today or datetime.now(LONDON).date()
+    (start, end), _ = season_occurrences(spec, today)
+    return start - timedelta(days=SEASON_LEAD_DAYS) <= today <= end
+
+
+def season_url(slug_: str) -> str:
+    return f"{BASE_URL}/{slug_}/"
+
+
+def _season_pages_on() -> bool:
+    return bool((SITE_JSON.get("features") or {}).get("seasonPages"))
+
+
+def season_events(spec: dict, events: list[dict], window: tuple) -> list[dict]:
+    start, end = window
+    return [
+        e for e in events
+        if e.get("start_at")
+        and start <= _start_london(e).date() <= end
+        # titles and hosts only: tags like "connection" are too general
+        # to say a listing is about the occasion
+        and _term_match(e, {**spec, "tags": False})
+    ]
+
+
 def read_config() -> tuple[str, str]:
     text = SITE["config"].read_text()
     url = re.search(r'SUPABASE_URL:\s*"([^"]+)"', text).group(1)
@@ -1697,6 +1947,69 @@ def assign_event_slugs(
     return mapping
 
 
+def series_keys(event: dict) -> tuple[tuple, tuple] | None:
+    """Who runs it and what it's called, twice over: exactly, and with the
+    numbers dropped ('… London 11' and '… London 12' are one series).
+    Keyed on the host, else the room, so two hosts' "Full Moon Gathering"
+    stay apart. None when there's neither to go on."""
+    host = organizer_key(event)
+    who = host[0] if host else venue_key(clean_venue(event))
+    if not who:
+        return None
+    exact = slugify_title(event.get("title") or "")
+    loose = re.sub(r"-{2,}", "-", re.sub(r"\d+", "", exact)).strip("-")
+    return (who, exact), (who, loose or exact)
+
+
+# (source, source_id) of a past listing -> the next date of its series,
+# for the past page's top line; filled in by link_series()
+SERIES_NEXT: dict[tuple[str, str], dict] = {}
+# past listings whose page became a redirect to their series' next date
+SERIES_MOVED: set[tuple[str, str]] = set()
+
+
+def link_series(events: list[dict], past: list[dict]) -> dict[str, str]:
+    """Point a series' finished dates at its next one.
+
+    Exactly the same title from the same host: the past date's page
+    becomes a redirect to the next date (returned as old slug -> new
+    slug, and its links repointed), so the series has one address that
+    collects what each date earned. The bare slug already rolls forward
+    to the next date (assign_event_slugs), so that address is usually it.
+
+    Same host, same title but for a number: the past page stays, and
+    leads with the next one (SERIES_NEXT)."""
+    exact_next: dict[tuple, dict] = {}
+    loose_next: dict[tuple, dict] = {}
+    for e in sorted(events, key=lambda e: e["start_at"]):
+        keys = series_keys(e)
+        if keys:
+            exact_next.setdefault(keys[0], e)
+            loose_next.setdefault(keys[1], e)
+    moved: dict[str, str] = {}
+    SERIES_NEXT.clear()
+    SERIES_MOVED.clear()
+    for e in past:
+        keys = series_keys(e)
+        if not keys:
+            continue
+        key = (e["source"], e["source_id"])
+        nxt = exact_next.get(keys[0])
+        # only onto the series' bare address: a dated one (rotating
+        # hosts sharing a title) moves every few weeks, and a redirect
+        # whose target keeps changing builds nothing up
+        if nxt and event_slug(nxt) == slugify_title(nxt.get("title") or "event"):
+            old = _EVENT_SLUGS[key]
+            _EVENT_SLUGS[key] = event_slug(nxt)
+            moved[old] = event_slug(nxt)
+            SERIES_MOVED.add(key)
+        elif nxt:
+            SERIES_NEXT[key] = nxt
+        elif keys[1] in loose_next:
+            SERIES_NEXT[key] = loose_next[keys[1]]
+    return moved
+
+
 def event_slug(event: dict) -> str:
     key = (event["source"], event["source_id"])
     if key in _EVENT_SLUGS:
@@ -2121,6 +2434,31 @@ def week_groups(events: list[dict]) -> str:
     return "".join(sections)
 
 
+# url -> the day its page last changed in substance, for the sitemap's
+# <lastmod>. Stamping every URL with the build date teaches Google to
+# ignore the field; a date that moves only when the page does gets the
+# changed pages recrawled first. URLs with nothing to go on get none.
+LASTMOD: dict[str, str] = {}
+
+
+def event_changed(event: dict) -> str:
+    """When a listing last changed: first seen, or re-written by enrichment
+    (the scrapers don't keep an updated-at)."""
+    stamps = [event.get(k) for k in ("first_seen_at", "enriched_at")]
+    return max((t for t in stamps if t), default="")[:10]
+
+
+def stamp(url: str, events: list[dict], past: list[dict] = ()) -> None:
+    """A listing page changes when one of its events does, and when one
+    drops off it by starting — so the newest of those."""
+    days = [event_changed(e) for e in events]
+    now = datetime.now(timezone.utc)
+    days += [e["start_at"][:10] for e in past if e.get("start_at") and _parse_ts(e["start_at"]) <= now]
+    days = [d for d in days if d]
+    if days:
+        LASTMOD[url] = max(days)
+
+
 def write_index(path: Path, html_text: str) -> None:
     path.mkdir(parents=True, exist_ok=True)
     (path / "index.html").write_text(html_text)
@@ -2278,6 +2616,12 @@ def seo_nav_html() -> str:
         for which in WHEN_PAGES:
             parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
             parts.append(f'<a href="{BASE_URL}/{which}/">{which.replace("-", " ")}</a>')
+    # a season's page from a few weeks before it, while people search
+    if _season_pages_on():
+        for slug_, spec in SEASONS.items():
+            if season_in_lead(spec):
+                parts.append('<span class="seo-sep" aria-hidden="true">·</span>')
+                parts.append(f'<a href="{season_url(slug_)}">{esc(spec["label"])}</a>')
     return f'<nav class="seo-nav" aria-label="topics">{"".join(parts)}</nav>'
 
 
@@ -3248,6 +3592,13 @@ def event_crumbs(event: dict) -> str:
         )
     elif host:
         parts.append(f'<a href="{organizer_page_url(host[0])}">{esc(host[1])}</a>')
+    # the season it's part of, while that page is the one people search
+    if _season_pages_on() and event.get("start_at"):
+        for slug_, spec in SEASONS.items():
+            window, _ = season_occurrences(spec)
+            if season_in_lead(spec) and season_events(spec, [event], window):
+                parts.append(f'<a href="{season_url(slug_)}">{esc(spec["label"])}</a>')
+                break
     sep = '<span aria-hidden="true">·</span>'
     return (
         f'<nav class="static-crumbs" aria-label="breadcrumb">{sep.join(parts)}</nav>'
@@ -3416,7 +3767,19 @@ def event_page(event: dict, past: bool = False) -> str:
         )
 
     top_cta = ""
-    if past:
+    nxt = SERIES_NEXT.get((event["source"], event["source_id"])) if past else None
+    if nxt:
+        nxt_start = _start_london(nxt)
+        nxt_day = nxt_start.strftime("%A %-d %B")
+        if nxt_start.year != datetime.now(LONDON).year:
+            nxt_day += nxt_start.strftime(" %Y")
+        cta = (
+            '<p class="static-past-note">'
+            f"This took place on {esc(day_text)}. The next one is "
+            f'<a href="{event_url(nxt)}" data-goatcounter-click="static/series-next">'
+            f"{esc(nxt['title'])}, {esc(nxt_day)} →</a></p>"
+        )
+    elif past:
         cta = (
             '<p class="static-past-note">'
             f"This took place on {esc(day_text)}. What's on instead is below.</p>"
@@ -3653,7 +4016,7 @@ def listing_page(
     faq = faq_html(faq_items) if faq_items else ""
     json_ld = (
         listing_json_ld(seo_title, canonical, meta_desc, events, faq_items)
-        if kind in ("practice", "organizer", "area", "venue")
+        if kind in ("practice", "organizer", "area", "venue", "season")
         else None
     )
     if json_ld and json_ld_extra:
@@ -3732,7 +4095,13 @@ def past_events_html(past: list[dict], heading: str = "Recently hosted") -> str:
         when = start.strftime(
             "%a %-d %b" if start.year == this_year else "%a %-d %b %Y"
         )
-        bits = [f'<a href="{event_url(e)}">{esc(e["title"])}</a>']
+        # a series' past date has no page of its own any more — its
+        # address is the next date's, which the line shouldn't pose as
+        bits = [
+            esc(e["title"])
+            if (e["source"], e["source_id"]) in SERIES_MOVED
+            else f'<a href="{event_url(e)}">{esc(e["title"])}</a>'
+        ]
         if e.get("venue_name"):
             bits.append(esc(e["venue_name"]))
         items.append(
@@ -4133,6 +4502,101 @@ def when_page(which: str, events: list[dict]) -> str:
         map_href=home_view_url(None, on_map=True),
         signup=signup_script("..", "tonight" if which == "tonight" else "home"),
     )
+
+
+def season_page(slug_: str, spec: dict, events: list[dict], past: list[dict]) -> tuple[str, list[dict], list[dict]]:
+    """A season's page: this year's gatherings as cards, then what ran
+    last time as plain lines. Returns (html, upcoming, past shown) so the
+    sitemap can date it."""
+    (start, end), (last_start, last_end) = season_occurrences(spec)
+    upcoming = season_events(spec, events, (start, end))
+    so_far = season_events(spec, past, (start, end))
+    last = season_events(spec, past, (last_start, last_end))
+    today = datetime.now(LONDON).date()
+    year = end.year  # New Year's window runs into the year it's named for
+    then = " Here's what ran last time." if last else ""
+    if upcoming:
+        n = len(upcoming)
+        status = (
+            f"{n} gathering{'s' if n != 1 else ''} listed for {spec['label']} "
+            f"{year} so far — more are added as hosts announce them."
+        )
+    elif start - timedelta(days=SEASON_LEAD_DAYS) <= today:
+        status = (
+            f"Nothing announced for {spec['label']} {year} yet — hosts "
+            f"usually publish in the last few weeks before.{then}"
+        )
+    else:
+        status = (
+            f"Listings for {spec['label']} {year} appear here as hosts "
+            f"announce them.{then}"
+        )
+    past_html = ""
+    if so_far:
+        past_html += past_events_html(so_far, f"Earlier this {spec['label']}")
+    if last:
+        past_html += past_events_html(last, f"{spec['label'][0].upper()}{spec['label'][1:]} {last_start.year}")
+    html_ = listing_page(
+        slug_, spec["label"], spec["seo_title"], season_url(slug_), upcoming,
+        kind="season", days=30, other_url=None,
+        css_prefix="..", strip_events=within_window(upcoming, 30),
+        intro=list(spec["intro"]), faq_items=spec.get("faq") or [],
+        head_html=f'<p class="static-glance-note">{esc(status)}</p>',
+        past_html=past_html,
+    )
+    return html_, upcoming, so_far + last
+
+
+def llms_txt() -> str:
+    """/llms.txt: the site in plain Markdown for AI assistants — what it
+    is and its evergreen pages, each with a line on what's there."""
+    def first(text: str) -> str:
+        return re.split(r"(?<=[.!?])\s", text.strip(), maxsplit=1)[0]
+
+    lines = [
+        f"# {display_name()}",
+        "",
+        f"> {SITE['tagline']}. Gathered daily from the hosts' own listings; "
+        "every event has its own page with the date, venue, price and a "
+        "link to book.",
+        "",
+        f"- [What's on — all upcoming events]({BASE_URL}/)",
+    ]
+    if _when_pages_on():
+        lines += [
+            f"- [Tonight]({BASE_URL}/tonight/)",
+            f"- [This weekend]({BASE_URL}/this-weekend/)",
+        ]
+    if SITE_PRACTICES:
+        lines += ["", "## Practices", ""]
+        for slug_, spec, _ in SITE_PRACTICES:
+            intro = spec.get("intro") or ()
+            lines.append(
+                f"- [{spec['seo_title']}]({practice_url(slug_)})"
+                + (f": {first(intro[0])}" if intro else "")
+            )
+    site_topics = SITE_JSON.get("topics")
+    topic_lines = [
+        f"- [{seo_title}]({topic_url(slug_)})"
+        for key, (slug_, seo_title) in TOPICS.items()
+        if (site_topics is None or key in site_topics) and TOPIC_COUNTS.get(key)
+    ]
+    if topic_lines:
+        lines += ["", "## Topics", "", *topic_lines]
+    if _season_pages_on():
+        lines += ["", "## Through the year", ""]
+        for slug_, spec in SEASONS.items():
+            lines.append(f"- [{spec['seo_title']}]({season_url(slug_)}): {first(spec['intro'][0])}")
+    more = []
+    if SITE_ORGANIZERS:
+        more.append(f"- [Hosts and organisers]({organizers_index_url()})")
+    if SITE_VENUES:
+        more.append(f"- [Venues]({venues_index_url()})")
+    if ABOUT_CONTENT.get(SITE["name"]):
+        more.append(f"- [About]({about_url()})")
+    if more:
+        lines += ["", "## More", "", *more]
+    return "\n".join(lines) + "\n"
 
 
 def not_found_page() -> str:
@@ -4760,6 +5224,7 @@ def write_listing(
     events: list[dict],
     kind: str,
     urls: list[str],
+    stamp_past: list[dict] = (),
     **page_kw,
 ) -> None:
     """A listing at both ranges: the lead page at `parts`, the other one
@@ -4782,6 +5247,7 @@ def write_listing(
             ),
         )
         urls.append(canonical)
+        stamp(canonical, events, stamp_past)
         return
 
     week, month = (within_window(events, n) for n in LISTING_WINDOWS)
@@ -4802,6 +5268,7 @@ def write_listing(
         ),
     )
     urls.append(canonical)
+    stamp(canonical, events, stamp_past)
 
     write_index(
         outdir.joinpath(*parts, f"{other_days}-days"),
@@ -4866,6 +5333,7 @@ def build(outdir: Path) -> None:
     )
 
     _EVENT_SLUGS = assign_event_slugs(events, past_events)
+    series_moved = link_series(events, past_events)
     index_listings(events, past_events)
     build_explore_tiles(events)
     # the static top-picks row links to event pages, so it waits for slugs
@@ -4876,6 +5344,10 @@ def build(outdir: Path) -> None:
         json.dumps({f"{e['source']}:{e['source_id']}": event_slug(e) for e in events})
     )
     urls = [f"{BASE_URL}/"]
+    LASTMOD.clear()
+    today = datetime.now(timezone.utc).date().isoformat()
+    # the home page's listing moves on every day
+    LASTMOD[f"{BASE_URL}/"] = today
 
     about_paras = ABOUT_CONTENT.get(SITE["name"])
     if about_paras:
@@ -4906,19 +5378,28 @@ def build(outdir: Path) -> None:
             write_index(outdir / "e" / legacy, moved_page(canonical))
         write_html_redirect(outdir / "e" / f"{slug}.html", canonical)
         urls.append(canonical)
+        if event_changed(event):
+            LASTMOD[canonical] = event_changed(event)
 
     # Past events keep their pages: searches for a name keep landing after
     # the date, and a 404 throws away what the page had earned. Left out
     # of the sitemap — Google already knows the ones that matter.
+    upcoming_slugs = {event_slug(e) for e in events}
     for event in past_events:
         slug = event_slug(event)
+        if slug in upcoming_slugs:
+            continue  # a series' past date: redirected below
         write_index(outdir / "e" / slug, event_page(event, past=True))
         write_html_redirect(outdir / "e" / f"{slug}.html", event_url(event))
+    for old, new in series_moved.items():
+        dest = f"{BASE_URL}/e/{new}/"
+        write_index(outdir / "e" / old, moved_page(dest))
+        write_html_redirect(outdir / "e" / f"{old}.html", dest)
 
     # A series' later dates live at <slug>-<date> until the date before
     # them passes and the bare slug rolls on to them: the dated URL Google
     # found keeps working, pointing at wherever that date lives now.
-    taken = set(_EVENT_SLUGS.values())
+    taken = set(_EVENT_SLUGS.values()) | set(series_moved)
     for event in [*events, *past_events]:
         if not event.get("start_at"):
             continue
@@ -4985,6 +5466,7 @@ def build(outdir: Path) -> None:
                 map_href=home_view_url(view, on_map=True),
             ),
             placeholder=search_placeholder(key),
+            stamp_past=recent,
             past_html=past_events_html(recent, "Recently in London")
             if len(month) < SPARSE_BELOW
             else "",
@@ -5003,6 +5485,7 @@ def build(outdir: Path) -> None:
         write_listing(
             outdir, ("p", slug_), canonical,
             slug_, spec["label"], spec["seo_title"], matched, "practice", urls,
+            stamp_past=PRACTICE_PAST.get(slug_, []),
             **practice_page_extras(slug_, spec, matched),
         )
         write_html_redirect(outdir / "p" / f"{slug_}.html", canonical)
@@ -5016,21 +5499,31 @@ def build(outdir: Path) -> None:
                 ),
             )
             urls.append(area_url(slug_, area))
+            stamp(
+                area_url(slug_, area),
+                [e for e in matched if e.get("area") == area],
+                [e for e in PRACTICE_PAST.get(slug_, []) if e.get("area") == area],
+            )
 
     for slug_, org in SITE_ORGANIZERS.items():
         write_listing(
             outdir, ("o", slug_), organizer_page_url(slug_),
             slug_, org["label"], f"{org['label']} events in London",
-            org["upcoming"], "organizer", urls,
+            org["upcoming"], "organizer", urls, stamp_past=org["past"],
         )
     if SITE_ORGANIZERS:
         write_index(outdir / "o", organizers_index_page())
         urls.append(organizers_index_url())
+        stamp(
+            organizers_index_url(),
+            [e for o in SITE_ORGANIZERS.values() for e in o["upcoming"]],
+        )
 
     for slug_, v in SITE_VENUES.items():
         write_listing(
             outdir, ("v", slug_), venue_page_url(slug_),
             slug_, v["label"], venue_title(v), v["upcoming"], "venue", urls,
+            stamp_past=v["past"],
             **venue_page_extras(slug_, v),
         )
         for alias in v["aliases"]:
@@ -5038,11 +5531,23 @@ def build(outdir: Path) -> None:
     if SITE_VENUES:
         write_index(outdir / "v", venues_index_page())
         urls.append(venues_index_url())
+        stamp(
+            venues_index_url(),
+            [e for v in SITE_VENUES.values() for e in v["upcoming"]],
+        )
+
+    if _season_pages_on():
+        for slug_, spec in SEASONS.items():
+            html_, upcoming, shown_past = season_page(slug_, spec, events, past_events)
+            write_index(outdir / slug_, html_)
+            urls.append(season_url(slug_))
+            stamp(season_url(slug_), upcoming, shown_past)
 
     if _when_pages_on():
         for which in WHEN_PAGES:
             write_index(outdir / which, when_page(which, events))
             urls.append(f"{BASE_URL}/{which}/")
+            LASTMOD[f"{BASE_URL}/{which}/"] = today
 
     # The home page's practice chips read this: same definitions, same
     # per-site set, so the app filters by exactly what the pages list.
@@ -5084,12 +5589,13 @@ def build(outdir: Path) -> None:
     if SITE_JSON.get("signup"):
         write_index(outdir / "welcome", welcome_page())
 
-    today = datetime.now(timezone.utc).date().isoformat()
     sitemap = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         + "".join(
-            f"  <url><loc>{html.escape(u)}</loc><lastmod>{today}</lastmod></url>\n"
+            f"  <url><loc>{html.escape(u)}</loc>"
+            + (f"<lastmod>{LASTMOD[u]}</lastmod>" if LASTMOD.get(u) else "")
+            + "</url>\n"
             for u in urls
         )
         + "</urlset>\n"
@@ -5108,6 +5614,7 @@ def build(outdir: Path) -> None:
         )
     else:
         (outdir / "sitemap.xml").write_text(sitemap)
+        (outdir / "llms.txt").write_text(llms_txt())
         disallow = "Disallow: /join-community/\n" if has_join else ""
         (outdir / "robots.txt").write_text(
             f"User-agent: *\nAllow: /\n{disallow}Sitemap: {BASE_URL}/sitemap.xml\n"
