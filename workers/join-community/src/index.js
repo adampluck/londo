@@ -83,7 +83,16 @@ async function handle(request, env, origin) {
   } catch {
     return fail(origin, 502, "verify");
   }
-  if (!verdict.success) return fail(origin, 403, "token");
+  if (!verdict.success) {
+    const codes = verdict["error-codes"] || [];
+    // visible in `wrangler tail` / the dashboard's logs
+    console.log("siteverify rejected:", JSON.stringify(codes));
+    // A secret that doesn't belong to the page's sitekey fails every token:
+    // that's our misconfiguration, not the visitor failing the check.
+    if (codes.some((c) => c.includes("secret"))) return fail(origin, 500, "config");
+    if (codes.includes("timeout-or-duplicate")) return fail(origin, 403, "stale");
+    return fail(origin, 403, "token");
+  }
 
   // Tokens are single-use and expire after 300s, but check anyway: a replayed
   // or hoarded token shouldn't buy anything.
