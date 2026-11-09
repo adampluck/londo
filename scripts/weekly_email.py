@@ -562,6 +562,26 @@ def featured_block(e: dict, href: str) -> str:
 </td></tr>"""
 
 
+def community_block(campaign: str) -> str:
+    """The WhatsApp community invite: a card linking to /join-community/
+    (the invite itself sits behind that page's Turnstile check, never in
+    the email). Only when the site builds that page."""
+    join = bs.SITE_JSON.get("joinCommunity") or {}
+    if not (join.get("workerUrl") and join.get("turnstileSiteKey")):
+        return ""
+    href = site_link("/join-community/", campaign, "community")
+    return f"""
+<tr><td style="padding:8px 0 18px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="pc-card" style="background:{CARD};border:1px solid {EDGE};border-radius:16px;">
+  <tr><td style="padding:16px;text-align:left;">
+    <p class="pc-plum" style="margin:0 0 6px;font-weight:600;font-size:12px;line-height:1.4;font-family:{SANS};letter-spacing:.08em;text-transform:uppercase;color:{PLUM};">Join the community</p>
+    <p style="margin:0;font-weight:600;font-size:17px;line-height:1.3;font-family:{SANS};"><a href="{bs.esc(href)}" class="pc-ink" style="color:{INK};text-decoration:none;">Our WhatsApp community</a></p>
+    <p class="pc-dim" style="margin:4px 0 12px;font-size:14px;line-height:1.45;font-family:{SANS};color:{DIM};">Meet people going to the same gatherings, share what's on and hear about PsyConnect events first.</p>
+    <a href="{bs.esc(href)}" class="pc-plum" style="display:inline-block;color:{PLUM};font-weight:600;font-size:14px;line-height:1;font-family:{SANS};text-decoration:none;padding:10px 16px;border:1.5px solid {PLUM};border-radius:10px;">Join on WhatsApp →</a>
+  </td></tr></table>
+</td></tr>"""
+
+
 LOGO_PLATE, LOGO_DARK = "/logo-email-plate.png", "/logo-email-dark.png"
 
 
@@ -601,6 +621,7 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
         + picks_section(picks_title, secs["picks"], slugs, campaign)
         + list_section(rest_title, secs["rest"], slugs, campaign, icons)
         + browse_section(secs["browse"], campaign, icons)
+        + community_block(campaign)
     )
     # Just the body: the background, footer, unsubscribe link and postal
     # address come from the PsyConnect template in Kit (kit/email-template.html).
