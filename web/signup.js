@@ -237,6 +237,10 @@
 
   // ---- the dialog -----------------------------------------------------------
   let root, lastFocus, opened, token = "", tokenWait;
+  // how this card was opened, as a path suffix: "" for the automatic
+  // trigger, else "-callout", "-header", "-link"... so shown, dismissed
+  // and joined line up per trigger in GoatCounter
+  let via = "";
 
   function el(tag, attrs, ...kids) {
     const n = document.createElement(tag);
@@ -280,7 +284,8 @@
       return;
     }
     shown = true;
-    track(how ? `shown-${how}` : forced ? "shown-link" : "shown");
+    via = how ? `-${how}` : forced ? "-link" : "";
+    track(`shown${via}`);
     // a fresh Turnstile widget for this card (a token is good for one go)
     token = "";
     tokenWait = null;
@@ -363,7 +368,7 @@
     const s = store();
     if (!s.joined) {
       store({ ...s, dismissed: Date.now() });
-      track("dismissed");
+      track(`dismissed${via}`);
     }
     close();
   }
@@ -433,7 +438,7 @@
     } catch {}
     if (ok) {
       store({ ...store(), joined: Date.now() });
-      track("joined");
+      track(`joined${via}`);
       document.querySelectorAll(".pcs-callout").forEach((n) => n.remove());
       done(card);
       return;
