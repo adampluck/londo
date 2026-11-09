@@ -593,13 +593,14 @@ PRACTICES = {
     },
     "sound-bath": {
         "label": "sound bath",
-        "seo_title": "Sound baths & gong baths in London",
+        "seo_title": "Sound baths, gong baths & sound healing in London",
         "price_q": "How much does a sound bath cost in London?",
         # bare "gong" catches Jin Mai Gong (a qigong form), so the gong
         # terms all name the session type
         "terms": [
             "sound bath", "gong bath", "sound healing", "sound journey",
-            "gong sound", "gong puja", "gongs",
+            "gong sound", "gong puja", "gongs", "sound therapy",
+            "sound meditation", "crystal bowl", "singing bowl", "soundbath",
         ],
         "deep": ["sound bath", "gong bath"],
         "intro": (
@@ -610,6 +611,12 @@ PRACTICES = {
             "London's sound baths run in yoga studios, churches and railway "
             "arches, often in the early evening. Bring warm socks — you cool "
             "down quickly lying still — and expect to leave slightly dazed.",
+            "You'll also see them billed as sound healing, sound meditation, "
+            "sound journeys or vibrational sound therapy: in a group setting "
+            "these are all much the same thing, led with gongs, crystal and "
+            "Tibetan singing bowls, chimes, drums and voice. Many people come "
+            "for the rest itself — to switch off, sleep better or let go of a "
+            "stressful week.",
         ),
         "faq": [
             (
@@ -633,12 +640,36 @@ PRACTICES = {
                 "Sessions billed as sound healing or sound journeys use a wider mix "
                 "of instruments and often voice.",
             ),
+            (
+                "What's the difference between a sound bath and sound therapy?",
+                "A sound bath is a group session: everyone lies down and the "
+                "practitioner plays for the room. Sound therapy usually means a "
+                "one-to-one treatment, such as a singing bowl massage where bowls "
+                "are placed on or around your body. Group sessions are cheaper and "
+                "need no booking ahead beyond a ticket; this page lists the group "
+                "ones.",
+            ),
+            (
+                "How long is a sound bath?",
+                "Most London sound baths last 45 to 75 minutes of sound, with time "
+                "either side to settle in and come round — so allow an hour and a "
+                "half. Lunchtime and early-morning sessions can be as short as "
+                "half an hour, and all-night gong journeys run until dawn.",
+            ),
+            (
+                "Can a sound bath help with sleep and stress?",
+                "Many people find them deeply relaxing and sleep well afterwards, "
+                "and small studies have reported lower tension and better mood "
+                "after a session. They aren't a medical treatment, but as an hour "
+                "of enforced rest with no screen and nothing to do, they work for "
+                "a lot of people.",
+            ),
         ],
     },
     "cacao-ceremony": {
         "label": "cacao ceremony",
         "chip": "cacao",
-        "seo_title": "Cacao ceremonies in London",
+        "seo_title": "Cacao ceremonies & cacao circles in London",
         "price_q": "How much does a cacao ceremony cost in London?",
         "terms": ["cacao", "cocoa ceremony"],
         "deep": ["cacao ceremony", "cacao circle"],
@@ -678,12 +709,39 @@ PRACTICES = {
                 "introductions and pairs, and nobody is made to speak or touch "
                 "anyone. Arriving ten minutes early makes the first circle easier.",
             ),
+            (
+                "What is ceremonial cacao?",
+                "Whole cacao beans, fermented, roasted, shelled and ground into a "
+                "paste with nothing taken out — unlike cocoa powder, which has the "
+                "fat removed, or chocolate, which is mostly sugar. A ceremonial cup "
+                "is about 20–40g melted into hot water, sometimes with chilli, "
+                "cinnamon or a little sweetener. Most London facilitators source "
+                "it from Guatemala, Peru or Ecuador.",
+            ),
+            (
+                "What should I do before a cacao ceremony?",
+                "Eat lightly beforehand — cacao is rich and sits better on a half-"
+                "empty stomach — and skip coffee that day, as the two together can "
+                "feel jittery. Wear something comfortable you can sit on the floor "
+                "or dance in, and bring water.",
+            ),
+            (
+                "Where are cacao ceremonies held in London?",
+                "In yoga studios, community halls, churches and wellbeing centres "
+                "across the city, with the most in east and north London. Many are "
+                "the opening of an ecstatic dance or a sound bath; the listings "
+                "above say what each evening is built around.",
+            ),
         ],
     },
     "breathwork": {
         "label": "breathwork",
         "seo_title": "Breathwork classes & workshops in London",
-        "terms": ["breathwork", "breathing workshop", "rebirthing", "holotropic"],
+        "price_q": "How much does a breathwork class cost in London?",
+        "terms": [
+            "breathwork", "breath work", "breathing workshop", "rebirthing",
+            "holotropic", "conscious connected breath", "neurodynamic",
+        ],
         "deep": ["breathwork session", "conscious connected breathing"],
         "intro": (
             "Breathwork is a session where a facilitator guides you through a "
@@ -694,6 +752,9 @@ PRACTICES = {
             "London runs everything from lunchtime classes to weekend "
             "intensives, in styles from gentle and somatic to the intense "
             "holotropic lineage. Most are two hours and need no experience.",
+            "Weekly community classes are the easiest way in, in east London "
+            "especially; ceremonies pair the breath with cacao, live sound or "
+            "dance, and there are men's, women's and partner sessions too.",
         ),
         "faq": [
             (
@@ -717,6 +778,23 @@ PRACTICES = {
                 "No. Almost every London session is open to first-timers and the "
                 "facilitator explains the pattern before anything starts. You can "
                 "stop and breathe normally whenever you want.",
+            ),
+            (
+                "What types of breathwork are there?",
+                "Conscious connected breathwork (the most common in London: "
+                "continuous breathing with no pause) and its forerunner "
+                "rebirthing; holotropic and neurodynamic breathwork, longer and "
+                "more intense, done with evocative music, often in pairs; "
+                "shamanic breathwork, which adds drumming and ritual; and gentler "
+                "slow or coherent breathing for calm. Wim Hof's method is a "
+                "breathwork style too, usually paired with cold exposure.",
+            ),
+            (
+                "What should I wear and bring to breathwork?",
+                "Loose, warm clothes — you lie still for a long time and can get "
+                "cold — and water for afterwards. Eat lightly, at least an hour "
+                "or two before. Mats, blankets and eye masks are usually provided; "
+                "the listing will say if not.",
             ),
         ],
     },
@@ -1059,6 +1137,80 @@ PRACTICES = {
                 "No. The mantras come from Hindu devotion, but London kirtans "
                 "welcome people of any faith or none, and the point is joining "
                 "in rather than singing well. You can also just listen.",
+            ),
+        ],
+    },
+    "shamanic": {
+        "label": "shamanic journeys",
+        "chip": "shamanic",
+        "seo_title": "Shamanic journeys, drumming & trance dance in London",
+        # "shamanic" not "shaman": talks about bad shamans aren't sessions
+        "terms": [
+            "shamanic", "drum journey", "drum circle", "drumming circle",
+            "trance dance", "drum journeying",
+        ],
+        # tags and passing mentions in blurbs catch sound baths and
+        # singing workshops: titles and hosts only
+        "tags": False,
+        "intro": (
+            "Shamanic sessions use rhythm, breath and ritual to reach an "
+            "altered, dreamlike state without substances. The classic form is "
+            "the drum journey: you lie down with eyes covered while a steady "
+            "drumbeat, around four beats a second, carries you into a guided "
+            "inner journey.",
+            "In London the word covers drum circles and journeying groups, "
+            "shamanic breathwork, and blindfolded trance dance, where you move "
+            "freely under a blindfold to drums and deep bass. Most sessions "
+            "are open to beginners and close with sharing.",
+        ),
+        "faq": [
+            (
+                "What is a shamanic drum journey?",
+                "A guided meditation carried by repetitive drumming. You lie down, "
+                "set an intention, and follow the drum into an inner landscape for "
+                "fifteen to thirty minutes until a change of rhythm calls you "
+                "back. Many people experience vivid imagery; others simply rest "
+                "deeply. Nothing is taken: the rhythm does the work.",
+            ),
+            (
+                "What is trance dance?",
+                "A blindfolded dance practice: wearing a scarf over your eyes, you "
+                "move to drumming or bass-heavy music, breathing deeply, and let "
+                "the movement take over. Helpers keep the space safe so nobody "
+                "collides. Sessions often open with breathwork and end lying down.",
+            ),
+        ],
+    },
+    "sufi-whirling": {
+        "label": "Sufi whirling",
+        "chip": "whirling",
+        "seo_title": "Sufi whirling & Sufi meditation in London",
+        "min_events": 4,
+        "terms": ["whirling", "dervish", "sufi", "sema ceremony", "mukabele"],
+        "deep": ["whirling dervish", "sufi meditation"],
+        "intro": (
+            "Sufi whirling, or turning, is the moving meditation of the "
+            "Mevlevi order founded after the 13th-century poet Rumi: you turn "
+            "slowly on the spot, right hand raised and left lowered, keeping a "
+            "still centre as the room spins around you. Classes start very "
+            "slowly, and turning is learned over months rather than one night.",
+            "London has regular turning practices and classes, Sema ceremonies "
+            "open to watch, and Sufi meditation groups that work with breath, "
+            "repeated sacred phrases (dhikr) and silent sitting.",
+        ),
+        "faq": [
+            (
+                "Do you get dizzy whirling?",
+                "Beginners usually do at first. Teachers start with only a few "
+                "turns, with your gaze resting softly on your raised hand or "
+                "unfocused, and build up gradually; with practice the dizziness "
+                "fades and the turning becomes calm.",
+            ),
+            (
+                "Do I need to be Muslim to learn Sufi whirling?",
+                "No. The practice comes from the Mevlevi Sufi tradition within "
+                "Islam, and teachers treat it with respect, but London classes "
+                "and meditation groups welcome people of any faith or none.",
             ),
         ],
     },
@@ -5142,6 +5294,44 @@ def practice_page_extras(slug_: str, spec: dict, matched: list[dict]) -> dict:
     }
 
 
+# Postcode district -> the neighbourhood people search by ("sound bath
+# shoreditch", "breathwork near old street"). Districts not listed just
+# go unnamed; a W1 or EC sub-district falls back to its parent.
+DISTRICT_NAMES = {
+    "E1": "Whitechapel", "E1W": "Wapping", "E2": "Bethnal Green", "E3": "Bow",
+    "E5": "Clapton", "E8": "Hackney", "E9": "Hackney Wick", "E10": "Leyton",
+    "E11": "Leytonstone", "E14": "Canary Wharf", "E15": "Stratford",
+    "E17": "Walthamstow", "EC1V": "Old Street", "EC1R": "Clerkenwell",
+    "EC1M": "Clerkenwell", "EC1Y": "Old Street", "EC2A": "Shoreditch",
+    "EC2M": "Liverpool Street", "EC2N": "Liverpool Street", "EC2V": "the City",
+    "EC3": "the City", "EC4": "the City",
+    "N1": "Islington", "N1C": "King's Cross", "N4": "Finsbury Park", "N5": "Highbury", "N7": "Holloway",
+    "N8": "Crouch End", "N15": "Tottenham", "N16": "Stoke Newington",
+    "N17": "Tottenham", "N19": "Archway", "N22": "Wood Green",
+    "NW1": "Camden", "NW3": "Hampstead", "NW5": "Kentish Town", "NW6": "Kilburn",
+    "NW10": "Kensal Green",
+    "SE1": "Southwark", "SE5": "Camberwell", "SE8": "Deptford",
+    "SE10": "Greenwich", "SE11": "Kennington", "SE13": "Lewisham",
+    "SE14": "New Cross", "SE15": "Peckham", "SE16": "Bermondsey",
+    "SE22": "East Dulwich", "SE24": "Herne Hill",
+    "SW2": "Brixton", "SW4": "Clapham", "SW8": "Vauxhall", "SW9": "Brixton",
+    "SW11": "Battersea", "SW12": "Balham", "SW17": "Tooting", "SW19": "Wimbledon",
+    "W1D": "Soho", "W1F": "Soho", "W1T": "Fitzrovia", "W1W": "Fitzrovia",
+    "W1": "the West End", "WC1": "Bloomsbury", "WC2": "Covent Garden",
+    "W2": "Paddington", "W3": "Acton", "W4": "Chiswick", "W5": "Ealing",
+    "W6": "Hammersmith", "W10": "North Kensington", "W11": "Notting Hill",
+    "W12": "Shepherd's Bush", "W14": "West Kensington", "TW9": "Kew",
+}
+
+
+def district_name(event: dict) -> str | None:
+    district = _venue_outward(event)
+    if not district:
+        return None
+    # WC2H -> WC2, EC3A -> EC3, W1K -> W1 when the sub-district isn't named
+    return DISTRICT_NAMES.get(district) or DISTRICT_NAMES.get(re.sub(r"[A-Z]$", "", district))
+
+
 def area_page(
     slug_: str, spec: dict, area: str, upcoming: list[dict], past: list[dict]
 ) -> str:
@@ -5158,8 +5348,17 @@ def area_page(
             seen_rooms.add(venue_key(v))
             venues[v] = e
     names = list(venues)[:3]
+    # the neighbourhoods, busiest first: what people put in the search
+    hoods: dict[str, int] = {}
+    for e in upcoming + past:
+        n = district_name(e)
+        if n:
+            hoods[n] = hoods.get(n, 0) + 1
+    hood_names = sorted(hoods, key=lambda n: -hoods[n])[:4]
     intro = [
         f"Every {label} listing we can find in {area} London"
+        + (f", from {_joined(hood_names)}" if len(hood_names) > 1 else
+           f", in {hood_names[0]}" if hood_names else "")
         + (f" — at {_joined(names)} and more" if len(names) > 1 else "")
         + ", with times, prices and tickets.",
         (
@@ -5175,6 +5374,7 @@ def area_page(
     glance, price_faq = practice_glance(slug_, spec, upcoming + past, area)
     rooms = "".join(
         f"<li><strong>{esc(v)}</strong>"
+        + (f" ({esc(district_name(e))})" if district_name(e) and district_name(e) != v else "")
         + (f" — {esc(e['address'])}" if e.get("address") else "")
         + "</li>"
         for v, e in list(venues.items())[:12]
