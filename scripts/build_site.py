@@ -1384,15 +1384,42 @@ PRIVACY_CONTENT: dict[str, list[str]] = {
     "psyconnect": [
         "PsyConnect has no user accounts and no cookies. The only personal "
         "data it keeps is from the weekly email, and only if you sign up.",
-        "If you sign up, we keep your email address and the page you signed "
-        "up on. We use that page to choose which gatherings come first in "
-        "your email; you're never asked to fill in a profile. The list is "
-        "held by Kit (kit.com), which sends the emails. Every email has a "
-        "one-click unsubscribe, and replying to ask will get your address "
-        "deleted entirely.",
+        "Who's responsible: PsyConnect is run by Adam Pluck, who is the "
+        "data controller for the personal data described here. For "
+        "anything about your data, email hello@psyconnect.london.",
+        "If you sign up for the weekly email, we keep your email address, "
+        "the page you signed up on, and the topics of that page (for "
+        "example \"healing\" or \"connection\"). We use those topics only to "
+        "choose which gatherings come first in your email; you're never "
+        "asked to fill in a profile, and we don't work out anything else "
+        "about you.",
+        "Our legal basis for the email is your consent, given when you sign "
+        "up. You can withdraw it at any time with the one-click unsubscribe "
+        "link in every email.",
+        "The list is held by Kit (kit.com), which sends the emails on our "
+        "behalf and stores the data in the United States, under its data "
+        "processing terms. Kit records whether each email is opened and "
+        "which links in it are clicked; we use that to see which gatherings "
+        "people are interested in, not to profile individuals.",
+        "We keep your details until you unsubscribe or ask us to delete "
+        "them. When you unsubscribe, Kit keeps your address marked as "
+        "unsubscribed so you aren't emailed again by mistake; if you'd like "
+        "it removed completely, email hello@psyconnect.london and we'll "
+        "delete it within a month.",
+        "You have the right to see the data we hold about you, to have it "
+        "corrected or deleted, to object to how it's used, and to get a "
+        "copy of it. Email hello@psyconnect.london to ask. If you're unhappy "
+        "with how we've handled your data, you can complain to the "
+        "Information Commissioner's Office (ico.org.uk).",
         "Page views and outbound clicks (e.g. to a ticket link) are "
         "counted with GoatCounter, a cookieless analytics tool that "
         "doesn't track individuals or build profiles across sites.",
+        "A few settings, like a dismissed pop-up, are remembered in your "
+        "browser's local storage. They stay on your device and are never "
+        "sent to us.",
+        "The site is hosted on GitHub Pages, and event images are resized "
+        "by wsrv.nl; like any web server, both see your IP address when "
+        "your browser loads a page or image.",
         "Event listings are read from a public database built from "
         "ticketing platforms and organisers' own calendars — nothing "
         "you do on this site is written back to it.",
