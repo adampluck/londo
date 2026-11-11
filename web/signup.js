@@ -9,7 +9,8 @@
    When it shows:
    - never on the page a visitor lands on from outside — Google penalises
      pop-ups that cover content straight after a search click. Either they
-     navigate within the site, or they stay 45s and scroll halfway;
+     navigate within the site, or they stay 45s and scroll halfway.
+     Visitors sent by ChatGPT (never Google) need only scroll a little;
    - never again within 30 days of a dismissal, and never after a sign-up;
    - never to visitors arriving from the email itself, then or later: the
      visit is remembered, and the callouts stay away for them too.
@@ -198,6 +199,16 @@
       new URL(document.referrer).host === location.host;
   } catch {}
 
+  // Sent by ChatGPT: it tags the links it cites with utm_source=chatgpt.com
+  // (its apps often send no referrer). Google never arrives this way, so
+  // the pop-up penalty doesn't come into it: any scroll of their own is
+  // enough, no dwell.
+  let fromChatGPT = /chatgpt\.com/i.test(params.get("utm_source") || "");
+  try {
+    fromChatGPT = fromChatGPT ||
+      (!!document.referrer && /(^|\.)chatgpt\.com$/i.test(new URL(document.referrer).host));
+  } catch {}
+
   // ---- trigger ---------------------------------------------------------------
   const start = Date.now();
   let scrolled = false;
@@ -209,6 +220,11 @@
   // only gets the modal on the next page view.
   function onScroll(e) {
     if (scrolled || !e.isTrusted || scrollY < 1) return;
+    if (fromChatGPT) {
+      shown || whenIdle(show);
+      scrolled = true;
+      return;
+    }
     const room = document.documentElement.scrollHeight - innerHeight;
     if (room > 0 && scrollY / room >= 0.5) {
       scrolled = true;
