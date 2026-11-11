@@ -71,7 +71,7 @@ emits a static page per event (`/e/<source>-<id>.html`), per category
 (`/c/<category>.html`) and per topic (`/t/<topic>.html`) with OG tags,
 Twitter cards, schema.org JSON-LD and a sitemap — WhatsApp unfurls and
 Google both see real content. Both workflows
-deploy this build; the scrape regenerates it every 6 hours.
+deploy the psyconnect build; the scrape regenerates it twice a day.
 
 ## Setup
 
@@ -84,7 +84,7 @@ deploy this build; the scrape regenerates it every 6 hours.
 3. **Frontend**: put the project URL and **anon** key in `web/config.js`.
    Serve locally with `python3 -m http.server -d web 8080`.
 4. **GitHub Actions**: add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and
-   `ANTHROPIC_API_KEY` as repository secrets. The scrape runs every 6 hours
+   `ANTHROPIC_API_KEY` as repository secrets. The scrape runs twice a day
    (`.github/workflows/scrape.yml`) and redeploys the site after each run;
    frontend pushes deploy via `.github/workflows/pages.yml` (enable Pages →
    Source: GitHub Actions in repo settings).

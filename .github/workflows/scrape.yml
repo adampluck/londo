@@ -2,8 +2,10 @@ name: Daily scrape
 
 on:
   schedule:
-    # every 6 hours — Luma's feed gains events throughout the day
-    - cron: "17 5,11,17,23 * * *"
+    # twice a day. Each run's build downloads a year of rows from Supabase,
+    # whose free plan caps what it sends out each month, so runs are rationed.
+    # 17:17 stays: Wednesday's 18:00 weekly email wants a fresh scrape.
+    - cron: "17 5,17 * * *"
   workflow_dispatch:
 
 env:
@@ -11,8 +13,6 @@ env:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
   issues: write  # the source-health issue
 
 jobs:
@@ -55,27 +55,9 @@ jobs:
             gh issue create --title "$title" --body-file scrape-health.md
           fi
 
-      # Rebuild the static site (per-event SEO/OG pages) from fresh data
-      - name: Build site
-        run: python3 scripts/build_site.py build
-
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: build
-
-  deploy:
-    needs: scrape
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: pages
-      cancel-in-progress: true
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+  # The londo site is no longer rebuilt or deployed (it had no traffic, and
+  # its build doubled what each run downloads from Supabase). Its last
+  # deploy stays up as it was.
 
   # psyconnect: rebuilt from the fresh data and pushed to its own Pages repo
   deploy-psyconnect:

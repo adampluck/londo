@@ -8,8 +8,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -19,23 +17,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      # Static event/category pages are rebuilt from live data so a frontend
-      # push doesn't wipe them (stdlib only — no installs needed)
-      - name: Build site
-        run: python3 scripts/build_site.py build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: build
-      - id: deployment
-        uses: actions/deploy-pages@v4
+  # The londo site is no longer rebuilt or deployed (see scrape.yml).
 
   # psyconnect: same codebase, filtered dataset, pushed to its own Pages
   # repo (deploy key SSH — no GITHUB_TOKEN permissions involved)
