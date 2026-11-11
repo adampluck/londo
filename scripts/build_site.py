@@ -13,6 +13,7 @@ Reads Supabase credentials from the site's config.js (public anon key).
 from __future__ import annotations
 
 import argparse
+import gzip
 import html
 import json
 import re
@@ -2007,10 +2008,20 @@ def _parse_ts(value: str) -> datetime:
 def _rest_get(supabase_url: str, anon_key: str, query: str) -> list[dict]:
     req = urllib.request.Request(
         f"{supabase_url}/rest/v1/events?{query}",
-        headers={"apikey": anon_key, "Authorization": f"Bearer {anon_key}"},
+        headers={
+            "apikey": anon_key,
+            "Authorization": f"Bearer {anon_key}",
+            # urllib asks for nothing by default, and Supabase bills the
+            # bytes it sends: a build pulls a year of rows, several times a
+            # day, and gzip makes that well under half the size
+            "Accept-Encoding": "gzip",
+        },
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.load(resp)
+        body = resp.read()
+        if resp.headers.get("Content-Encoding") == "gzip":
+            body = gzip.decompress(body)
+        return json.loads(body)
 
 
 # Filled once per build by assign_event_slugs() — unique, title-based paths.
