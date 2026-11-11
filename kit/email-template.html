@@ -9,10 +9,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <meta name="supported-color-schemes" content="light dark">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
   <title>PsyConnect</title>
   <style>
+    :root { color-scheme: light only; supported-color-schemes: light only; }
     body { margin: 0; padding: 0; background: #f6efe4; }
     a { color: #6d4160; }
     @media (max-width: 600px) {
@@ -21,25 +22,15 @@
       .pc-col { display: block !important; max-width: none !important; }
       .pc-gap { display: none !important; }
     }
-    /* Dark mode: the site's dark palette, for mail apps that let the email
-       choose (Apple Mail, Outlook on the web and the new Outlook, whose
-       dark mode marks the page with data-ogsc / data-ogsb). The Gmail apps
-       ignore all this and darken the email themselves; the cream-plated
-       logo is for them. The pc-* classes come from scripts/weekly_email.py.
-       Keep the three copies alike. */
-    @media (prefers-color-scheme: dark) {
-      .pc-page { background: #111714 !important; }
-      .pc-card { background: #1d2420 !important; border-color: #2f3833 !important; }
-      .pc-edge { border-color: #2f3833 !important; }
-      .pc-ink { color: #ece7dc !important; }
-      .pc-dim { color: #a9b3a9 !important; }
-      .pc-plum { color: #93ccb4 !important; }
-      .pc-ochre { color: #e9b48c !important; }
-      .pc-cta { background: #93ccb4 !important; color: #0f1513 !important; }
-      .pc-foot, .pc-foot a { color: #9aa89d !important; }
-      .pc-logo-light { display: none !important; }
-      .pc-logo-dark { display: block !important; }
-    }
+    /* Light, always: "light only" above keeps Apple Mail (Mac, iPhone)
+       and browsers on the cream palette even when the device is in dark
+       mode. Some mail apps darken every email whatever it asks:
+       - Outlook on the web and the new Outlook mark the page with
+         data-ogsc / data-ogsb when they do, so the rules below give them
+         the site's dark palette rather than their own inversion;
+       - the Gmail apps recolour it themselves and read no CSS for it;
+         the cream-plated logo is what keeps the wordmark crisp there.
+       The pc-* classes come from scripts/weekly_email.py. */
     [data-ogsb] .pc-page { background: #111714 !important; }
     [data-ogsb] .pc-card { background: #1d2420 !important; border-color: #2f3833 !important; }
     [data-ogsb] .pc-edge { border-color: #2f3833 !important; }

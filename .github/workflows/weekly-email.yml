@@ -1,9 +1,11 @@
 name: Weekly email
 
 # Builds psyconnect's weekly email (one version per interest) and hands it
-# to Kit the evening before it goes out — Thursday 09:00 London, set in
-# scripts/weekly_email.py. The evening gap leaves time to look over the
-# drafts or cancel a scheduled send in Kit.
+# to Kit the day before it goes out — Thursday 09:00 London, set in
+# scripts/weekly_email.py. The gap leaves time to look over the drafts or
+# cancel a scheduled send in Kit — and room for GitHub's scheduled runs,
+# which can start hours late (18:00 runs on 4 and 11 Nov 2026 started
+# 5–6 hours late). Mid-morning also follows the 05:17 scrape.
 #
 # Mode: the repo variable WEEKLY_EMAIL_MODE (Settings → Secrets and
 # variables → Actions → Variables): "draft" (default — review and send
@@ -11,7 +13,7 @@ name: Weekly email
 
 on:
   schedule:
-    - cron: "0 18 * * 3" # Wednesdays 18:00 UTC
+    - cron: "0 10 * * 3" # Wednesdays 10:00 UTC
   workflow_dispatch:
     inputs:
       mode:

@@ -257,6 +257,7 @@ def edition_sections(edition: str | None, events: list[dict], send_at: datetime)
         "picks": picks,
         "rest": sorted(rest, key=lambda e: e["start_at"]),
         "browse": browse_tiles(edition, events),
+        "n": len(featured) + len(mine),  # the week's events for this edition
     }
 
 
@@ -637,23 +638,108 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
 </td></tr>
 </table>"""
 
-    # the subject names the strongest picks, not merely the soonest
-    picks = [e for e in secs["featured"] + sorted(secs["picks"], key=score, reverse=True)
-             if link(e, slugs, campaign, "")]
-    names = [e.get("title") or "" for e in picks[:2]]  # plain text, not HTML
-    if edition:
-        subject = f"{EDITIONS[edition]} this week: {names[0]}" if names else f"{EDITIONS[edition]} this week in London"
-    else:
-        subject = f"This week: {names[0]}" if names else "This week in London"
-    if len(subject) > 80:
-        subject = subject[:77].rsplit(" ", 1)[0] + "…"
-    count = len(secs["featured"]) + len(secs["picks"]) + len(secs["rest"])
-    preview = (
-        f"{names[1]} and {count - 2} more gatherings across London, {span}."
-        if len(names) > 1 and count > 2
-        else f"In-person gatherings across London, {span}."
-    )
+    subject, preview = subject_lines(edition, secs, send_at, span,
+                                     lambda e: bool(link(e, slugs, campaign, "")))
     return {"subject": subject, "preview_text": preview, "content": content}
+
+
+# ---------- subject line ---------------------------------------------------
+
+# The dates each series (by title) runs on, past and upcoming: set by
+# main(). Dates, not listings: one event is often listed on several sites.
+# A weekly class is always on, so it makes a dull headline.
+SERIES_DATES: dict[str, set[str]] = {}
+SUBJECT_MAX = 70  # about what a phone's inbox shows before cutting off
+
+
+def headline_score(e: dict) -> float:
+    """How well an event leads the subject: the pick score, plus a lot for
+    our own featured event, plus a one-off over a weekly regular."""
+    s = score(e)
+    if is_featured(e):
+        s += 100
+    runs = len(SERIES_DATES.get(series_key(e)) or {""})
+    if runs <= 1:
+        s += 25
+    elif runs >= 4:
+        s -= 25
+    return s
+
+
+def short_title(e: dict) -> str:
+    """The title as a subject can carry it: no "Monthly |" or "Special |" tag, no
+    parentheses, no trailing "– London", and only the first part of a long
+    "Name – subtitle" title."""
+    t = re.sub(r"\s+", " ", e.get("title") or "").strip()
+    t = re.sub(r"^(weekly|monthly|fortnightly)\s*[:–-]\s*|^\w+\s*\|\s*", "", t, flags=re.I)
+    t = re.sub(r"\s*\([^)]*\)", "", t)
+    t = re.sub(r"\s*(?:[-–|,]|\bin)\s*London\s*$", "", t, flags=re.I)
+    if len(t) > 40:
+        head = re.split(r"\s+[–|-]\s+|:\s+", t, maxsplit=1)[0]
+        listed = t.split(", ", 1)[0]  # "Breathwork, Sound and Cacao": too vague cut
+        if len(head) >= 8 and head != t:
+            t = head
+        elif len(listed) >= 15:
+            t = listed
+    return t.strip(" -–|:")
+
+
+def subject_lines(edition: str | None, secs: dict, send_at: datetime, span: str,
+                  linked) -> tuple[str, str]:
+    """(subject, preview text). The subject leads with the email's best
+    headline events (one-offs over weekly classes, different hosts), in one of a
+    few shapes that change from week to week and edition to edition. The
+    preview names whatever the subject left out."""
+    # the cards first; the week's list can lead too (it's in the email),
+    # a little behind, when it has a one-off the cards don't (on topic, in
+    # an edition: the list also carries its neighbours)
+    ranked = sorted(
+        [(headline_score(e), e) for e in secs["featured"] + secs["picks"] if linked(e)]
+        + [(headline_score(e) - 10, e) for e in secs["rest"]
+           if linked(e) and (not edition or edition in topic_slugs(e))],
+        key=lambda t: t[0], reverse=True,
+    )
+    leads: list[dict] = []
+    for _, e in ranked:
+        if all(not (hosts(e) & hosts(o)) for o in leads):
+            leads.append(e)
+        if len(leads) == 3:
+            break
+    names = [short_title(e) for e in leads]
+    topic = EDITIONS[edition] if edition else None
+    n = secs["n"]
+    if not names:
+        subject = f"{topic} this week in London" if topic else "This week in London"
+        return subject, f"In-person gatherings across London, {span}."
+
+    a = names[0]
+    day = f"{bs._parse_ts(leads[0]['start_at']).astimezone(bs.LONDON):%A}"
+    shapes = []
+    if len(names) > 1:
+        b = names[1]
+        shapes += [f"{a}, {b} & more this week", f"This week: {a} and {b}"]
+    shapes += [
+        f"{topic} this week: {a}" if topic else f"This week in London: {a}",
+        f"{a} + {n - 1} more gatherings this week" if n > 3 else f"This week: {a}",
+        f"{day}: {a}, and more across London",
+    ]
+    # the week number turns the shapes over; the edition offsets them, so
+    # the editions don't all read alike
+    turn = send_at.isocalendar().week + (list(EDITIONS).index(edition) + 1 if edition else 0)
+    order = shapes[turn % len(shapes):] + shapes[:turn % len(shapes)]
+    subject = next((s for s in order if len(s) <= SUBJECT_MAX), None)
+    if subject is None:  # a long title: the shortest shape, cut at a word
+        shortest = min(order, key=len)
+        subject = shortest[:SUBJECT_MAX - 1].rsplit(" ", 1)[0].rstrip(",:&+") + "…"
+
+    left = [x for x in names if x not in subject]
+    if n > 3:
+        what = f"{n} {topic.lower()} gatherings" if topic else f"{n} gatherings"
+    else:
+        what = f"{topic} gatherings" if topic else "Gatherings"
+    preview = f"{what} across London, {span}"
+    preview += f" — including {' and '.join(left[:2])}." if left else "."
+    return subject, preview
 
 
 # ---------- Kit ------------------------------------------------------------
@@ -791,7 +877,11 @@ def main() -> None:
     events = week_events(upcoming, send_at)
     slugs = live_slugs()
     # the practices with a page, as the site build decides it
-    PRACTICE_PAGES[:] = bs.site_practices(upcoming, [e for e in bs.fetch_past_events() if bs.site_match(e)])
+    past = [e for e in bs.fetch_past_events() if bs.site_match(e)]
+    PRACTICE_PAGES[:] = bs.site_practices(upcoming, past)
+    SERIES_DATES.clear()
+    for e in upcoming + past:
+        SERIES_DATES.setdefault(series_key(e), set()).add(e["start_at"][:10])
     icons = live(icon_path("spark", 0))
     # the logo on its cream plate, with a bone one for dark mode
     # (scripts/email_logo.py), once the site serves them
@@ -816,13 +906,14 @@ def main() -> None:
                 .replace("{{ message_content }}", mail["content"])
                 .replace("{{ unsubscribe_url }}", "#")
                 .replace("{{ address }}", "[Kit’s postal address]")
-                .replace(
-                    "<body style=\"margin:0;padding:0;background:#f6efe4;\">",
-                    "<body style=\"margin:0;padding:0;background:#f6efe4;\">"
-                    f"<p style='font-size:13px;font-family:{SANS};padding:12px;margin:0;background:#222;color:#eee'>"
-                    f"<b>Subject:</b> {bs.esc(mail['subject'])}<br>"
-                    f"<b>Preview:</b> {bs.esc(mail['preview_text'])}</p>",
-                )
+            )
+            page = re.sub(
+                r"<body[^>]*>",
+                lambda m: m.group(0)
+                + f"<p style='font-size:13px;font-family:{SANS};padding:12px;margin:0;background:#222;color:#eee'>"
+                f"<b>Subject:</b> {bs.esc(mail['subject'])}<br>"
+                f"<b>Preview:</b> {bs.esc(mail['preview_text'])}</p>",
+                page, count=1,
             )
             (args.out / f"{name}.html").write_text(page)
             links.append(f"<li><a href='{name}.html'>{name}</a> — {bs.esc(mail['subject'])}</li>")
