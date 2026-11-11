@@ -1388,7 +1388,9 @@ PRIVACY_CONTENT: dict[str, list[str]] = {
         "data controller for the personal data described here. For "
         "anything about your data, email hello@psyconnect.london.",
         "If you sign up for the weekly email, we keep your email address, "
-        "the page you signed up on, and the topics of that page (for "
+        "the page you signed up on, how you found the site (for example "
+        "\"google, organic\", and the page you arrived on), and the topics "
+        "of that page (for "
         "example \"healing\" or \"connection\"). We use those topics only to "
         "choose which gatherings come first in your email; you're never "
         "asked to fill in a profile, and we don't work out anything else "

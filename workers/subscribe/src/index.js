@@ -12,7 +12,8 @@
    1. create the subscriber as `active` (an upsert — an existing
       subscriber keeps their state, so someone who unsubscribed isn't
       quietly put back), recording the sign-up page;
-   2. add them to the form, which records where they came from;
+   2. add them to the form, which records where they came from: the
+      landing page, with the source as UTM tags Kit parses out;
    3. tag them with the page's interests (tags are created on first use). */
 
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -125,10 +126,13 @@ async function handle(request, env, origin) {
       method: "POST",
       body: JSON.stringify({
         email_address: email,
-        referrer: origin + page,
+        referrer: referrer(origin, page, body.src),
       }),
     });
     if (!joined.ok) throw new Error(`form ${joined.status}`);
+    const rec = await joined.json().catch(() => ({}));
+    console.log("kit referrer", JSON.stringify(
+      (rec.subscriber || {}).referrer_utm_parameters || null));
 
     // 3. interests — best effort: a tag hiccup shouldn't lose the sign-up
     const edition = tags.find((t) => EDITIONS.has(t));
@@ -148,6 +152,24 @@ async function handle(request, env, origin) {
   }
 
   return json(origin, 200, { ok: true });
+}
+
+// The form's referrer: the page they landed on, with how they found the
+// site as UTM tags, which Kit parses out of it (google/organic,
+// chatgpt/referral, or the tags of the link they followed — see
+// web/signup.js). Without that, the page they signed up on, as before.
+const UTM_VALUE = /^[\w .:\/@+-]{1,100}$/;
+const PATH = /^\/(?!\/)[\w\-.\/%~]{0,199}$/;
+function referrer(origin, page, src) {
+  if (!src || typeof src !== "object") return origin + page;
+  const q = new URLSearchParams();
+  for (const k of ["source", "medium", "campaign", "content", "term"]) {
+    const v = String(src[k] || "").trim();
+    if (v && UTM_VALUE.test(v)) q.set("utm_" + k, v);
+  }
+  if (!q.has("utm_source")) return origin + page;
+  const landing = PATH.test(String(src.landing || "")) ? src.landing : page;
+  return `${origin}${landing}?${q}`;
 }
 
 // Tag name -> id, creating any that don't exist yet. One list call per

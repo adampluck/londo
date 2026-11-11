@@ -117,6 +117,82 @@
     }
   }
 
+  // ---- where this visitor came from ------------------------------------------
+  // Sent with the sign-up so Kit can record the source as UTM tags. Taken
+  // when they land, since by the time the modal opens they've often moved
+  // on a page and the referrer is our own site. An arrival from outside
+  // (a referrer, or UTM tags) replaces what's kept; a direct visit or a
+  // move within the site leaves it be: the last way in that told us
+  // anything. Kept apart from pc-signup, and for 30 days.
+  const SRC_KEY = "pc-src";
+  const AI_MEDIUM = "referral"; // as GA4 files chatgpt.com
+  function classify(search, referrer, here) {
+    const q = new URLSearchParams(search);
+    const utm = {};
+    for (const k of ["source", "medium", "campaign", "content", "term"]) {
+      const v = (q.get("utm_" + k) || "").trim();
+      if (v) utm[k] = v;
+    }
+    let host = "";
+    if (referrer) {
+      try {
+        const r = new URL(referrer);
+        host = r.protocol === "android-app:" ? r.host : r.hostname;
+      } catch {}
+    }
+    host = host.toLowerCase().replace(/^www\./, "");
+    if (host === here) host = "";
+    // checked in order: Gemini before Google, apps before the web
+    const KNOWN = [
+      [/^gemini\.google\.com$|^bard\.google\.com$/, "gemini", AI_MEDIUM],
+      [/(^|\.)chatgpt\.com$|^chat\.openai\.com$/, "chatgpt", AI_MEDIUM],
+      [/(^|\.)perplexity\.ai$/, "perplexity", AI_MEDIUM],
+      [/^claude\.ai$/, "claude", AI_MEDIUM],
+      [/^copilot\.microsoft\.com$/, "copilot", AI_MEDIUM],
+      [/^com\.google\.android\.googlequicksearchbox$/, "google", "organic"],
+      // google.com, .co.uk, .com.au, .de… (not com.google.android.gm, Gmail's app)
+      [/(^|\.)google\.(com|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2})$/, "google", "organic"],
+      [/(^|\.)bing\.com$/, "bing", "organic"],
+      [/(^|\.)duckduckgo\.com$/, "duckduckgo", "organic"],
+      [/^search\.brave\.com$/, "brave", "organic"],
+      [/(^|\.)ecosia\.org$/, "ecosia", "organic"],
+      [/(^|\.)search\.yahoo\.com$/, "yahoo", "organic"],
+      [/(^|\.)facebook\.com$|^fb\.me$/, "facebook", "social"],
+      [/(^|\.)instagram\.com$/, "instagram", "social"],
+      [/^t\.co$|(^|\.)(x|twitter)\.com$/, "x", "social"],
+      [/(^|\.)linkedin\.com$|^lnkd\.in$/, "linkedin", "social"],
+      [/(^|\.)reddit\.com$/, "reddit", "social"],
+    ];
+    const known = (h) => {
+      for (const [re, source, medium] of KNOWN) if (re.test(h)) return { source, medium };
+      return null;
+    };
+    if (utm.source) {
+      // tagged links win; ChatGPT tags its links with a source and no medium
+      if (!utm.medium) {
+        const k = known(utm.source.toLowerCase().replace(/^www\./, ""));
+        if (k) { utm.source = k.source; utm.medium = k.medium; }
+        else utm.medium = "referral";
+      }
+      return utm;
+    }
+    if (!host) return null; // direct, or within the site
+    return known(host) || { source: host, medium: "referral" };
+  }
+  try {
+    const got = classify(location.search, document.referrer, location.hostname.replace(/^www\./, ""));
+    if (got && !/email/i.test(got.source + " " + got.medium)) {
+      localStorage.setItem(SRC_KEY, JSON.stringify({ ...got, landing: location.pathname, at: Date.now() }));
+    }
+  } catch {}
+  function source() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SRC_KEY) || "null");
+      if (s && Date.now() - s.at < SNOOZE_MS) return s;
+    } catch {}
+    return null;
+  }
+
   if (!endpoint && !forced) return;
 
   // Arrived from the weekly email: a reader already, so remember it and
@@ -444,6 +520,7 @@
           kind,
           page: location.pathname,
           tags,
+          src: source(),
           token,
           website: form.querySelector(".pcs-hp").value,
           dwellMs: Date.now() - opened,
