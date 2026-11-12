@@ -85,7 +85,7 @@ self.LONDO_CONFIG = {
     "curated": {
       "organizers": [
         "The Psychedelic Society", "Numinity", "Adventures in Awareness",
-        "Unseen", "Unseen London", "Creating Meaning", "The Study Society"
+        "Unseen", "Unseen London", "Creating Meaning"
       ],
       "titleMatches": ["bohm", "contact improvisation", "ci lab"],
       "alwaysPick": ["bohm dialogue", "bohmian dialogue"],
