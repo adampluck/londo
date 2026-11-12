@@ -348,13 +348,30 @@ def site_png(path: str, width: int) -> str:
 
 
 def icon_path(name: str, tone: int) -> str:
-    """An explore-tile icon: a PNG on the site (scripts/email_icons.py makes
-    them), since mail apps won't show SVG."""
-    return f"/icons/email/{name}-{tone}.png"
+    """An explore-tile glyph: a transparent PNG on the site
+    (scripts/email_icons.py makes them), since mail apps won't show SVG.
+    The -g names are new files, not the old tinted squares (-0, -1, -2)
+    redrawn, so no mail proxy's cached copy of those turns up."""
+    return f"/icons/email/{name}-g{tone}.png"
 
 
 def icon_img(name: str, tone: int) -> str:
     return site_png(icon_path(name, tone), ICON_PX * 2)
+
+
+def icon_tile(name: str, tone: int, px: int, radius: int) -> str:
+    """The glyph over its tint. The tint is the cell's background, not part
+    of the image, so a mail app's dark mode darkens it with everything
+    else; Gmail leaves images alone, and a baked-in tint stayed a pale
+    square on its dark background."""
+    tint = bs.EMAIL_TONES[tone % 3][1]
+    return (
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>'
+        f'<td class="pc-tile" width="{px}" height="{px}" bgcolor="{tint}" '
+        f'style="background-color:{tint};border-radius:{radius}px;">'
+        f'<img src="{bs.esc(icon_img(name, tone % 3))}" width="{px}" height="{px}" alt="" '
+        'style="display:block;border:0;"></td></tr></table>'
+    )
 
 
 def live(path: str) -> bool:
@@ -424,10 +441,12 @@ def event_card(e: dict, href: str) -> str:
             f'height:auto;border-radius:14px 14px 0 0;"></a>'
         )
     else:
-        # the site's imageless banner: sand gradient (solid where unsupported)
+        # the site's imageless banner, in plain sand: a gradient is an
+        # image to Gmail, which left it a bright block in dark mode, where a
+        # plain colour darkens with the card
         art = (
-            f'<div style="height:{COL // 2}px;border-radius:14px 14px 0 0;background:#eadbc4;'
-            f'background-image:linear-gradient(160deg,#f1e6d4,#e3cfb2);"></div>'
+            f'<div class="pc-banner" style="height:{COL // 2}px;border-radius:14px 14px 0 0;'
+            'background-color:#eadbc4;"></div>'
         )
     hook = blurb(e)
     hook_html = (
@@ -488,8 +507,7 @@ def list_section(title: str, events: list[dict], slugs: dict[str, str], campaign
         rows = days.setdefault(f"{start:%A %-d %B}", [])
         icon = (
             f'<td width="{LIST_ICON_PX}" valign="top" style="padding:1px 12px 0 0;">'
-            f'<img src="{bs.esc(icon_img(event_icon(e), len(rows) % 3))}" width="{LIST_ICON_PX}" '
-            f'height="{LIST_ICON_PX}" alt="" style="display:block;border:0;border-radius:8px;"></td>'
+            f'{icon_tile(event_icon(e), len(rows), LIST_ICON_PX, 8)}</td>'
             if icons else ""
         )
         rows.append(
@@ -514,8 +532,7 @@ def browse_section(tiles: list[dict], campaign: str, icons: bool) -> str:
         href = site_link(t["path"], campaign, f"browse-{t['track']}")
         icon = (
             f'<td width="{ICON_PX}" style="padding:0 12px 0 0;"><a href="{bs.esc(href)}">'
-            f'<img src="{bs.esc(icon_img(t["icon"], i % 3))}" width="{ICON_PX}" height="{ICON_PX}" '
-            f'alt="" style="display:block;border:0;border-radius:10px;"></a></td>'
+            f'{icon_tile(t["icon"], i, ICON_PX, 10)}</a></td>'
             if icons else ""
         )
         cards.append(

@@ -3594,6 +3594,12 @@ _SPARK_ICON = '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 
 # The explore tiles' tones as literal light-theme colours (--peach, the
 # peach/gold mix, --gold) and the tile's 14% tint of each over --card.
 EMAIL_TONES = (("#6d4160", "#ece0e1"), ("#7c5039", "#efe4dc"), ("#8a5f14", "#f1e6d4"))
+# The email draws each tile's tint as a table cell's background, which a
+# mail app's dark mode darkens with the rest of the email, and lays a
+# transparent glyph PNG over it: a tint baked into the image stayed a pale
+# square on Gmail's dark background. So the glyph inks are mid-tones,
+# readable on the light tint (3:1 and up) and on a darkened one.
+EMAIL_GLYPH_INKS = ("#9a5a86", "#a5694a", "#a87a22")
 # "this weekend" has no explore tile; the email's browse row needs one
 _CALENDAR_ICON = (
     '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'
@@ -3602,9 +3608,10 @@ _CALENDAR_ICON = (
 
 
 def write_email_icons(outdir: Path, site_topics: list[str] | None) -> None:
-    """The explore tiles as stand-alone SVGs, one per tone, for the weekly
-    email (scripts/weekly_email.py), which has wsrv.nl turn them into PNGs:
-    mail apps won't render inline SVG. Named by practice or topic slug."""
+    """The explore tiles' glyphs as stand-alone SVGs, one per tone, on a
+    transparent ground (see EMAIL_GLYPH_INKS), for the weekly email
+    (scripts/weekly_email.py); scripts/email_icons.py has wsrv.nl turn them
+    into PNGs, as mail apps won't render SVG. Named <slug>-g<tone>."""
     outdir.mkdir(parents=True, exist_ok=True)
     icons = {s: EXPLORE_ICONS.get(s, _SPARK_ICON) for s in PRACTICES}
     icons |= {
@@ -3614,10 +3621,9 @@ def write_email_icons(outdir: Path, site_topics: list[str] | None) -> None:
     }
     icons |= {"spark": _SPARK_ICON, "weekend": _CALENDAR_ICON}
     for name, paths in icons.items():
-        for tone, (ink, tint) in enumerate(EMAIL_TONES):
-            (outdir / f"{name}-{tone}.svg").write_text(
+        for tone, ink in enumerate(EMAIL_GLYPH_INKS):
+            (outdir / f"{name}-g{tone}.svg").write_text(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24">'
-                f'<rect width="24" height="24" rx="5" fill="{tint}"/>'
                 f'<g transform="translate(5.5 5.5) scale(.5417)" fill="none" stroke="{ink}" '
                 f'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{paths}</g></svg>'
             )
