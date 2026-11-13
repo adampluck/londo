@@ -183,11 +183,13 @@
     const got = classify(location.search, document.referrer, location.hostname.replace(/^www\./, ""));
     if (got && !/email/i.test(got.source + " " + got.medium)) {
       localStorage.setItem(SRC_KEY, JSON.stringify({ ...got, landing: location.pathname, at: Date.now() }));
-    } else if (!got && !source()) {
-      // nothing to go on and nothing kept: a direct arrival (typed, a
-      // bookmark, an app that sends no referrer), so say so rather than
-      // leave Kit blank. A later arrival from outside replaces it.
-      localStorage.setItem(SRC_KEY, JSON.stringify({ source: "direct", medium: "none", landing: location.pathname, at: Date.now() }));
+    } else if (!source()) {
+      // nothing kept: an arrival from the weekly email (a forward, say)
+      // keeps its tags; with nothing to go on at all it's direct (typed, a
+      // bookmark, an app that sends no referrer), so Kit is never left
+      // blank. A later arrival from outside replaces either.
+      const fallback = got || { source: "direct", medium: "none" };
+      localStorage.setItem(SRC_KEY, JSON.stringify({ ...fallback, landing: location.pathname, at: Date.now() }));
     }
   } catch {}
   function source() {

@@ -7,7 +7,7 @@
 importScripts("config.js");
 
 const SITE = (self.LONDO_CONFIG && self.LONDO_CONFIG.SITE) || {};
-const CACHE = (SITE.id || "londo") + "-v61";
+const CACHE = (SITE.id || "londo") + "-v62";
 const SHELL = [
   "./",
   "index.html",
@@ -83,6 +83,24 @@ self.addEventListener("fetch", (e) => {
       );
       return;
     }
+  }
+
+  // the sign-up script changes more often than the cache is bumped, and a
+  // stale copy loses where the visitor came from: fresh when online, the
+  // cached copy offline
+  if (new URL(request.url).pathname.endsWith("/signup.js")) {
+    e.respondWith(
+      fetch(request)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(request, { ignoreSearch: true }))
+    );
+    return;
   }
 
   // everything else (shell, fonts, images): cache-first, refresh behind
