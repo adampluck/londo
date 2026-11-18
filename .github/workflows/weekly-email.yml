@@ -12,7 +12,13 @@ name: Weekly email
 # from Kit) or "schedule" (sends itself). A manual run can override it.
 
 on:
+  # GitHub's scheduler starts runs hours late here (scrapes 7–9 h late in
+  # Nov 2026) and sometimes drops them (11 and 18 Nov never ran), so try
+  # three times. A re-run replaces the week's broadcasts, so the last one
+  # to start wins, with the freshest data.
   schedule:
+    - cron: "0 20 * * 2" # Tuesdays 20:00 UTC
+    - cron: "0 2 * * 3" # Wednesdays 02:00 UTC
     - cron: "0 10 * * 3" # Wednesdays 10:00 UTC
   workflow_dispatch:
     inputs:
