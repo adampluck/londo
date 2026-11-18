@@ -951,6 +951,10 @@ def main() -> None:
     clear_previous(kit, prefix)
 
     ed_ids = [tags[f"edition:{ed}"] for ed in EDITIONS]
+    # Kit refuses a sixth broadcast scheduled for the same moment ("too
+    # many broadcasts at once", saved as a draft instead), so each one
+    # goes a minute after the last
+    slot = 0
     for ed, mail in built.items():
         if ed and not counts.get(ed):
             print(f"  {ed}: no subscribers, skipped")
@@ -960,14 +964,16 @@ def main() -> None:
             if ed
             else {"all": None, "any": None, "none": [{"type": "tag", "ids": ed_ids}]}
         )
+        at = send_at + timedelta(minutes=slot)
+        slot += 1
         body = {
             "content": mail["content"],
             "subject": mail["subject"],
             "preview_text": mail["preview_text"],
             "description": prefix + (ed or "general"),
             "public": False,
-            "published_at": send_at.isoformat(),
-            "send_at": send_at.isoformat() if args.mode == "schedule" else None,
+            "published_at": at.isoformat(),
+            "send_at": at.isoformat() if args.mode == "schedule" else None,
             "subscriber_filter": [flt],
         }
         if template:
