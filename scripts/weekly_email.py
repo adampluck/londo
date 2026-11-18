@@ -7,7 +7,9 @@ Worker (workers/subscribe) sets it from the page they signed up on, and
 runs: PsyConnect's own next event; four top picks as cards, chosen by the
 site's top-picks rules within the edition's topic; the rest of the week as
 text, by day, leaning to the topic and its neighbours; then the site's
-explore tiles. Everyone without an edition gets the general version. One tag per person is what stops anyone
+explore tiles. Everyone without an edition gets the general version, and
+so does everyone in the smallest editions once there are more than Kit's
+cap of MAX_BROADCASTS scheduled broadcasts allows. One tag per person is what stops anyone
 getting two emails: Kit's broadcast filter takes a single all/any/none
 group, so "general" is "none of the edition tags".
 
@@ -47,6 +49,9 @@ SITE_ID = "psyconnect"
 
 # Edition slug -> label. Priority order too: someone tagged with several
 # topics but no edition (signed up before editions existed) gets the first.
+# Kit won't take more scheduled broadcasts than this (18 Nov 2026)
+MAX_BROADCASTS = 5
+
 EDITIONS = {
     "psychedelics": "Psychedelics",
     "consciousness": "Consciousness",
@@ -950,30 +955,33 @@ def main() -> None:
     prefix = f"weekly:{send_at:%Y-%m-%d}:"
     clear_previous(kit, prefix)
 
-    ed_ids = [tags[f"edition:{ed}"] for ed in EDITIONS]
-    # Kit refuses a sixth broadcast scheduled for the same moment ("too
-    # many broadcasts at once", saved as a draft instead), so each one
-    # goes a minute after the last
-    slot = 0
+    # Kit refuses a sixth scheduled broadcast ("too many broadcasts at
+    # once", saved as a draft instead; staggering send times a minute
+    # apart didn't help, 18 Nov 2026). So only the biggest editions get
+    # their own email, and everyone else gets the general one.
+    own = sorted((ed for ed in EDITIONS if counts.get(ed)), key=lambda ed: -counts[ed])
+    own = own[: MAX_BROADCASTS - 1]
+    ed_ids = [tags[f"edition:{ed}"] for ed in own]
     for ed, mail in built.items():
         if ed and not counts.get(ed):
             print(f"  {ed}: no subscribers, skipped")
+            continue
+        if ed and ed not in own:
+            print(f"  {ed}: {counts[ed]} subscriber(s) get the general email (Kit's {MAX_BROADCASTS}-broadcast cap)")
             continue
         flt = (
             {"all": [{"type": "tag", "ids": [tags[f"edition:{ed}"]]}], "any": None, "none": None}
             if ed
             else {"all": None, "any": None, "none": [{"type": "tag", "ids": ed_ids}]}
         )
-        at = send_at + timedelta(minutes=slot)
-        slot += 1
         body = {
             "content": mail["content"],
             "subject": mail["subject"],
             "preview_text": mail["preview_text"],
             "description": prefix + (ed or "general"),
             "public": False,
-            "published_at": at.isoformat(),
-            "send_at": at.isoformat() if args.mode == "schedule" else None,
+            "published_at": send_at.isoformat(),
+            "send_at": send_at.isoformat() if args.mode == "schedule" else None,
             "subscriber_filter": [flt],
         }
         if template:
