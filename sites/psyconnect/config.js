@@ -49,7 +49,7 @@ self.LONDO_CONFIG = {
         "wonder workshop - for little ones",
         "lfg summer party",
         "live music:",
-        "run club", "running club", "parkrun", "5km", "10km", "bootcamp", "hyrox",
+        "run club", "running club", "seed run", "parkrun", "5km", "10km", "bootcamp", "hyrox",
         "crossfit", "spin class", "pilates", "reformer", "kettlebell",
         "personal training", "strength training", "fitness class",
         "red light therapy", "high performers", "performance studio",
