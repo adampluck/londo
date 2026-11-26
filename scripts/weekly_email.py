@@ -615,14 +615,13 @@ def logo_html(both: bool) -> str:
     site's own."""
     if not both:
         return (f'<img src="{bs.esc(site_png("/logo.png", 360))}" width="180" alt="PsyConnect" '
-                'style="display:block;border:0;width:180px;height:auto;">')
-    # the plate's padding sets its stitches ~8px in from the text below:
-    # invisible on cream, and mail apps drop the negative margin it'd need
+                'style="display:block;margin:0 auto;border:0;width:180px;height:auto;">')
+    # centred, so the plate's padding sits evenly either side
     return (
         f'<img class="pc-logo-light" src="{bs.esc(site_png(LOGO_PLATE, 394))}" width="197" alt="PsyConnect" '
-        'style="display:block;border:0;width:197px;height:auto;">'
+        'style="display:block;margin:0 auto;border:0;width:197px;height:auto;">'
         f'<img class="pc-logo-dark" src="{bs.esc(site_png(LOGO_DARK, 360))}" width="180" alt="PsyConnect" '
-        'style="display:none;mso-hide:all;border:0;width:180px;height:auto;">'
+        'style="display:none;mso-hide:all;margin:0 auto;border:0;width:180px;height:auto;">'
     )
 
 
@@ -634,6 +633,9 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
     span = f"{send_at:%a %-d %b} – {end:%a %-d %b}"
     picks_title = f"Our {EDITIONS[edition].lower()} picks" if edition else "Our top picks this week"
     rest_title = "Also this week" if edition else "More this week"
+    what = f"{EDITIONS[edition].lower()} gatherings" if edition else "gatherings"
+    intro = (f"Hello! Here's our pick of in-person {what} across London this week. "
+             "We hope something here speaks to you, and maybe we'll see you there.")
 
     featured = "".join(
         featured_block(e, href)
@@ -649,10 +651,10 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
     # Just the body: the background, footer, unsubscribe link and postal
     # address come from the PsyConnect template in Kit (kit/email-template.html).
     content = f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td style="padding:0 0 6px;"><a href="{bs.esc(site_link('/', campaign, 'logo'))}">{logo_html(logo)}</a></td></tr>
-<tr><td style="padding:0 0 22px;">
-  <p class="pc-dim" style="margin:0;font-size:15px;line-height:1.5;font-family:{SANS};color:{DIM};">In-person gatherings across London · {bs.esc(span)}</p>
-  <p class="pc-dim" style="margin:4px 0 0;font-size:12px;line-height:1.5;font-family:{SANS};color:{DIM};">Add hello@psyconnect.london to your contacts so this lands in your inbox.</p>
+<tr><td align="center" style="padding:4px 0 10px;text-align:center;"><a href="{bs.esc(site_link('/', campaign, 'logo'))}">{logo_html(logo)}</a></td></tr>
+<tr><td align="center" style="padding:0 8px 26px;text-align:center;">
+  <p class="pc-plum" style="margin:0 0 8px;font-weight:600;font-size:12px;line-height:1.4;font-family:{SANS};letter-spacing:.08em;text-transform:uppercase;color:{PLUM};">{bs.esc(span)}</p>
+  <p class="pc-dim" style="margin:0 auto;max-width:440px;font-size:15px;line-height:1.55;font-family:{SANS};color:{DIM};">{bs.esc(intro)}</p>
 </td></tr>
 {body}
 <tr><td style="padding:12px 0 28px;">
