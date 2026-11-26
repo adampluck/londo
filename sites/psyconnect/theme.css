@@ -1255,6 +1255,10 @@ body.theme-night .blob { opacity: 0.3; }
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   padding: 0.1rem 0;
+  /* one pill's height (30px at 16px rem), held while it's still empty —
+     see the markup in index.html */
+  min-height: 1.875rem;
+  box-sizing: border-box;
   mask-image: linear-gradient(90deg, #000 calc(100% - 2.5rem), transparent);
   /* mouse users drag it like the day strip (enableDragScroll in app.js) */
   cursor: grab;

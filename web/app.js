@@ -991,7 +991,13 @@
     // panel, under their parent.
     function renderPracticeRail() {
       const rail = document.getElementById("practice-rail");
-      if (!rail || !FEATURES.practiceRail) return;
+      if (!rail) return;
+      // the markup leaves it showing (to hold its height), so switching
+      // the feature off has to hide it here
+      if (!FEATURES.practiceRail) {
+        rail.hidden = true;
+        return;
+      }
       const pills = PRACTICES.filter((p) => !p.parent).map((p) => {
         const btn = chip("modality", FACETS.modality, p.slug, p.label);
         btn.dataset.goatcounterClick = `rail/${p.slug}`;

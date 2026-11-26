@@ -152,8 +152,11 @@
 
     </div>
 
-    <!-- one icon pill per practice, a shortcut into the modality filter -->
-    <nav class="controls-row practice-rail" id="practice-rail" aria-label="browse by practice" hidden></nav>
+    <!-- one icon pill per practice, a shortcut into the modality filter.
+         Not hidden in the markup: it holds its height while empty, so the
+         pre-rendered picks below don't drop when the pills arrive (a tap
+         on the first card would land on the space above it instead) -->
+    <nav class="controls-row practice-rail" id="practice-rail" aria-label="browse by practice"></nav>
 
     <!-- refinements, shut until asked for: most visits are a browse -->
     <div class="controls-row filters-panel" id="filters-panel" hidden>
