@@ -3804,6 +3804,152 @@ def event_crumbs(event: dict) -> str:
     )
 
 
+# ---------- add to calendar ----------
+#
+# Each upcoming event page offers its own .ics file (Apple Calendar,
+# Outlook and anything else that speaks iCalendar open it straight into
+# "add event") and a Google Calendar template link. A listing with no
+# end time gets a nominal two hours so it shows as a block, not a line.
+
+CAL_DEFAULT_HOURS = 2
+
+
+def _cal_span(event: dict) -> tuple[datetime, datetime]:
+    start = datetime.fromisoformat(event["start_at"].replace("Z", "+00:00"))
+    end = (
+        datetime.fromisoformat(event["end_at"].replace("Z", "+00:00"))
+        if event.get("end_at")
+        else None
+    )
+    if not end or end <= start:
+        end = start + timedelta(hours=CAL_DEFAULT_HOURS)
+    return start, end
+
+
+def _cal_dates(event: dict) -> tuple[str, str, bool]:
+    """(start, end, all_day) in iCalendar basic format: UTC date-times,
+    or London dates (end exclusive) for an all-day listing."""
+    start, end = _cal_span(event)
+    if event.get("is_all_day"):
+        first = start.astimezone(LONDON).date()
+        last = end.astimezone(LONDON).date()
+        return (
+            first.strftime("%Y%m%d"),
+            max(last, first + timedelta(days=1)).strftime("%Y%m%d"),
+            True,
+        )
+    fmt = "%Y%m%dT%H%M%SZ"
+    return (
+        start.astimezone(timezone.utc).strftime(fmt),
+        end.astimezone(timezone.utc).strftime(fmt),
+        False,
+    )
+
+
+def _cal_location(event: dict) -> str:
+    venue = event.get("venue_name") or ""
+    address = event.get("address") or ""
+    if venue and address and address != venue:
+        return f"{venue}, {address}"
+    return venue or address or "London"
+
+
+def _cal_details(event: dict) -> str:
+    """The note under the event: a line about it, where to book, and the
+    page here to come back to."""
+    about = event.get("hook") or ""
+    if not about and event.get("description"):
+        about = _trim(
+            strip_meeting_links(re.sub(r"\s+", " ", event["description"])), 300
+        )
+    lines = [about] if about else []
+    if event.get("source_url"):
+        lines.append(f"Tickets & details: {with_utm(event['source_url'])}")
+    lines.append(f"On {display_name()}: {event_url(event)}")
+    return "\n\n".join(lines)
+
+
+def _ics_text(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\r\n", "\n")
+        .replace("\n", "\\n")
+    )
+
+
+def _ics_fold(line: str) -> str:
+    """RFC 5545: lines over 75 octets continue on the next, after a space —
+    split on character boundaries so multi-byte text stays whole."""
+    out, cur, size = [], "", 0
+    for ch in line:
+        n = len(ch.encode("utf-8"))
+        if size + n > 75:
+            out.append(cur)
+            cur, size = " ", 1
+        cur += ch
+        size += n
+    out.append(cur)
+    return "\r\n".join(out)
+
+
+def event_ics(event: dict) -> str:
+    start, end, all_day = _cal_dates(event)
+    host = urllib.parse.urlsplit(BASE_URL).hostname or "londo"
+    uid = re.sub(r"[^A-Za-z0-9._-]+", "-", f"{event['source']}-{event['source_id']}")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    when = (
+        [f"DTSTART;VALUE=DATE:{start}", f"DTEND;VALUE=DATE:{end}"]
+        if all_day
+        else [f"DTSTART:{start}", f"DTEND:{end}"]
+    )
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        f"PRODID:-//{display_name()}//events//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "BEGIN:VEVENT",
+        f"UID:{uid}@{host}",
+        f"DTSTAMP:{stamp}",
+        *when,
+        f"SUMMARY:{_ics_text(event['title'])}",
+        f"LOCATION:{_ics_text(_cal_location(event))}",
+        f"DESCRIPTION:{_ics_text(_cal_details(event))}",
+        f"URL:{event.get('source_url') or event_url(event)}",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ]
+    return "\r\n".join(_ics_fold(line) for line in lines) + "\r\n"
+
+
+def google_calendar_url(event: dict) -> str:
+    start, end, _ = _cal_dates(event)
+    query = urllib.parse.urlencode({
+        "action": "TEMPLATE",
+        "text": event["title"],
+        "dates": f"{start}/{end}",
+        "details": _cal_details(event),
+        "location": _cal_location(event),
+        "ctz": "Europe/London",
+    })
+    return f"https://calendar.google.com/calendar/render?{query}"
+
+
+def calendar_links_html(event: dict) -> str:
+    slug = event_slug(event)
+    return (
+        '<p class="static-cal">'
+        '<span class="static-cal-label">add to calendar</span>'
+        f'<a href="{esc(google_calendar_url(event))}" target="_blank" rel="noopener" '
+        'data-goatcounter-click="cal/google">Google</a>'
+        f'<a href="{esc(slug)}.ics" type="text/calendar" '
+        'data-goatcounter-click="cal/ics">Apple · Outlook · iCal</a>'
+        "</p>"
+    )
+
+
 def event_page(event: dict, past: bool = False) -> str:
     """An event's own page. `past`: it has happened — the page stays up
     for the searches still landing on it, minus the ticket offer, and
@@ -3990,14 +4136,16 @@ def event_page(event: dict, past: bool = False) -> str:
          data-goatcounter-title="{esc(event["title"])}">
         Tickets &amp; details
       </a>{f'<span class="static-cta-price">{esc(price)}</span>' if price else ''}
-    </p>"""
+    </p>
+    {calendar_links_html(event)}"""
         cta = ""
     else:
         # a flyer shared in the community chat, with no page of its own:
         # the details above are all there is
         cta = ('<p class="static-cta-wrap static-cta-note">'
                "shared in the community chat — no ticket page; "
-               "details as posted above</p>")
+               "details as posted above</p>"
+               + calendar_links_html(event))
 
     related = related_html(event, past)
 
@@ -5617,6 +5765,7 @@ def build(outdir: Path) -> None:
         slug = event_slug(event)
         canonical = event_url(event)
         write_index(outdir / "e" / slug, event_page(event))
+        (outdir / "e" / slug / f"{slug}.ics").write_text(event_ics(event), newline="")
         # legacy source-id paths keep working for old sitemaps / shares
         legacy = legacy_event_id(event)
         if legacy != slug:

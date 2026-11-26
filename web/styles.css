@@ -2036,6 +2036,43 @@ body.static-page {
   opacity: 0.7;
 }
 
+/* add to calendar: a quiet line under the ticket button */
+.static-cta-wrap:has(+ .static-cal) {
+  margin-bottom: 0.7rem;
+}
+
+.static-cal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.9rem;
+  margin: 0 0 2rem;
+  font-size: 0.92rem;
+  color: var(--ink-dim);
+}
+
+.static-cal-label::before {
+  content: "＋ ";
+}
+
+.static-cal a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}
+
+.static-cal a:hover {
+  color: var(--peach);
+  text-decoration-color: currentColor;
+}
+
+@media (max-width: 640px) {
+  .static-cal {
+    justify-content: center;
+  }
+}
+
 .static-back {
   margin: 1.75rem 0 0;
 }
