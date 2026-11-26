@@ -27,6 +27,10 @@ on:
         type: choice
         options: [preview, draft, schedule]
         default: preview
+      send_at:
+        description: "Send time, ISO, London if no offset (blank: next Thursday 09:00)"
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -49,10 +53,11 @@ jobs:
         env:
           KIT_API_KEY: ${{ secrets.KIT_API_KEY }}
           MODE: ${{ inputs.mode || vars.WEEKLY_EMAIL_MODE || 'draft' }}
+          SEND_AT: ${{ inputs.send_at || '' }}
         run: |
-          python3 scripts/weekly_email.py preview --out build-email
+          python3 scripts/weekly_email.py preview --out build-email ${SEND_AT:+--send-at "$SEND_AT"}
           if [ "$MODE" != "preview" ]; then
-            python3 scripts/weekly_email.py "$MODE"
+            python3 scripts/weekly_email.py "$MODE" ${SEND_AT:+--send-at "$SEND_AT"}
           fi
       - uses: actions/upload-artifact@v4
         with:
