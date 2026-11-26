@@ -2827,6 +2827,21 @@
     'stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/>' +
     '<path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
 
+  // Safari 26 tucks Share into a menu: its toolbar button is three lines,
+  // the bottom one shorter
+  const MENU_SVG =
+    '<svg class="install-hint-share" viewBox="0 0 24 24" aria-hidden="true" ' +
+    'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+    '<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h10"/></svg>';
+
+  // the steps to the Share sheet: one tap on older Safari, two on 26+
+  function shareSteps() {
+    const m = UA.match(/Version\/(\d+)/);
+    return m && Number(m[1]) >= 26
+      ? `${MENU_SVG} → <b>Share</b>`
+      : `Share ${SHARE_SVG}`;
+  }
+
   function renderInstallHint(mode) {
     if (!mode || document.getElementById("install-hint")) return;
     const name = SITE.displayName || SITE.name || "londo";
@@ -2851,9 +2866,10 @@
     const text = document.createElement("p");
     text.className = "install-hint-text";
     if (mode === "ios") {
-      text.innerHTML = `Tap ${SHARE_SVG} then <b>Add to Home Screen</b>.`;
+      text.innerHTML = `Tap ${shareSteps()} → <b>Add to Home Screen</b>.`;
     } else if (mode === "ios-other") {
-      // iOS can only install from Safari; other iOS browsers can't
+      // iOS can only install from Safari; other iOS browsers can't (and
+      // don't report Safari's version, so these steps are the generic ones)
       text.innerHTML =
         `Open in <b>Safari</b>, then Share ${SHARE_SVG} → <b>Add to Home Screen</b>.`;
     } else {
