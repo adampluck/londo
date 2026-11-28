@@ -1340,6 +1340,10 @@
     if (state.freeOnly) params.set("free", "1");
     const q = state.query.trim();
     if (q) params.set("q", q);
+    // campaign tags (a shared or emailed link) stay put: signup.js and
+    // analytics read them after this first runs
+    for (const [k, v] of new URLSearchParams(location.search))
+      if (k.startsWith("utm_")) params.set(k, v);
     // a bare ?topic=/?category= URL is a landing (intro page) on load; pin
     // the day so a chip-filtered view reloads as the same plain filter
     if ((params.has("topic") || params.has("category")) && !params.has("day"))

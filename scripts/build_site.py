@@ -3965,7 +3965,7 @@ def share_url(event: dict, medium: str) -> str:
 
 _SHARE_SCRIPT = (
     "<script>(()=>{const b=document.querySelector('.static-share-btn');if(!b)return;"
-    "const label=b.textContent;"
+    "if(navigator.share)b.textContent='more…';const label=b.textContent;"
     "b.addEventListener('click',async()=>{const url=b.dataset.url,title=b.dataset.title;"
     "if(navigator.share){try{await navigator.share({title,url})}catch(_){}return}"
     "try{await navigator.clipboard.writeText(url);b.textContent='link copied ✓'}"
