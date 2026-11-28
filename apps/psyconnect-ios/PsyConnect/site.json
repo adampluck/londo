@@ -1,0 +1,159 @@
+{
+ "id": "psyconnect",
+ "name": "psyconnect",
+ "displayName": "PsyConnect",
+ "tagline": "consciousness, connection, ceremony & psychedelics \u2014 in person in london",
+ "filter": {
+  "categories": [
+   "expand"
+  ],
+  "topics": [
+   "psychedelics",
+   "consciousness",
+   "spirituality & ritual",
+   "connection & intimacy",
+   "healing & wellbeing"
+  ],
+  "exclude": [
+   "social sports mix",
+   "football",
+   "futsal",
+   "5-a-side",
+   "dodgeball",
+   "rounders",
+   "netball",
+   "basketball",
+   "volleyball",
+   "rugby",
+   "cricket",
+   "softball",
+   "badminton",
+   "kickabout",
+   "startup",
+   "founder",
+   "hackathon",
+   "openai",
+   "emed",
+   "ai engine",
+   "demo day",
+   "pitch night",
+   "pitch competition",
+   "y combinator",
+   "alo regent",
+   "alo runners",
+   "watkins bookshop",
+   "wonder workshop - for little ones",
+   "lfg summer party",
+   "live music:",
+   "run club",
+   "running club",
+   "seed run",
+   "parkrun",
+   "5km",
+   "10km",
+   "bootcamp",
+   "hyrox",
+   "crossfit",
+   "spin class",
+   "pilates",
+   "reformer",
+   "kettlebell",
+   "personal training",
+   "strength training",
+   "fitness class",
+   "red light therapy",
+   "high performers",
+   "performance studio",
+   "bon charge",
+   "ydun",
+   "aperitivo",
+   "bottomless brunch",
+   "coworking",
+   "investor"
+  ],
+  "excludeText": [
+   "shibari"
+  ]
+ },
+ "topics": [
+  "psychedelics",
+  "consciousness",
+  "spirituality & ritual",
+  "connection & intimacy",
+  "healing & wellbeing"
+ ],
+ "features": {
+  "lens": false,
+  "categoryPills": false,
+  "views": false,
+  "map": true,
+  "compass": false,
+  "topics": true,
+  "animateDayChange": false,
+  "organizerPages": true,
+  "practiceRail": true,
+  "venuePages": true,
+  "whenPages": true,
+  "seasonPages": true
+ },
+ "mapTiles": "light_all",
+ "featured": {
+  "organizers": [
+   "PsyConnect London",
+   "PsyConnect"
+  ],
+  "label": "Our next event",
+  "accent": "next event"
+ },
+ "curated": {
+  "organizers": [
+   "The Psychedelic Society",
+   "Numinity",
+   "Adventures in Awareness",
+   "Unseen",
+   "Unseen London",
+   "Creating Meaning"
+  ],
+  "titleMatches": [
+   "bohm",
+   "contact improvisation",
+   "ci lab"
+  ],
+  "alwaysPick": [
+   "bohm dialogue",
+   "bohmian dialogue"
+  ],
+  "alwaysPickMax": 2,
+  "exclude": [
+   "running club"
+  ],
+  "maxTotal": 4,
+  "maxMobile": 5,
+  "windowStages": [
+   7,
+   14,
+   30
+  ],
+  "label": "Our upcoming top picks",
+  "accent": "top picks"
+ },
+ "channel": {
+  "url": "",
+  "label": "follow psyconnect on WhatsApp"
+ },
+ "signup": {
+  "workerUrl": "https://psyconnect-subscribe.plucky101.workers.dev",
+  "turnstileSiteKey": "0x4AAAAAAEG-S32kYG1X6qMl"
+ },
+ "joinCommunity": {
+  "workerUrl": "https://psyconnect-join.plucky101.workers.dev",
+  "turnstileSiteKey": "0x4AAAAAAEG-S32kYG1X6qMl",
+  "passphraseHint": ""
+ },
+ "logo": "logo.png",
+ "shellExtras": [
+  "theme.css",
+  "logo.png",
+  "signup.js"
+ ]
+}

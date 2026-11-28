@@ -1692,6 +1692,24 @@ def read_config() -> tuple[str, str]:
     return url, key
 
 
+def practice_guides_json() -> str:
+    """practice-guides.json for the iOS app (apps/psyconnect-ios), keyed by
+    slug: the page title, intro paragraphs and FAQ pairs of every practice
+    this site lists. Also run by hand to refresh the app's bundled copy."""
+    return json.dumps(
+        {
+            slug_: {
+                "title": spec["seo_title"],
+                "intro": list(spec.get("intro") or ()),
+                "faq": [list(qa) for qa in spec.get("faq") or ()],
+            }
+            for slug_, spec, matched in SITE_PRACTICES
+            if matched
+        },
+        ensure_ascii=False,
+    )
+
+
 def read_site_block() -> dict:
     m = re.search(
         r"/\*SITE-JSON\*/(.*?)/\*END-SITE-JSON\*/",
@@ -6007,6 +6025,11 @@ def build(outdir: Path) -> None:
             ]
         )
     )
+    # The iOS app's practice guides: the /p/ pages' prose (intro + FAQ),
+    # kept out of practices.json so the website's every page load doesn't
+    # carry it. The live price answer stays page-only; the app works its
+    # own out from the events it has.
+    (outdir / "practice-guides.json").write_text(practice_guides_json())
     # the explore tiles' line icons, for the app's practice rail and filter
     # chips — keyed like EXPLORE_ICONS, by practice slug or topic name
     site_topics = SITE_JSON.get("topics")
