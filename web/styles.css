@@ -2036,65 +2036,91 @@ body.static-page {
   opacity: 0.7;
 }
 
-/* add to calendar: a quiet line under the ticket button */
-.static-cta-wrap:has(+ .static-cal) {
-  margin-bottom: 0.7rem;
+/* calendar & share: two quiet buttons under the ticket button, each
+   opening a small menu */
+.static-cta-wrap:has(+ .static-actions) {
+  margin-bottom: 0.8rem;
 }
 
-.static-cal {
+.static-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.35rem 0.9rem;
+  gap: 0.5rem;
   margin: 0 0 2rem;
   font-size: 0.92rem;
+}
+
+.static-pop {
+  position: relative;
+}
+
+.static-act {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--ink-dim) 35%, transparent);
+  border-radius: 999px;
   color: var(--ink-dim);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: color 0.15s, border-color 0.15s;
 }
 
-.static-cal-label::before {
-  content: "＋ ";
+.static-act::-webkit-details-marker {
+  display: none;
 }
 
-.static-cal a {
-  color: inherit;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
-  text-underline-offset: 3px;
-}
-
-.static-cal a:hover {
+.static-act:hover,
+.static-pop[open] > .static-act {
   color: var(--peach);
-  text-decoration-color: currentColor;
+  border-color: currentColor;
 }
 
-/* share: the same quiet line, straight after the calendar one */
-.static-cal:has(+ .static-share) {
-  margin-bottom: 0.45rem;
+.static-act-icon {
+  font-size: 0.95em;
+  opacity: 0.85;
 }
 
-.static-share-label::before {
-  content: "↗ ";
+.static-pop-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 20;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.3rem;
+  background: var(--hint-bg);
+  border: 1px solid color-mix(in srgb, var(--ink-dim) 30%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
 }
 
-.static-share-btn {
+.static-pop-menu a,
+.static-pop-menu button {
   font: inherit;
-  color: inherit;
+  text-align: left;
+  color: var(--ink-dim);
   background: none;
   border: 0;
-  padding: 0;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  text-decoration: none;
   cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
-  text-underline-offset: 3px;
 }
 
-.static-share-btn:hover {
+.static-pop-menu a:hover,
+.static-pop-menu button:hover {
   color: var(--peach);
-  text-decoration-color: currentColor;
+  background: color-mix(in srgb, var(--peach) 10%, transparent);
 }
 
 @media (max-width: 640px) {
-  .static-cal {
+  .static-actions {
     justify-content: center;
   }
 }

@@ -3955,55 +3955,67 @@ def google_calendar_url(event: dict) -> str:
     return f"https://calendar.google.com/calendar/render?{query}"
 
 
-def calendar_links_html(event: dict) -> str:
-    slug = event_slug(event)
-    return (
-        '<p class="static-cal">'
-        '<span class="static-cal-label">add to calendar</span>'
-        f'<a href="{esc(google_calendar_url(event))}" target="_blank" rel="noopener" '
-        'data-goatcounter-click="cal/google">Google</a>'
-        f'<a href="{esc(slug)}.ics" type="text/calendar" '
-        'data-goatcounter-click="cal/ics">Apple · Outlook · iCal</a>'
-        "</p>"
-    )
-
-
-# ---------- share ----------
+# ---------- calendar & share ----------
 #
-# Under the calendar line: WhatsApp (where most of this scene passes
-# links on) and a share button: the phone's own share sheet where there
-# is one, otherwise it copies the link. Shared links carry
-# utm_source=share so a friend's visit shows up as such in analytics;
-# the canonical tag keeps those addresses out of search.
+# One quiet row under the ticket button, two buttons. "Add to calendar"
+# opens a small menu: Google, or the .ics file that Apple Calendar,
+# Outlook and the rest open straight into "add event". "Share" hands
+# over to the phone's own share sheet where there is one; elsewhere it
+# opens a menu with WhatsApp (where most of this scene passes links on)
+# and copy link. Shared links carry utm_source=share so a friend's visit
+# shows up as such in analytics; the canonical tag keeps those addresses
+# out of search. Plain <details>, so the calendar menu works without JS.
 
 def share_url(event: dict, medium: str) -> str:
     q = urllib.parse.urlencode({"utm_source": "share", "utm_medium": medium})
     return f"{event_url(event)}?{q}"
 
 
-_SHARE_SCRIPT = (
-    "<script>(()=>{const b=document.querySelector('.static-share-btn');if(!b)return;"
-    "if(navigator.share)b.textContent='more…';const label=b.textContent;"
-    "b.addEventListener('click',async()=>{const url=b.dataset.url,title=b.dataset.title;"
-    "if(navigator.share){try{await navigator.share({title,url})}catch(_){}return}"
-    "try{await navigator.clipboard.writeText(url);b.textContent='link copied ✓'}"
+_ACTIONS_SCRIPT = (
+    "<script>(()=>{const row=document.querySelector('.static-actions');if(!row)return;"
+    "const pops=[...row.querySelectorAll('details')];"
+    "pops.forEach(d=>d.addEventListener('toggle',()=>{if(d.open)pops.forEach(o=>{if(o!==d)o.open=false})}));"
+    "document.addEventListener('click',e=>{if(!row.contains(e.target))pops.forEach(d=>d.open=false)});"
+    "document.addEventListener('keydown',e=>{if(e.key==='Escape')pops.forEach(d=>d.open=false)});"
+    "const s=row.querySelector('.static-share>summary');"
+    "if(s&&navigator.share)s.addEventListener('click',async e=>{e.preventDefault();"
+    "try{await navigator.share({title:s.dataset.title,url:s.dataset.url});"
+    "window.goatcounter&&goatcounter.count&&goatcounter.count({path:'share/native',event:true})}catch(_){}});"
+    "const c=row.querySelector('.static-copy');"
+    "if(c)c.addEventListener('click',async()=>{const url=c.dataset.url,label=c.textContent;"
+    "try{await navigator.clipboard.writeText(url);c.textContent='Link copied ✓'}"
     "catch(_){prompt('Copy this link',url);return}"
-    "setTimeout(()=>{b.textContent=label},2500)})})();</script>"
+    "setTimeout(()=>{c.textContent=label;c.closest('details').open=false},1800)})})();</script>"
 )
 
 
-def share_links_html(event: dict) -> str:
+def event_actions_html(event: dict) -> str:
+    slug = event_slug(event)
     text = f"{event['title']} — {share_url(event, 'whatsapp')}"
     wa = "https://wa.me/?" + urllib.parse.urlencode({"text": text})
     return (
-        '<p class="static-cal static-share">'
-        '<span class="static-share-label">share</span>'
+        '<div class="static-actions">'
+        '<details class="static-pop">'
+        '<summary class="static-act">'
+        '<span class="static-act-icon" aria-hidden="true">＋</span>Add to calendar</summary>'
+        '<div class="static-pop-menu">'
+        f'<a href="{esc(google_calendar_url(event))}" target="_blank" rel="noopener" '
+        'data-goatcounter-click="cal/google">Google Calendar</a>'
+        f'<a href="{esc(slug)}.ics" type="text/calendar" '
+        'data-goatcounter-click="cal/ics">Apple · Outlook · other</a>'
+        "</div></details>"
+        '<details class="static-pop static-share">'
+        f'<summary class="static-act" data-url="{esc(share_url(event, "native"))}" '
+        f'data-title="{esc(event["title"])}">'
+        '<span class="static-act-icon" aria-hidden="true">↗</span>Share</summary>'
+        '<div class="static-pop-menu">'
         f'<a href="{esc(wa)}" target="_blank" rel="noopener" '
         'data-goatcounter-click="share/whatsapp">WhatsApp</a>'
-        f'<button type="button" class="static-share-btn" '
-        f'data-url="{esc(share_url(event, "link"))}" data-title="{esc(event["title"])}" '
-        'data-goatcounter-click="share/link">copy link</button>'
-        "</p>" + _SHARE_SCRIPT
+        f'<button type="button" class="static-copy" '
+        f'data-url="{esc(share_url(event, "link"))}" '
+        'data-goatcounter-click="share/link">Copy link</button>'
+        "</div></details>"
+        "</div>" + _ACTIONS_SCRIPT
     )
 
 
@@ -4194,8 +4206,7 @@ def event_page(event: dict, past: bool = False) -> str:
         Tickets &amp; details
       </a>{f'<span class="static-cta-price">{esc(price)}</span>' if price else ''}
     </p>
-    {calendar_links_html(event)}
-    {share_links_html(event)}"""
+    {event_actions_html(event)}"""
         cta = ""
     else:
         # a flyer shared in the community chat, with no page of its own:
@@ -4203,8 +4214,7 @@ def event_page(event: dict, past: bool = False) -> str:
         cta = ('<p class="static-cta-wrap static-cta-note">'
                "shared in the community chat — no ticket page; "
                "details as posted above</p>"
-               + calendar_links_html(event)
-               + share_links_html(event))
+               + event_actions_html(event))
 
     related = related_html(event, past)
 
