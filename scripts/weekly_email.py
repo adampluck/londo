@@ -605,6 +605,37 @@ def community_block(campaign: str) -> str:
 </td></tr>"""
 
 
+def referral_block(campaign: str) -> str:
+    """Pass it on: WhatsApp and email buttons with a ready-made message
+    that links to the sign-up. The link says utm_source=friend, not
+    email, so the friend's visit counts as a referral and the sign-up
+    box shows for them (signup.js treats anyone arriving from the email
+    as a reader already); #signup opens it straight away."""
+    signup = f"{bs.BASE_URL}/?" + urllib.parse.urlencode({
+        "utm_source": "friend", "utm_medium": "referral", "utm_campaign": "weekly-share",
+    }) + "#signup"
+    message = ("I get this weekly email of in-person gatherings in London — sound "
+               "baths, ecstatic dance, circles, ceremonies. Thought you'd like it: " + signup)
+    wa = "https://wa.me/?" + urllib.parse.urlencode({"text": message})
+    mail = "mailto:?" + urllib.parse.urlencode(
+        {"subject": "A weekly email you might like", "body": message},
+        quote_via=urllib.parse.quote,
+    )
+    button = (f"display:inline-block;margin:0 8px 8px 0;color:{PLUM};font-weight:600;font-size:14px;"
+              f"line-height:1;font-family:{SANS};text-decoration:none;padding:10px 16px;"
+              f"border:1.5px solid {PLUM};border-radius:10px;")
+    return f"""
+<tr><td style="padding:8px 0 18px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="pc-card" style="background:{CARD};border:1px solid {EDGE};border-radius:16px;">
+  <tr><td style="padding:16px;text-align:left;">
+    <p class="pc-plum" style="margin:0 0 6px;font-weight:600;font-size:12px;line-height:1.4;font-family:{SANS};letter-spacing:.08em;text-transform:uppercase;color:{PLUM};">Pass it on</p>
+    <p class="pc-ink" style="margin:0;font-weight:600;font-size:17px;line-height:1.3;font-family:{SANS};color:{INK};">Know someone who'd love this?</p>
+    <p class="pc-dim" style="margin:4px 0 12px;font-size:14px;line-height:1.45;font-family:{SANS};color:{DIM};">We grow by word of mouth. Send a friend the link and they can get the weekly email too.</p>
+    <a href="{bs.esc(wa)}" class="pc-plum" style="{button}">Share on WhatsApp</a><a href="{bs.esc(mail)}" class="pc-plum" style="{button}">Send by email</a>
+  </td></tr></table>
+</td></tr>"""
+
+
 LOGO_PLATE, LOGO_DARK = "/logo-email-plate.png", "/logo-email-dark.png"
 
 
@@ -647,6 +678,7 @@ def render(edition: str | None, secs: dict, send_at: datetime, slugs: dict[str, 
         + list_section(rest_title, secs["rest"], slugs, campaign, icons)
         + browse_section(secs["browse"], campaign, icons)
         + community_block(campaign)
+        + referral_block(campaign)
     )
     # Just the body: the background, footer, unsubscribe link and postal
     # address come from the PsyConnect template in Kit (kit/email-template.html).

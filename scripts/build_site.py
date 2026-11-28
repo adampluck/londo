@@ -3950,6 +3950,45 @@ def calendar_links_html(event: dict) -> str:
     )
 
 
+# ---------- share ----------
+#
+# Under the calendar line: WhatsApp (where most of this scene passes
+# links on) and a share button: the phone's own share sheet where there
+# is one, otherwise it copies the link. Shared links carry
+# utm_source=share so a friend's visit shows up as such in analytics;
+# the canonical tag keeps those addresses out of search.
+
+def share_url(event: dict, medium: str) -> str:
+    q = urllib.parse.urlencode({"utm_source": "share", "utm_medium": medium})
+    return f"{event_url(event)}?{q}"
+
+
+_SHARE_SCRIPT = (
+    "<script>(()=>{const b=document.querySelector('.static-share-btn');if(!b)return;"
+    "const label=b.textContent;"
+    "b.addEventListener('click',async()=>{const url=b.dataset.url,title=b.dataset.title;"
+    "if(navigator.share){try{await navigator.share({title,url})}catch(_){}return}"
+    "try{await navigator.clipboard.writeText(url);b.textContent='link copied ✓'}"
+    "catch(_){prompt('Copy this link',url);return}"
+    "setTimeout(()=>{b.textContent=label},2500)})})();</script>"
+)
+
+
+def share_links_html(event: dict) -> str:
+    text = f"{event['title']} — {share_url(event, 'whatsapp')}"
+    wa = "https://wa.me/?" + urllib.parse.urlencode({"text": text})
+    return (
+        '<p class="static-cal static-share">'
+        '<span class="static-share-label">share</span>'
+        f'<a href="{esc(wa)}" target="_blank" rel="noopener" '
+        'data-goatcounter-click="share/whatsapp">WhatsApp</a>'
+        f'<button type="button" class="static-share-btn" '
+        f'data-url="{esc(share_url(event, "link"))}" data-title="{esc(event["title"])}" '
+        'data-goatcounter-click="share/link">copy link</button>'
+        "</p>" + _SHARE_SCRIPT
+    )
+
+
 def event_page(event: dict, past: bool = False) -> str:
     """An event's own page. `past`: it has happened — the page stays up
     for the searches still landing on it, minus the ticket offer, and
@@ -4137,7 +4176,8 @@ def event_page(event: dict, past: bool = False) -> str:
         Tickets &amp; details
       </a>{f'<span class="static-cta-price">{esc(price)}</span>' if price else ''}
     </p>
-    {calendar_links_html(event)}"""
+    {calendar_links_html(event)}
+    {share_links_html(event)}"""
         cta = ""
     else:
         # a flyer shared in the community chat, with no page of its own:
@@ -4145,7 +4185,8 @@ def event_page(event: dict, past: bool = False) -> str:
         cta = ('<p class="static-cta-wrap static-cta-note">'
                "shared in the community chat — no ticket page; "
                "details as posted above</p>"
-               + calendar_links_html(event))
+               + calendar_links_html(event)
+               + share_links_html(event))
 
     related = related_html(event, past)
 

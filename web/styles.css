@@ -2067,6 +2067,32 @@ body.static-page {
   text-decoration-color: currentColor;
 }
 
+/* share: the same quiet line, straight after the calendar one */
+.static-cal:has(+ .static-share) {
+  margin-bottom: 0.45rem;
+}
+
+.static-share-label::before {
+  content: "↗ ";
+}
+
+.static-share-btn {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}
+
+.static-share-btn:hover {
+  color: var(--peach);
+  text-decoration-color: currentColor;
+}
+
 @media (max-width: 640px) {
   .static-cal {
     justify-content: center;
